@@ -119,9 +119,13 @@ if ! command -v cloudflared >/dev/null 2>&1; then
   if command -v apt-get >/dev/null 2>&1; then
     curl -fsSL --retry 3 https://pkg.cloudflare.com/cloudflare-main.gpg \
       -o /usr/share/keyrings/cloudflare-main.gpg
-    echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared $(lsb_release -cs) main" \
+    CODENAME=$(. /etc/os-release && echo "$VERSION_CODENAME")
+    [ -n "$CODENAME" ] || die "impossible de déterminer la distribution (/etc/os-release)"
+    log "distribution détectée : $CODENAME"
+    rm -f /etc/apt/sources.list.d/cloudflared.list
+    echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared $CODENAME main" \
       > /etc/apt/sources.list.d/cloudflared.list
-    apt-get update -qq && apt-get install -y -qq cloudflared >/dev/null
+    apt-get update -qq && apt-get install -y -qq cloudflared
   else
     die "apt indisponible — installez cloudflared manuellement : https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/"
   fi
