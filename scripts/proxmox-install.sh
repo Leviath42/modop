@@ -66,7 +66,7 @@ fi
 
 log "lancement sous pm2"
 pm2 delete modop >/dev/null 2>&1 || true
-pm2 start npm --name modop --prefix "$APP_DIR/server" -- start
+pm2 start "$APP_DIR/server/ecosystem.config.cjs"
 pm2 save
 pm2 startup systemd -u root --hp /root >/dev/null 2>&1 || true
 pm2 save

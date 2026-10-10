@@ -35,7 +35,7 @@ die() {
   printf '[update] ERREUR : %s\n' "$*" >&2
   printf "[update] tentative de relance de l'application...\n" >&2
   pm2 restart "$PM2_NAME" >/dev/null 2>&1 \
-    || pm2 start npm --name "$PM2_NAME" --prefix "$APP_DIR/server" -- start >/dev/null 2>&1 \
+    || pm2 start "$APP_DIR/server/ecosystem.config.cjs" >/dev/null 2>&1 \
     || true
   pm2 save >/dev/null 2>&1 || true
   exit 1
@@ -55,7 +55,7 @@ if [ "${1:-}" = "rollback" ]; then
   [ -f "$BACKUP_DIR/$STAMP2.db-wal" ] && cp "$BACKUP_DIR/$STAMP2.db-wal" "$DB_FILE-wal" || true
   [ -f "$BACKUP_DIR/$STAMP2.db-shm" ] && cp "$BACKUP_DIR/$STAMP2.db-shm" "$DB_FILE-shm" || true
   pm2 restart "$PM2_NAME" --update-env 2>/dev/null \
-    || pm2 start npm --name "$PM2_NAME" --prefix "$APP_DIR/server" -- start
+    || pm2 start "$APP_DIR/server/ecosystem.config.cjs"
   pm2 save
   log "base restaurée : $LATEST"
   exit 0
@@ -106,7 +106,7 @@ log "build du serveur"
 
 log "relance de l'application"
 pm2 restart "$PM2_NAME" --update-env 2>/dev/null \
-  || pm2 start npm --name "$PM2_NAME" --prefix "$APP_DIR/server" -- start
+  || pm2 start "$APP_DIR/server/ecosystem.config.cjs"
 pm2 save
 
 log "healthcheck"
