@@ -65,8 +65,10 @@ export default function ReaderPage() {
             {step.body && <p style={{ whiteSpace: "pre-wrap" }}>{step.body}</p>}
             {step.pictos.length > 0 && (
               <p style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap" }}>
-                {step.pictos.map((p) => (
-                  <span key={p} style={{ background: "#fdf3d7", padding: "0.15rem 0.5rem", borderRadius: "4px", fontSize: "0.85rem" }}>⚠ {p}</span>
+                {step.pictos.map((p, i) => (
+                  <span key={i} style={{ background: `${p.color}22`, borderLeft: `4px solid ${p.color}`, padding: "0.15rem 0.5rem", borderRadius: "4px", fontSize: "0.85rem", fontWeight: 600 }}>
+                    ⚠ {p.label}
+                  </span>
                 ))}
               </p>
             )}

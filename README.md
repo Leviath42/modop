@@ -10,6 +10,10 @@ Pensée atelier : une étape, une photo, un pictogramme — consultable au PC co
 - **Lecteur** : PC avec sommaire cliquable, mobile avec une étape par écran ; zoom sur les photos.
 - **Export `.docx`** d'une version publiée, ouvrable dans Word/LibreOffice.
 - **Comptes et rôles** : reader / author / admin, SSO OIDC optionnel (off par défaut), sessions expirantes, journal d'audit.
+- **Gestion des comptes (admin)** : création, changement de rôle, désactivation (sessions révoquées immédiatement), réinitialisation de mot de passe (temporaire affiché une seule fois).
+- **Suppression de mode opératoire** : confirmation explicite, cascade (étapes, photos, versions).
+- **Pictogrammes enrichis** : par étape, pictos avec **couleur** (sélecteur) et **texte libre** — rendus en édition, lecture et export.
+- **Classement famille / type** : filtre par famille dans la liste, badges en lecture.
 - **Mise à jour depuis l'interface** (admin) : « Mettre à jour depuis GitHub », « Retour arrière » (sauvegarde de la base), journal en direct — sans ouvrir le shell.
 
 Stack : Express + better-sqlite3 (serveur), React + Vite (front), tests `node:test`.
@@ -52,3 +56,11 @@ Le front de production est servi par l'API (build via `npm run build` dans `web/
 ├── scripts/   Installateur LXC
 └── update.sh  Mise à jour / retour arrière (piloté par la page /deploy)
 ```
+
+## Documentation
+
+- `docs/cahier-des-charges.md` — exigences (RF/RNF) et périmètre
+- `docs/roadmap.md` — état d'avancement et prochaines vagues
+- `docs/guide-test-proxmox.md` — installation et tests dans le conteneur
+- `docs/durcissement-securite.md` — mode production (SSO, TLS, sauvegardes)
+- `docs/processus-vagues.md` — processus de développement

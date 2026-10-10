@@ -8,11 +8,17 @@ import {
 import { requireAuth } from "../auth/middleware.js";
 import { auditLog } from "../auth/audit.js";
 
+interface SnapshotPicto {
+  kind: string;
+  label: string;
+  color: string;
+}
+
 interface SnapshotStep {
   position: number;
   title: string;
   body: string;
-  pictos: string[];
+  pictos: (SnapshotPicto | string)[];
   photos: { filename: string; alt: string }[];
 }
 
@@ -72,7 +78,15 @@ export function exportRouter(db: Database.Database): Router {
       );
       if (step.body) children.push(new Paragraph({ text: step.body }));
       if (step.pictos.length) {
-        children.push(new Paragraph({ children: [new TextRun({ text: `Indications : ${step.pictos.join(", ")}`, bold: true })] }));
+        children.push(
+          new Paragraph({
+            children: step.pictos.flatMap((p) => {
+              const label = typeof p === "string" ? p : p.label;
+              const color = typeof p === "string" ? "F5A623" : (p.color ?? "#f5a623").replace("#", "").toUpperCase();
+              return [new TextRun({ text: `⚠ ${label}   `, bold: true, color })];
+            }),
+          })
+        );
       }
       for (const photo of step.photos) {
         const file = path.join(photosDir(), photo.filename);

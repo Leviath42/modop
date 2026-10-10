@@ -23,7 +23,7 @@ export function workflowRouter(db: Database.Database): Router {
   const r = Router();
 
   r.post("/", requireAuth("author"), (req, res) => {
-    const { title, reference, description, category } = req.body ?? {};
+    const { title, reference, description, category, family } = req.body ?? {};
     if (typeof title !== "string" || !title.trim() || typeof reference !== "string" || !reference.trim()) {
       res.status(422).json({ error: "validation", message: "title et reference requis" });
       return;
@@ -34,8 +34,8 @@ export function workflowRouter(db: Database.Database): Router {
       return;
     }
     const info = db
-      .prepare("INSERT INTO workflows (title, reference, description, category) VALUES (?, ?, ?, ?)")
-      .run(title.trim(), reference.trim(), description ?? "", category ?? "");
+      .prepare("INSERT INTO workflows (title, reference, description, category, family) VALUES (?, ?, ?, ?, ?)")
+      .run(title.trim(), reference.trim(), description ?? "", category ?? "", family ?? "");
     auditLog(db, (req as { user?: { email: string } }).user?.email ?? "?", "create_workflow", `workflow:${info.lastInsertRowid}`, reference.trim());
     const wf = db.prepare("SELECT * FROM workflows WHERE id = ?").get(info.lastInsertRowid);
     res.status(201).json(wf);
@@ -67,7 +67,7 @@ export function workflowRouter(db: Database.Database): Router {
       res.status(404).json({ error: "not_found", message: "mode opératoire introuvable" });
       return;
     }
-    const { title, description, category } = req.body ?? {};
+    const { title, description, category, family } = req.body ?? {};
     if (title !== undefined && (typeof title !== "string" || !title.trim())) {
       res.status(422).json({ error: "validation", message: "title invalide" });
       return;
@@ -77,9 +77,10 @@ export function workflowRouter(db: Database.Database): Router {
          title = COALESCE(?, title),
          description = COALESCE(?, description),
          category = COALESCE(?, category),
+         family = COALESCE(?, family),
          updated_at = datetime('now')
        WHERE id = ?`
-    ).run(title?.trim() ?? null, description ?? null, category ?? null, wf.id);
+    ).run(title?.trim() ?? null, description ?? null, category ?? null, family ?? null, wf.id);
     res.json(db.prepare("SELECT * FROM workflows WHERE id = ?").get(wf.id));
   });
 

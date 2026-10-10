@@ -4,7 +4,17 @@ import { api, ApiError, type Step, type WorkflowDetail } from "../api";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
 
-const PICTOS = ["attention", "epi", "outil", "electrique", "point-chaud"];
+import type { Picto } from "../api";
+
+const PICTO_PRESETS: { kind: string; label: string; color: string }[] = [
+  { kind: "attention", label: "Attention", color: "#f5a623" },
+  { kind: "danger", label: "Danger", color: "#d0021b" },
+  { kind: "epi", label: "EPI obligatoire", color: "#1f4e9c" },
+  { kind: "electrique", label: "Risque électrique", color: "#7b16c9" },
+  { kind: "point-chaud", label: "Point chaud", color: "#d0021b" },
+  { kind: "outil", label: "Outillage spécifique", color: "#108c5e" },
+  { kind: "info", label: "Information", color: "#5b7285" },
+];
 
 export async function compressImage(file: File, maxSize = 1280, quality = 0.82): Promise<File> {
   const bitmap = await createImageBitmap(file);
@@ -27,6 +37,7 @@ export default function EditorPage() {
   const [title, setTitle] = useState("");
   const [reference, setReference] = useState("");
   const [category, setCategory] = useState("");
+  const [family, setFamily] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -41,7 +52,7 @@ export default function EditorPage() {
       .then((w) => {
         setWf(w); setSteps(w.steps);
         setTitle(w.title); setReference(w.reference);
-        setCategory(w.category); setDescription(w.description);
+        setCategory(w.category); setFamily(w.family ?? ""); setDescription(w.description);
       })
       .catch((e) => setError(e instanceof ApiError ? e.message : "Erreur de chargement"));
   }, [id, isNew]);
@@ -53,7 +64,7 @@ export default function EditorPage() {
   async function createWorkflow() {
     setError(null);
     try {
-      const created = await api.createWorkflow({ title: title.trim(), reference: reference.trim(), category, description });
+      const created = await api.createWorkflow({ title: title.trim(), reference: reference.trim(), category, family, description });
       navigate(`/workflow/${created.id}/edit`, { replace: true });
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Création impossible");
@@ -64,7 +75,7 @@ export default function EditorPage() {
     if (!wf) return;
     setError(null);
     try {
-      await api.updateWorkflow(wf.id, { title, category, description });
+      await api.updateWorkflow(wf.id, { title, category, family, description });
       setNotice("Enregistré");
       setTimeout(() => setNotice(null), 1500);
     } catch (e) {
@@ -75,7 +86,7 @@ export default function EditorPage() {
   async function addStep() {
     if (!wf) return;
     const s = await api.addStep(wf.id, { title: "Nouvelle étape" });
-    setSteps((arr) => [...arr, { ...s, photos: [], pictos: [] }]);
+    setSteps((arr) => [...arr, { ...s, photos: [], pictos: [] as Picto[] }]);
   }
 
   async function patchStep(step: Step, data: Partial<Step>) {
@@ -84,9 +95,10 @@ export default function EditorPage() {
       const updated = await api.updateStep(step.id, data as object);
       // L’API renvoie pictos en tableau ; code défensif au cas où une
       // réponse au format brut (chaîne JSON) arriverait malgré tout.
-      const pictos: string[] = Array.isArray(updated.pictos)
-        ? updated.pictos
-        : JSON.parse(String(updated.pictos));
+      const rawPictos = Array.isArray(updated.pictos) ? updated.pictos : JSON.parse(String(updated.pictos));
+      const pictos: Picto[] = rawPictos.map((x: Picto | string) =>
+        typeof x === "string" ? { kind: x, label: x, color: "#f5a623" } : x
+      );
       setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...updated, pictos, photos: s.photos } : s)));
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Enregistrement impossible");
@@ -166,8 +178,11 @@ export default function EditorPage() {
             ) : (
               <p style={{ margin: 0, color: "#666" }}><code>{wf?.reference}</code> — {wf?.state === "published" ? `publié (V${wf.current_version})` : "brouillon"}</p>
             )}
-            <label style={label}>Catégorie
-              <input value={category} onChange={(e) => setCategory(e.target.value)} style={input} placeholder="Maintenance" />
+            <label style={label}>Famille
+              <input value={family} onChange={(e) => setFamily(e.target.value)} style={input} placeholder="Mécanique / Électrique / Qualité…" />
+            </label>
+            <label style={label}>Type
+              <input value={category} onChange={(e) => setCategory(e.target.value)} style={input} placeholder="Maintenance, Contrôle…" />
             </label>
             <label style={label}>Description
               <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} style={input} />
@@ -214,20 +229,64 @@ export default function EditorPage() {
                     style={input}
                     aria-label={`Description étape ${i + 1}`}
                   />
-                  <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
-                    {PICTOS.map((p) => (
-                      <button
-                        key={p}
-                        onClick={() => patchStep(step, { pictos: step.pictos.includes(p) ? step.pictos.filter((x) => x !== p) : [...step.pictos, p] })}
-                        style={{
-                          padding: "0.2rem 0.55rem", borderRadius: "4px", fontSize: "0.8rem",
-                          border: step.pictos.includes(p) ? "2px solid #b8860b" : "1px solid #c9ccd3",
-                          background: step.pictos.includes(p) ? "#fdf3d7" : "white",
-                        }}
-                        aria-pressed={step.pictos.includes(p)}
-                      >
-                        {p}
-                      </button>
+                  <div style={{ display: "grid", gap: "0.4rem" }}>
+                    <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
+                      {PICTO_PRESETS.map((preset) => {
+                        const idx = step.pictos.findIndex((x) => x.kind === preset.kind);
+                        const on = idx >= 0;
+                        return (
+                          <button
+                            key={preset.kind}
+                            onClick={() =>
+                              patchStep(step, {
+                                pictos: on
+                                  ? step.pictos.filter((_, i) => i !== idx)
+                                  : [...step.pictos, { kind: preset.kind, label: preset.label, color: preset.color }],
+                              })
+                            }
+                            style={{
+                              padding: "0.2rem 0.55rem", borderRadius: "4px", fontSize: "0.8rem",
+                              border: on ? `2px solid ${preset.color}` : "1px solid #c9ccd3",
+                              background: on ? `${preset.color}22` : "white",
+                            }}
+                            aria-pressed={on}
+                          >
+                            {preset.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {step.pictos.map((ph, pi) => (
+                      <div key={pi} style={{ display: "flex", gap: "0.4rem", alignItems: "center", flexWrap: "wrap" }}>
+                        <input
+                          type="color"
+                          value={ph.color}
+                          onChange={(e) => {
+                            const next = step.pictos.map((x, i) => (i === pi ? { ...x, color: e.target.value } : x));
+                            setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, pictos: next } : s)));
+                          }}
+                          onBlur={() => patchStep(step, { pictos: step.pictos })}
+                          aria-label={`Couleur du pictogramme ${pi + 1}`}
+                        />
+                        <input
+                          value={ph.label}
+                          onChange={(e) => {
+                            const next = step.pictos.map((x, i) => (i === pi ? { ...x, label: e.target.value } : x));
+                            setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, pictos: next } : s)));
+                          }}
+                          onBlur={() => patchStep(step, { pictos: step.pictos })}
+                          placeholder="Texte de l'avertissement"
+                          style={{ flex: 1, minWidth: "160px", padding: "0.3rem 0.5rem", borderRadius: "4px", border: "1px solid #c9ccd3" }}
+                          aria-label={`Texte du pictogramme ${pi + 1}`}
+                        />
+                        <button
+                          onClick={() => patchStep(step, { pictos: step.pictos.filter((_, i) => i !== pi) })}
+                          style={dangerBtn}
+                          aria-label="Retirer ce pictogramme"
+                        >
+                          🗑
+                        </button>
+                      </div>
                     ))}
                   </div>
                   <div style={{ display: "grid", gap: "0.4rem" }}>

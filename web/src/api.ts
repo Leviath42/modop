@@ -10,6 +10,7 @@ export interface Workflow {
   reference: string;
   description: string;
   category: string;
+  family: string;
   state: "draft" | "published";
   current_version: number;
   updated_at: string;
@@ -22,14 +23,29 @@ export interface Photo {
   alt: string;
 }
 
+export interface Picto {
+  kind: string;
+  label: string;
+  color: string;
+}
+
 export interface Step {
   id: number;
   workflow_id: number;
   position: number;
   title: string;
   body: string;
-  pictos: string[];
+  pictos: Picto[];
   photos: Photo[];
+}
+
+export interface AdminUser {
+  id: number;
+  email: string;
+  role: "reader" | "author" | "admin";
+  active: number;
+  auth_provider: string;
+  created_at: string;
 }
 
 export interface WorkflowDetail extends Workflow {
@@ -78,7 +94,7 @@ export const api = {
   async me(): Promise<User> {
     return handle<User>(await fetch("/api/auth/me"));
   },
-  async listWorkflows(params: { search?: string; category?: string; state?: string } = {}): Promise<Workflow[]> {
+  async listWorkflows(params: { search?: string; category?: string; state?: string; family?: string } = {}): Promise<Workflow[]> {
     const q = new URLSearchParams();
     for (const [k, v] of Object.entries(params)) if (v) q.set(k, v);
     return handle<Workflow[]>(await fetch(`/api/workflows?${q}`));
@@ -86,7 +102,7 @@ export const api = {
   async getWorkflow(id: number | string): Promise<WorkflowDetail> {
     return handle<WorkflowDetail>(await fetch(`/api/workflows/${id}`));
   },
-  async createWorkflow(data: { title: string; reference: string; description?: string; category?: string }): Promise<Workflow> {
+  async createWorkflow(data: { title: string; reference: string; description?: string; category?: string; family?: string }): Promise<Workflow> {
     return handle<Workflow>(
       await fetch("/api/workflows", {
         method: "POST",
@@ -95,7 +111,7 @@ export const api = {
       })
     );
   },
-  async updateWorkflow(id: number, data: Partial<Pick<Workflow, "title" | "description" | "category">>): Promise<Workflow> {
+  async updateWorkflow(id: number, data: Partial<Pick<Workflow, "title" | "description" | "category" | "family">>): Promise<Workflow> {
     return handle<Workflow>(
       await fetch(`/api/workflows/${id}`, {
         method: "PUT",
@@ -154,5 +170,31 @@ export const api = {
   },
   exportUrl(id: number, version?: number): string {
     return `/api/workflows/${id}/export${version ? `?version=${version}` : ""}`;
+  },
+  async adminListUsers(): Promise<AdminUser[]> {
+    return handle<AdminUser[]>(await fetch("/api/admin/users"));
+  },
+  async adminCreateUser(email: string, password: string, role: AdminUser["role"]): Promise<AdminUser> {
+    return handle<AdminUser>(
+      await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, password, role }),
+      })
+    );
+  },
+  async adminUpdateUser(id: number, data: { role?: AdminUser["role"]; active?: number }): Promise<AdminUser> {
+    return handle<AdminUser>(
+      await fetch(`/api/admin/users/${id}`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(data),
+      })
+    );
+  },
+  async adminResetPassword(id: number): Promise<{ temporaryPassword: string }> {
+    return handle<{ temporaryPassword: string }>(
+      await fetch(`/api/admin/users/${id}/reset-password`, { method: "POST" })
+    );
   },
 };

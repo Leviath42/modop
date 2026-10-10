@@ -29,6 +29,13 @@ Un mode opératoire se compose de :
 - un état : **brouillon** ou **publié** ;
 - un **numéro de version** (V1, V2, V3…) incrémenté automatiquement à chaque publication d'une modification.
 
+### 1.3 bis Fonctionnalités ajoutées (suivi de projet)
+
+- **RF-50 à RF-53 — Gestion des comptes (admin)** : création (email/mot de passe/rôle), changement de rôle, désactivation/réactivation (sessions révoquées immédiatement), réinitialisation de mot de passe (temporaire affiché une fois).
+- **RF-54 — Suppression de mode opératoire** : confirmation explicite, suppression en cascade (étapes, photos, versions).
+- **RF-55 — Pictogrammes enrichis** : par étape, pictos avec **couleur** (sélecteur) et **texte libre** ; présents en édition, lecture (bandeau coloré) et export DOCX (texte coloré).
+- **RF-56 — Classement famille/type** : chaque mode opératoire porte une *famille* (ex. Mécanique, Électrique) et un *type* (ex. Maintenance) ; filtre par famille dans la liste, badges en lecture.
+
 ### 1.4 Hors périmètre (V1)
 
 - Workflow de relecture/validation à plusieurs niveaux ;

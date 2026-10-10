@@ -112,11 +112,11 @@ export function authRouter(db: Database.Database): Router {
       return;
     }
     const user = db
-      .prepare("SELECT id, email, role, password_hash, auth_provider FROM users WHERE email = ?")
+      .prepare("SELECT id, email, role, password_hash, auth_provider, active FROM users WHERE email = ?")
       .get(email.toLowerCase().trim()) as
-      | { id: number; email: string; role: string; password_hash: string; auth_provider: string }
+      | { id: number; email: string; role: string; password_hash: string; auth_provider: string; active: number }
       | undefined;
-    if (!user || !user.password_hash || !bcrypt.compareSync(password, user.password_hash)) {
+    if (!user || user.active === 0 || !user.password_hash || !bcrypt.compareSync(password, user.password_hash)) {
       auditLog(db, email.toLowerCase(), "login_echec", "user");
       res.status(401).json({ error: "unauthorized", message: "Identifiants invalides" });
       return;

@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL DEFAULT '',
   role TEXT NOT NULL CHECK (role IN ('reader','author','admin')),
+  active INTEGER NOT NULL DEFAULT 1,
   auth_provider TEXT NOT NULL DEFAULT 'local',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -15,6 +16,7 @@ CREATE TABLE IF NOT EXISTS workflows (
   reference TEXT NOT NULL UNIQUE,
   description TEXT NOT NULL DEFAULT '',
   category TEXT NOT NULL DEFAULT '',
+  family TEXT NOT NULL DEFAULT '',
   state TEXT NOT NULL DEFAULT 'draft' CHECK (state IN ('draft','published')),
   current_version INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -70,7 +72,9 @@ CREATE INDEX IF NOT EXISTS idx_audit_at ON audit_log(at);
 // pas une table existante).
 const COLUMN_MIGRATIONS: { table: string; column: string; ddl: string }[] = [
   { table: "users", column: "auth_provider", ddl: "TEXT NOT NULL DEFAULT 'local'" },
+  { table: "users", column: "active", ddl: "INTEGER NOT NULL DEFAULT 1" },
   { table: "sessions", column: "expires_at", ddl: "TEXT" },
+  { table: "workflows", column: "family", ddl: "TEXT NOT NULL DEFAULT ''" },
 ];
 
 // Réparation des pictos corrompus par le bug de l’ancien éditeur : la réponse

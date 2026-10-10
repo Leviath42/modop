@@ -40,6 +40,23 @@ Parcours de validation (10 min) :
 7. **Exporter** : « ⬇ Exporter en .docx » → ouvrir dans Word/LibreOffice.
 8. **Mettre à jour** : bouton « Déploiement » dans la barre de navigation (admin) → version chargée, « Mettre à jour depuis GitHub », « Retour arrière », journal en direct.
 
+## Gestion des comptes (admin)
+
+Page **/admin** (lien « Comptes » dans la barre de navigation) :
+- **créer** un compte (email + mot de passe 8+ caractères + rôle) ;
+- **changer le rôle** (lecteur/auteur/admin) ;
+- **désactiver/réactiver** — les sessions actives sont révoquées immédiatement, le login est refusé ;
+- **réinitialiser un mot de passe** — un mot de passe temporaire est généré et affiché une seule fois ; toutes les sessions du compte sont révoquées.
+
+Protection intégrée : impossible de se rétrograder ou se désactiver soi-même.
+
+## Familles, types, suppression
+
+- Chaque mode opératoire porte une **famille** (ex. Mécanique) et un **type** (ex. Maintenance) — définis à la création ou en édition.
+- La liste filtre par **famille** (menu déroulant alimenté automatiquement) et affiche des badges.
+- Les **pictogrammes** acceptent une couleur (sélecteur) et un texte libre par étape.
+- La **suppression** d'un mode opératoire (bouton dans la liste) demande une confirmation explicite et supprime en cascade étapes, photos et versions.
+
 ## Mise à jour depuis le front
 
 Page **/deploy** (admin uniquement) :
@@ -71,3 +88,12 @@ pct exec modop -- bash -c "cd /opt/modop/server && npm test"   # 57 tests runtim
 | Page blanche | `cd /opt/modop/web && npm run build` puis `pm2 restart modop` |
 | Logs | `pm2 logs modop` |
 | Après update ratée | `bash /opt/modop/update.sh rollback` |
+
+## Accès extérieur (beta) — tunnel Cloudflare
+
+```bash
+bash scripts/hardening-tunnel.sh            # durcissement + tunnel
+bash scripts/hardening-tunnel.sh --tunnel-only   # tunnel seul
+```
+
+Le script : pare-feu local (entrant SSH uniquement), cookies sécurisés, sessions 12 h, cloudflared en service systemd, route DNS, healthcheck public. **À faire manuellement ensuite** : Cloudflare Access sur l'hôte + SSL/TLS « Full ». Voir `docs/durcissement-securite.md`.
