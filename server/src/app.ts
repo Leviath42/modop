@@ -7,6 +7,7 @@ import { workflowRouter, stepRouter } from "./routes/workflows.js";
 import { photoRouter, staticPhotos, deletePhotoRouter } from "./routes/photos.js";
 import { publishRouter } from "./routes/publish.js";
 import { listRouter } from "./routes/list.js";
+import { exportRouter } from "./routes/export.js";
 
 export function createApp(db: Database.Database): express.Express {
   const app = express();
@@ -20,6 +21,7 @@ export function createApp(db: Database.Database): express.Express {
   app.use("/api/steps", stepRouter(db));
   app.use("/api/steps", photoRouter(db));
   app.use("/api/photos", deletePhotoRouter(db));
+  app.use("/api/workflows", exportRouter(db));
   app.get("/photos/:filename", staticPhotos());
   return app;
 }
