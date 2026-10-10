@@ -82,7 +82,12 @@ export default function EditorPage() {
     setError(null);
     try {
       const updated = await api.updateStep(step.id, data as object);
-      setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...updated, photos: s.photos } : s)));
+      // L’API renvoie pictos en tableau ; code défensif au cas où une
+      // réponse au format brut (chaîne JSON) arriverait malgré tout.
+      const pictos: string[] = Array.isArray(updated.pictos)
+        ? updated.pictos
+        : JSON.parse(String(updated.pictos));
+      setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...updated, pictos, photos: s.photos } : s)));
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Enregistrement impossible");
     }

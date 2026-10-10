@@ -94,8 +94,10 @@ test("mise à jour étape avec pictos", async () => {
   const create = await call("POST", "/api/workflows", { title: "Soudure", reference: "MO-005" }, author);
   const id = create.json.id;
   const s = (await call("POST", `/api/workflows/${id}/steps`, { title: "Préparer le poste" }, author)).json;
+  assert.deepEqual(s.pictos, [], "POST /steps renvoie pictos en tableau, pas en chaîne JSON");
   const up = await call("PUT", `/api/steps/${s.id}`, { pictos: ["epi", "attention"] }, author);
   assert.equal(up.status, 200);
+  assert.deepEqual(up.json.pictos, ["epi", "attention"], "PUT /steps renvoie pictos en tableau, pas en chaîne JSON");
   const got = await call("GET", `/api/workflows/${id}`, undefined, author);
   assert.deepEqual(got.json.steps[0].pictos, ["epi", "attention"]);
 });

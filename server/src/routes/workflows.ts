@@ -12,6 +12,13 @@ export interface StepRow {
   pictos: string;
 }
 
+// Contrat de l’API : pictos est un tableau (comme GET /api/workflows/:id),
+// jamais la chaîne JSON brute de la colonne steps.pictos.
+function pictosArray(row: unknown): Omit<StepRow, "pictos"> & { pictos: string[] } {
+  const step = row as StepRow;
+  return { ...step, pictos: JSON.parse(step.pictos) };
+}
+
 export function workflowRouter(db: Database.Database): Router {
   const r = Router();
 
@@ -105,7 +112,7 @@ export function workflowRouter(db: Database.Database): Router {
       .prepare("INSERT INTO steps (workflow_id, position, title, body) VALUES (?, ?, ?, ?)")
       .run(wf.id, max.p + 1, title.trim(), body ?? "");
     db.prepare("UPDATE workflows SET updated_at = datetime('now') WHERE id = ?").run(wf.id);
-    res.status(201).json(db.prepare("SELECT * FROM steps WHERE id = ?").get(info.lastInsertRowid));
+    res.status(201).json(pictosArray(db.prepare("SELECT * FROM steps WHERE id = ?").get(info.lastInsertRowid)));
   });
 
   r.put("/:id/steps/reorder", requireAuth("author"), (req, res) => {
@@ -174,7 +181,7 @@ export function stepRouter(db: Database.Database): Router {
       pictos !== undefined ? JSON.stringify(pictos) : null,
       step.id
     );
-    res.json(db.prepare("SELECT * FROM steps WHERE id = ?").get(step.id));
+    res.json(pictosArray(db.prepare("SELECT * FROM steps WHERE id = ?").get(step.id)));
   });
 
   r.delete("/:id", requireAuth("author"), (req, res) => {

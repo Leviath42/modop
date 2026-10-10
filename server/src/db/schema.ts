@@ -73,6 +73,62 @@ const COLUMN_MIGRATIONS: { table: string; column: string; ddl: string }[] = [
   { table: "sessions", column: "expires_at", ddl: "TEXT" },
 ];
 
+// Réparation des pictos corrompus par le bug de l’ancien éditeur : la réponse
+// brute du serveur (chaîne JSON) était étalée caractère par caractère dans le
+// tableau des pictos, avec croissance exponentielle à chaque clic. Les débris sont
+// des chaînes d’un seul caractère ; on ne conserve que les vraies entrées.
+function repairPictosList(pictos: string[]): string[] {
+  const out: string[] = [];
+  for (const p of pictos) {
+    if (typeof p === "string" && p.trim().length >= 2 && !out.includes(p)) out.push(p);
+  }
+  return out;
+}
+
+function repairCorruptedPictos(db: Database.Database): void {
+  const rows = db.prepare("SELECT id, pictos FROM steps").all() as { id: number; pictos: string }[];
+  const updateStep = db.prepare("UPDATE steps SET pictos = ? WHERE id = ?");
+  for (const row of rows) {
+    let pictos: unknown;
+    try {
+      pictos = JSON.parse(row.pictos);
+    } catch {
+      pictos = null;
+    }
+    if (!Array.isArray(pictos)) {
+      updateStep.run("[]", row.id);
+      continue;
+    }
+    const cleaned = repairPictosList(pictos as string[]);
+    if (cleaned.length !== pictos.length || JSON.stringify(cleaned) !== JSON.stringify(pictos)) {
+      updateStep.run(JSON.stringify(cleaned), row.id);
+    }
+  }
+  // Les snapshots des versions déjà publiées portent la même corruption et
+  // alimentent l’export .docx : on les répare aussi.
+  const versions = db.prepare("SELECT id, snapshot FROM versions").all() as { id: number; snapshot: string }[];
+  const updateVersion = db.prepare("UPDATE versions SET snapshot = ? WHERE id = ?");
+  for (const v of versions) {
+    let snap: { steps?: { pictos?: string[] }[] } | null = null;
+    try {
+      snap = JSON.parse(v.snapshot);
+    } catch {
+      continue;
+    }
+    if (!snap || !Array.isArray(snap.steps)) continue;
+    let changed = false;
+    for (const step of snap.steps) {
+      if (!Array.isArray(step.pictos)) continue;
+      const cleaned = repairPictosList(step.pictos);
+      if (cleaned.length !== step.pictos.length || JSON.stringify(cleaned) !== JSON.stringify(step.pictos)) {
+        step.pictos = cleaned;
+        changed = true;
+      }
+    }
+    if (changed) updateVersion.run(JSON.stringify(snap), v.id);
+  }
+}
+
 function migrate(db: Database.Database): void {
   for (const { table, column, ddl } of COLUMN_MIGRATIONS) {
     const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
@@ -86,6 +142,7 @@ function migrate(db: Database.Database): void {
   );
   // Index dépendant des colonnes migrées (après ALTER TABLE).
   db.exec("CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at)");
+  repairCorruptedPictos(db);
 }
 
 export function openDb(file: string): Database.Database {
