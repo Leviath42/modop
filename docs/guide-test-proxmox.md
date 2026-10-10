@@ -53,7 +53,7 @@ Le tout sans jamais ouvrir le shell Proxmox. Équivalent CLI : `bash /opt/modop/
 ## Test automatique
 
 ```bash
-pct exec modop -- bash -c "cd /opt/modop/server && npm test"   # 47 tests runtime
+pct exec modop -- bash -c "cd /opt/modop/server && npm test"   # 57 tests runtime
 ```
 
 ## Données & sauvegarde
