@@ -3,3 +3,4 @@ dist/
 *.db
 *.db-*
 data/photos/
+web/dist/

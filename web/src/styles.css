@@ -1,0 +1,4 @@
+:root { font-family: system-ui, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #f5f6f8; color: #1a1c20; }
+button { cursor: pointer; }
