@@ -62,13 +62,37 @@ CREATE INDEX IF NOT EXISTS idx_steps_workflow ON steps(workflow_id, position);
 CREATE INDEX IF NOT EXISTS idx_photos_step ON photos(step_id);
 CREATE INDEX IF NOT EXISTS idx_versions_workflow ON versions(workflow_id, number);
 CREATE INDEX IF NOT EXISTS idx_audit_at ON audit_log(at);
-CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+
 `;
+
+// Migration idempotente : les bases créées avant une évolution du schéma
+// reçoivent les colonnes manquantes (CREATE TABLE IF NOT EXISTS ne touche
+// pas une table existante).
+const COLUMN_MIGRATIONS: { table: string; column: string; ddl: string }[] = [
+  { table: "users", column: "auth_provider", ddl: "TEXT NOT NULL DEFAULT 'local'" },
+  { table: "sessions", column: "expires_at", ddl: "TEXT" },
+];
+
+function migrate(db: Database.Database): void {
+  for (const { table, column, ddl } of COLUMN_MIGRATIONS) {
+    const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+    if (cols.length > 0 && !cols.some((c) => c.name === column)) {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+    }
+  }
+  // Sessions antérieures à la v2 : expiration par défaut.
+  db.exec(
+    "UPDATE sessions SET expires_at = datetime('now', '+24 hours') WHERE expires_at IS NULL"
+  );
+  // Index dépendant des colonnes migrées (après ALTER TABLE).
+  db.exec("CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at)");
+}
 
 export function openDb(file: string): Database.Database {
   const db = new Database(file);
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
   db.exec(SCHEMA);
+  migrate(db);
   return db;
 }
