@@ -201,7 +201,15 @@ YML
 log "configuration écrite (/root/.cloudflared/config.yml)"
 
 # Service systemd (redémarrage automatique)
+# IMPORTANT : le service lit /etc/cloudflared/config.yml (copie faite au
+# premier "service install"). On resynchronise cette copie à chaque
+# exécution, sinon les corrections de config restent sans effet.
 cloudflared service install >/dev/null 2>&1 || true
+mkdir -p /etc/cloudflared
+cp /root/.cloudflared/config.yml /etc/cloudflared/config.yml
+if [ -f /root/.cloudflared/cert.pem ] && [ ! -f /etc/cloudflared/cert.pem ]; then
+  cp /root/.cloudflared/cert.pem /etc/cloudflared/cert.pem
+fi
 systemctl enable cloudflared >/dev/null 2>&1 || true
 systemctl restart cloudflared || service cloudflared restart || die "service cloudflared impossible à démarrer"
 sleep 5
