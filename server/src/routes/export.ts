@@ -6,6 +6,7 @@ import {
   Document, Packer, Paragraph, TextRun, HeadingLevel, ImageRun, AlignmentType,
 } from "docx";
 import { requireAuth } from "../auth/middleware.js";
+import { auditLog } from "../auth/audit.js";
 
 interface SnapshotStep {
   position: number;
@@ -88,6 +89,7 @@ export function exportRouter(db: Database.Database): Router {
       children.push(new Paragraph({ text: "" }));
     }
 
+    auditLog(db, (req as { user?: { email: string } }).user?.email ?? "?", "export_docx", `workflow:${wf.id}`, `V${version.number}`);
     const doc = new Document({ sections: [{ children }] });
     const buffer = await Packer.toBuffer(doc);
     res.setHeader(

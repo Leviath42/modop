@@ -1,5 +1,5 @@
-import crypto from "node:crypto";
 import type Database from "better-sqlite3";
+import { randomToken } from "./audit.js";
 
 export interface SessionUser {
   id: number;
@@ -7,9 +7,14 @@ export interface SessionUser {
   role: "reader" | "author" | "admin";
 }
 
+const SESSION_TTL_HOURS = Number(process.env.MODOP_SESSION_TTL_HOURS ?? 24);
+
 export function createSession(db: Database.Database, userId: number): string {
-  const token = crypto.randomBytes(32).toString("hex");
-  db.prepare("INSERT INTO sessions (token, user_id) VALUES (?, ?)").run(token, userId);
+  const token = randomToken();
+  db.prepare(
+    `INSERT INTO sessions (token, user_id, expires_at)
+     VALUES (?, ?, datetime('now', '+' || ? || ' hours'))`
+  ).run(token, userId, SESSION_TTL_HOURS);
   return token;
 }
 
@@ -21,10 +26,15 @@ export function getUserByToken(db: Database.Database, token: string): SessionUse
   const row = db
     .prepare(
       `SELECT u.id, u.email, u.role FROM sessions s
-       JOIN users u ON u.id = s.user_id WHERE s.token = ?`
+       JOIN users u ON u.id = s.user_id
+       WHERE s.token = ? AND s.expires_at > datetime('now')`
     )
     .get(token) as SessionUser | undefined;
   return row ?? null;
+}
+
+export function purgeExpiredSessions(db: Database.Database): void {
+  db.prepare("DELETE FROM sessions WHERE expires_at <= datetime('now')").run();
 }
 
 export function requireRole(user: SessionUser | null, min: "reader" | "author" | "admin" = "reader"): boolean {

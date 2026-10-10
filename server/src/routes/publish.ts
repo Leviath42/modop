@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type Database from "better-sqlite3";
 import { requireAuth } from "../auth/middleware.js";
+import { auditLog } from "../auth/audit.js";
 
 interface SnapshotStep {
   id: number;
@@ -51,6 +52,7 @@ export function publishRouter(db: Database.Database): Router {
       ).run(number, wf.id);
     });
     tx();
+    auditLog(db, user.email, "publish", `workflow:${wf.id}`, `V${number}`);
     res.json({ number });
   });
 

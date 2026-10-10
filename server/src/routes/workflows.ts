@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type Database from "better-sqlite3";
 import { requireAuth } from "../auth/middleware.js";
+import { auditLog } from "../auth/audit.js";
 
 export interface StepRow {
   id: number;
@@ -28,6 +29,7 @@ export function workflowRouter(db: Database.Database): Router {
     const info = db
       .prepare("INSERT INTO workflows (title, reference, description, category) VALUES (?, ?, ?, ?)")
       .run(title.trim(), reference.trim(), description ?? "", category ?? "");
+    auditLog(db, (req as { user?: { email: string } }).user?.email ?? "?", "create_workflow", `workflow:${info.lastInsertRowid}`, reference.trim());
     const wf = db.prepare("SELECT * FROM workflows WHERE id = ?").get(info.lastInsertRowid);
     res.status(201).json(wf);
   });
@@ -81,6 +83,7 @@ export function workflowRouter(db: Database.Database): Router {
       return;
     }
     db.prepare("DELETE FROM workflows WHERE id = ?").run(wf.id);
+    auditLog(db, (req as { user?: { email: string } }).user?.email ?? "?", "delete_workflow", `workflow:${wf.id}`);
     res.json({ ok: true });
   });
 
