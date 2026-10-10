@@ -10,12 +10,14 @@ import { listRouter } from "./routes/list.js";
 import { photoRouter, staticPhotos, deletePhotoRouter } from "./routes/photos.js";
 import { publishRouter } from "./routes/publish.js";
 import { exportRouter } from "./routes/export.js";
+import { deployRouter } from "./routes/deploy.js";
 
 export function createApp(db: Database.Database, webDist?: string): express.Express {
   const app = express();
   app.use(express.json());
   app.use(cookieParser());
   app.use(attachAuth(db));
+  app.get("/api/health", (_req, res) => res.json({ ok: true }));
   app.use("/api/auth", authRouter(db));
   app.use("/api/workflows", workflowRouter(db));
   app.use("/api/workflows", listRouter(db));
@@ -24,6 +26,7 @@ export function createApp(db: Database.Database, webDist?: string): express.Expr
   app.use("/api/steps", stepRouter(db));
   app.use("/api/steps", photoRouter(db));
   app.use("/api/photos", deletePhotoRouter(db));
+  app.use("/api/deploy", deployRouter(db));
   app.get("/photos/:filename", staticPhotos());
 
   if (webDist && fs.existsSync(webDist)) {

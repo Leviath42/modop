@@ -23,6 +23,11 @@ export default function NavBar() {
       </Link>
       <span style={{ opacity: 0.85, fontSize: "0.9rem" }}>{user.email}</span>
       <span style={{ opacity: 0.7, fontSize: "0.8rem" }}>({user.role})</span>
+      {user.role === "admin" && (
+        <Link to="/deploy" style={{ color: "white", fontSize: "0.85rem", opacity: 0.9, textDecoration: "none", border: "1px solid rgba(255,255,255,0.5)", padding: "0.2rem 0.6rem", borderRadius: "6px" }}>
+          Déploiement
+        </Link>
+      )}
       <button
         onClick={async () => {
           await logout();

@@ -1,119 +1,73 @@
 # Guide de test — conteneur Proxmox
 
-## Prérequis
+Modop est **entièrement encapsulé dans un conteneur LXC** : rien n'est installé sur l'hôte Proxmox. Pas besoin de Visual Studio ni d'aucun outil sur votre poste.
 
-- Un conteneur LXC Proxmox avec **Debian 12 ou Ubuntu 22.04+**.
-- Droits root (ou sudo).
-- **Node.js 20 ou 22** — c'est le seul prérequis. Rien d'autre (pas de Visual Studio, pas de base de données externe : SQLite est embarqué).
-
-> **Visual Studio (Code) ?** Non nécessaire. Une seule ligne de commande suffit. VS Code n'est utile que si vous voulez lire/modifier le code, pas pour tester. Si vous l'installez un jour, ce sera VS **Code** (l'éditeur), pas Visual Studio — mais encore une fois, inutile pour tester.
-
-## 1. Préparer le conteneur (une seule fois)
-
-Dans le shell du conteneur Proxmox (`pct enter <id>` depuis l'hôte, ou console directe) :
+## 1. Créer le conteneur (sur l'hôte Proxmox)
 
 ```bash
-# Node.js 22 (Debian/Ubuntu) — en root
-apt update && apt install -y curl
-curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-apt install -y nodejs
-node --version   # doit afficher v22.x
+pct create local-lvm:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst \
+  --hostname modop --cores 2 --memory 2048 --swap 0 \
+  --rootfs local-lvm:8 --net0 name=eth0,bridge=vmbr0,ip=dhcp \
+  --unprivileged 1 --features nesting=1 --start 1
+pct enter modop
 ```
 
-## 2. Récupérer l'application
+> `nesting=1` est requis pour pm2/systemd dans le conteneur.
+
+## 2. Installer Modop (dans le conteneur, en root)
 
 ```bash
-apt install -y git
-git clone -b beta https://github.com/Leviath42/modop.git
-cd modop
+apt update && apt install -y curl git
+git clone -b beta https://github.com/Leviath42/modop.git /opt/modop
+cd /opt/modop
+BRANCH=beta ADMIN_EMAIL=vous@entreprise.fr ADMIN_PASSWORD=VotreMotDePasse123 bash scripts/proxmox-install.sh
 ```
 
-## 3. Installer et créer le premier compte
+Le script installe Node.js 22 + pm2, installe les dépendances, build, crée votre compte admin, lance l'app sous pm2 (redémarrage automatique au boot) et vérifie le healthcheck. Durée : 2-3 minutes.
+
+## 3. Tester
+
+Ouvrez `http://<IP-du-conteneur>:3000` depuis votre PC ou mobile (même réseau).
+
+Parcours de validation (10 min) :
+
+1. **Connexion** avec l'email/mot de passe choisis.
+2. **Créer** : « + Créer » → titre, référence (`MO-001`), catégorie → « Créer ».
+3. **Éditer** : ajouter des étapes, décrire, ajouter une photo (appareil photo mobile), glisser-déposer pour réordonner, pictogrammes.
+4. **Publier** : « Publier V1 ».
+5. **Consulter** : liste → vue lecture (mobile : une étape/écran ; PC : sommaire).
+6. **Republier** : modifier une étape → « Publier V2 ».
+7. **Exporter** : « ⬇ Exporter en .docx » → ouvrir dans Word/LibreOffice.
+8. **Mettre à jour** : bouton « Déploiement » dans la barre de navigation (admin) → version chargée, « Mettre à jour depuis GitHub », « Retour arrière », journal en direct.
+
+## Mise à jour depuis le front
+
+Page **/deploy** (admin uniquement) :
+- version chargée (commit, auteur, date) et historique des 5 derniers commits ;
+- **« Mettre à jour depuis GitHub »** : sauvegarde de la base → `git reset --hard origin/beta` → `npm ci` si besoin → build → relance pm2 → healthcheck HTTP (l'app revient seule ; pendant le redémarrage la page affiche « serveur momentanément injoignable », puis le journal) ;
+- **« Retour arrière »** : restaure la dernière sauvegarde de la base (10 conservées) ;
+- échec de healthcheck ⇒ tentative de relance de la version précédente et code d'erreur affiché.
+
+Le tout sans jamais ouvrir le shell Proxmox. Équivalent CLI : `bash /opt/modop/update.sh [rollback]`.
+
+## Test automatique
 
 ```bash
-# Dépendances du serveur et de l'interface
-cd server && npm install
-cd ../web && npm install
-
-# Premier compte administrateur (remplacez l'email et le mot de passe)
-cd ../server
-npm run seed -- modop.db votre.email@entreprise.fr VotreMotDePasse123 admin
+pct exec modop -- bash -c "cd /opt/modop/server && npm test"   # 47 tests runtime
 ```
 
-## 4. Construire l'interface puis démarrer
+## Données & sauvegarde
 
-```bash
-# Build du front (une seule fois, ~5 s)
-cd ../web && npm run build
+- `/opt/modop/server/modop.db` — base SQLite
+- `/opt/modop/server/data/photos/` — photos
+- Sauvegarde du conteneur entier : snapshot Proxmox habituel.
 
-# Démarrage : un seul processus sert l'API ET l'interface
-cd ../server
-npm start
-# → « Modop prêt sur http://127.0.0.1:3000 »
-```
+## Dépannage
 
-## 5. Tester
-
-Depuis le conteneur : `http://127.0.0.1:3000`.
-Depuis votre PC : `http://<IP-du-conteneur>:3000` (voir « Accès depuis le navigateur » ci-dessous).
-
-Parcours de validation recommandé (10 minutes) :
-
-1. **Connexion** avec l'email/mot de passe créés en étape 3.
-2. **Créer** : bouton « + Créer » → titre, référence (ex. `MO-001`), catégorie → « Créer ».
-3. **Éditer** : « + Ajouter une étape », décrire l'opération, ajouter une photo (prise avec l'appareil photo si vous testez depuis un mobile), glisser-déposer pour réordonner, activer un pictogramme.
-4. **Publier** : « Publier V1 » — le badge passe à V1.
-5. **Consulter** : retour à la liste, cliquer le mode opératoire → vue lecture (sur mobile : une étape par écran, boutons Précédent/Suivant ; sur PC : sommaire cliquable).
-6. **Modifier + republier** : changer une étape, republier → V2.
-7. **Exporter** : lien « ⬇ Exporter en .docx » → ouvrir le fichier dans Word/LibreOffice.
-
-### Test mobile
-Sur votre téléphone, ouvrez `http://<IP-du-conteneur>:3000` (même réseau Wi-Fi). Tout est responsive.
-
-## Accès depuis le navigateur (hors du conteneur)
-
-Le serveur n'écoute que sur `127.0.0.1` par défaut. Pour y accéder depuis votre PC :
-
-```bash
-# option A : écouter sur toutes les interfaces (réseau local de confiance)
-HOST=0.0.0.0 npm start
-
-# option B : rester en 127.0.0.1 et faire une redirection depuis l'hôte Proxmox
-# (sur l'hôte, vers le conteneur) :
-iptables -t nat -A PREROUTING -p tcp --dport 3000 -j DNAT --to-destination <IP-conteneur>:3000
-```
-
-⚠️ Pas d'exposition Internet sans HTTPS + reverse proxy (Caddy/Nginx). En réseau local de test, l'option A suffit.
-
-## Test automatique (portes qualité)
-
-Pour vérifier l'installation sans parcourir l'interface :
-
-```bash
-cd server
-npm test          # 40 tests d'exécution réels (base en mémoire)
-```
-
-## Arrêt / relance
-
-```bash
-# arrêter : Ctrl+C dans le shell où tourne npm start
-# relancer plus tard : tout est conservé (modop.db + data/photos/)
-cd server && npm start
-```
-
-## Données
-
-- `server/modop.db` : comptes, modes opératoires, versions.
-- `server/data/photos/` : fichiers photos.
-- Sauvegarde : copier ces deux emplacements.
-
-## Dépannage rapide
-
-| Symptôme | Cause probable | Solution |
-|---|---|---|
-| `EADDRINUSE` | port 3000 occupé | `PORT=3001 npm start` |
-| « Identifiants invalides » | compte non créé | relancer l'étape 3 (seed) |
-| Page blanche sur `:3000` | front non buildé | `cd ../web && npm run build` puis relancer |
-| `git clone` refuse | branche beta protégée ? | vérifier `git clone -b beta` |
-| Photos non affichées | `data/photos/` non inscriptible | vérifier les droits du dossier `server/data` |
+| Symptôme | Solution |
+|---|---|
+| Port 3000 occupé | `PORT=3001 bash scripts/proxmox-install.sh` |
+| « Identifiants invalides » | le seed ne s'exécute que si aucune base n'existe ; `cd /opt/modop/server && npm run seed -- modop.db email pass1234 admin` |
+| Page blanche | `cd /opt/modop/web && npm run build` puis `pm2 restart modop` |
+| Logs | `pm2 logs modop` |
+| Après update ratée | `bash /opt/modop/update.sh rollback` |
