@@ -104,8 +104,8 @@ L'application est destinée à une **équipe interne** : pas d'inscription libre
 Application classique en trois tiers, dans un monorepo :
 
 - **Frontend** : SPA React + TypeScript, framework CSS utilitaire (Tailwind), éditeur d'annotations photo en canvas. PWA via service worker.
-- **Backend** : API REST Node.js (NestJS ou Express) avec PostgreSQL.
-- **Stockage** : métadonnées en base ; fichiers binaires (photos) en stockage objet ou système de fichiers.
+- **Backend** : API REST Node.js avec **SQLite** (`better-sqlite3`) pour le lot 1 — adapté à un déploiement sur conteneur unique ; montée vers PostgreSQL possible dans un lot ultérieur.
+- **Stockage** : métadonnées en base ; fichiers binaires (photos) en système de fichiers du conteneur, sauvegardés quotidiennement.
 - **Export DOCX** : génération côté serveur à partir d'un gabarit (librairie `docx` pour Node).
 
 > Le choix définitif des outils pourra être ajusté lors d'une étude technique, en gardant les exigences de ce document comme référence.
