@@ -5,10 +5,9 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "node --experimental-specifier-resolution=node dist/db/init.js",
+    "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
     "seed": "tsx src/db/seed.ts",
-    "pretest": "tsx src/db/init.ts --test",
     "test": "tsx --test test/"
   },
   "dependencies": {

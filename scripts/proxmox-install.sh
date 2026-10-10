@@ -47,8 +47,8 @@ cd "$APP_DIR"
 echo "$BRANCH" > .deploy-branch
 chmod +x update.sh
 
-log "dépendances serveur"
-(cd server && npm ci) || die "npm ci serveur"
+log "dépendances serveur + build de production"
+(cd server && npm ci && npm run build) || die "build serveur"
 
 log "dépendances web + build"
 (cd web && npm ci && npm run build) || die "build web"
@@ -66,7 +66,7 @@ fi
 
 log "lancement sous pm2"
 pm2 delete modop >/dev/null 2>&1 || true
-PORT="$PORT" pm2 start npm --name modop -- start
+pm2 start npm --name modop --prefix "$APP_DIR/server" -- start
 pm2 save
 pm2 startup systemd -u root --hp /root >/dev/null 2>&1 || true
 pm2 save

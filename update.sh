@@ -28,6 +28,7 @@ KEEP_BACKUPS=10
 DB_FILE="server/modop.db"
 
 cd "$APP_DIR"
+mkdir -p "$APP_DIR/server/data"
 
 log() { printf '[update] %s\n' "$*"; }
 die() {
@@ -99,6 +100,9 @@ fi
 
 log "build du front"
 (cd web && npm run build) || die "build web a échoué"
+
+log "build du serveur"
+(cd server && npm run build) || die "build serveur a échoué"
 
 log "relance de l'application"
 pm2 restart "$PM2_NAME" --update-env 2>/dev/null \
