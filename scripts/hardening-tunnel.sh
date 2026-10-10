@@ -144,10 +144,19 @@ if [ -z "$CF_DOMAIN" ]; then
 fi
 [ -n "$CF_DOMAIN" ] || die "domaine requis"
 if [ -z "$CF_HOSTNAME" ]; then
-  read -rp "Sous-domaine pour Modop (défaut : modop) : " CF_HOSTNAME
+  read -rp "Nom d'hôte pour Modop — sous-domaine seul (ex. modop-beta) ou FQDN complet : " CF_HOSTNAME
   CF_HOSTNAME="${CF_HOSTNAME:-modop}"
 fi
-FQDN="$CF_HOSTNAME.$CF_DOMAIN"
+# Accepte indifféremment "modop-beta" ou "modop-beta.calironi.com"
+if [[ "$CF_HOSTNAME" == *"."* ]]; then
+  if [[ "$CF_HOSTNAME" == *"$CF_DOMAIN" ]]; then
+    FQDN="${CF_HOSTNAME%.$CF_DOMAIN}.$CF_DOMAIN"
+  else
+    die "l'hôte $CF_HOSTNAME n'appartient pas au domaine $CF_DOMAIN"
+  fi
+else
+  FQDN="$CF_HOSTNAME.$CF_DOMAIN"
+fi
 log "hôte public cible : $FQDN"
 
 # Tunnel
@@ -159,9 +168,10 @@ TUNNEL_ID=$(cloudflared tunnel info "$TUNNEL_NAME" 2>/dev/null | grep -oE '[a-f0
 [ -n "$TUNNEL_ID" ] || die "identifiant du tunnel introuvable"
 CRED="/root/.cloudflared/$TUNNEL_ID.json"
 
-# DNS
+# DNS (une ancienne route incorrecte sur ce nom est remplacée par Cloudflare
+# si l'enregistrement existe déjà : "route dns" échoue alors et on continue)
 cloudflared tunnel route dns "$TUNNEL_NAME" "$FQDN" 2>/dev/null \
-  || log "route DNS déjà présente (ok)"
+  || log "route DNS non créée (existe déjà ?) — vérifiez dans le dashboard que $FQDN pointe vers le tunnel $TUNNEL_NAME"
 
 # Configuration
 cat > /root/.cloudflared/config.yml <<YML
