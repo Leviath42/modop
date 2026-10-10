@@ -138,11 +138,22 @@ if [ ! -d /root/.cloudflared ] || [ ! -f /root/.cloudflared/cert.pem ]; then
   cloudflared tunnel login
 fi
 
-# Domaine
+# Domaine — tolérant : "calironi.com", "modop-beta.calironi.com" (FQDN racine
+# extrait automatiquement) ou une URL complète sont tous acceptés.
 if [ -z "$CF_DOMAIN" ]; then
   read -rp "Votre domaine Cloudflare (ex. mondomaine.fr) : " CF_DOMAIN
 fi
 [ -n "$CF_DOMAIN" ] || die "domaine requis"
+CF_DOMAIN="${CF_DOMAIN#https://}"
+CF_DOMAIN="${CF_DOMAIN#http://}"
+CF_DOMAIN="${CF_DOMAIN%%/*}"
+if [ "$(echo "$CF_DOMAIN" | tr -cd '.' | wc -c)" -ge 2 ]; then
+  # 3+ étiquettes : c'est un hôte, pas un domaine racine — garder les 2 dernières
+  DERIVED=$(echo "$CF_DOMAIN" | awk -F. '{print $(NF-1)"."$NF}')
+  log "« $CF_DOMAIN » est un nom d'hôte — domaine racine utilisé : $DERIVED"
+  log "(si vous voulez vraiment $CF_DOMAIN comme domaine, relancez avec CF_DOMAIN explicite)"
+  CF_DOMAIN="$DERIVED"
+fi
 if [ -z "$CF_HOSTNAME" ]; then
   read -rp "Nom d'hôte pour Modop — sous-domaine seul (ex. modop-beta) ou FQDN complet : " CF_HOSTNAME
   CF_HOSTNAME="${CF_HOSTNAME:-modop}"
