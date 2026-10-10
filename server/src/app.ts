@@ -4,6 +4,7 @@ import type Database from "better-sqlite3";
 import { attachAuth } from "./auth/middleware.js";
 import { authRouter } from "./routes/auth.js";
 import { workflowRouter, stepRouter } from "./routes/workflows.js";
+import { photoRouter, staticPhotos, deletePhotoRouter } from "./routes/photos.js";
 
 export function createApp(db: Database.Database): express.Express {
   const app = express();
@@ -13,5 +14,8 @@ export function createApp(db: Database.Database): express.Express {
   app.use("/api/auth", authRouter(db));
   app.use("/api/workflows", workflowRouter(db));
   app.use("/api/steps", stepRouter(db));
+  app.use("/api/steps", photoRouter(db));
+  app.use("/api/photos", deletePhotoRouter(db));
+  app.get("/photos/:filename", staticPhotos());
   return app;
 }
