@@ -204,14 +204,36 @@ export default function EditorPage() {
               {steps.map((step, i) => (
                 <li
                   key={step.id}
-                  draggable
-                  onDragStart={() => setDragIndex(i)}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => { if (dragIndex !== null && dragIndex !== i) void moveStep(dragIndex, i); setDragIndex(null); }}
-                  style={{ background: "white", borderRadius: "10px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "grid", gap: "0.5rem", opacity: dragIndex === i ? 0.5 : 1 }}
+                  style={{ background: "white", borderRadius: "10px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "grid", gap: "0.5rem", outline: dragIndex === i ? "2px dashed #1f4e9c" : "none" }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                    <span aria-hidden style={{ cursor: "grab", color: "#999" }}>⠿</span>
+                    <span
+                      draggable
+                      onDragStart={() => setDragIndex(i)}
+                      onDragEnd={() => setDragIndex(null)}
+                      title="Glisser pour réordonner"
+                      role="button"
+                      aria-label={`Réordonner l'étape ${i + 1} (glisser)`}
+                      style={{ cursor: "grab", color: "#999", padding: "0.2rem 0.3rem", touchAction: "none" }}
+                    >
+                      ⠿
+                    </span>
+                    <span style={{ display: "inline-flex", flexDirection: "column", lineHeight: 1 }}>
+                      <button
+                        onClick={() => { if (i > 0) void moveStep(i, i - 1); }}
+                        disabled={i === 0}
+                        aria-label={`Monter l'étape ${i + 1}`}
+                        style={{ border: "none", background: "none", fontSize: "0.75rem", color: "#555", padding: "0.05rem 0.2rem", cursor: i === 0 ? "default" : "pointer" }}
+                      >▲</button>
+                      <button
+                        onClick={() => { if (i < steps.length - 1) void moveStep(i, i + 1); }}
+                        disabled={i === steps.length - 1}
+                        aria-label={`Descendre l'étape ${i + 1}`}
+                        style={{ border: "none", background: "none", fontSize: "0.75rem", color: "#555", padding: "0.05rem 0.2rem", cursor: i === steps.length - 1 ? "default" : "pointer" }}
+                      >▼</button>
+                    </span>
                     <input
                       value={step.title}
                       onChange={(e) => setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, title: e.target.value } : s)))}

@@ -2,3 +2,19 @@
 * { box-sizing: border-box; }
 body { margin: 0; background: #f5f6f8; color: #1a1c20; }
 button { cursor: pointer; }
+
+/* Anti-débordement global : les contenus longs (journal de déploiement,
+   URLs git, chemins npm) se coupent proprement au lieu de sortir du cadre. */
+pre, code, .modop-log {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+}
+pre {
+  white-space: pre-wrap;
+  margin: 0;
+  box-sizing: border-box;
+}
+main, section {
+  min-width: 0;
+}
