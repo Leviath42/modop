@@ -255,3 +255,18 @@ Sur écran étroit, le wrap reste possible mais chaque élément est compact —
 **Fichiers** : `web/src/nav.tsx`, `web/src/pages/editor.tsx`, `web/src/pages/reader.tsx`
 
 **État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-18 — Barre de filtres repensée : recherche + bouton Filtres (réalisé)
+
+**Problème** : la ligne de filtres de l'accueil empilait recherche + 2 selects + bouton À revoir + Créer — longue, wrap inévitable sur mobile.
+
+**Correctif** :
+- **Une ligne** : champ de **recherche pleine largeur** + bouton **« Filtres »** + **« + »** (création, auteurs).
+- Le bouton Filtres affiche un **compteur d'actifs** (« Filtres (2) ») et ouvre un **panneau dépliable** regroupant : État, Famille, **Trier par** (modifié récemment / titre / référence / famille / date) et la case « À revoir » — plus un bouton **Effacer** quand des filtres sont actifs.
+- Le tri exploite le paramètre `sort` déjà supporté par l'API (whitelist serveur inchangée).
+
+**Test** : `browse-smoke` mis à jour — vérifie la barre épurée, l'ouverture du panneau et la présence état/tri.
+
+**Fichiers** : `web/src/pages/list.tsx`, `web/src/api.ts`, `web/src/lib/browse-smoke.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front + 101/101 serveur.

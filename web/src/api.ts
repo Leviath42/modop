@@ -115,7 +115,7 @@ export const api = {
   async me(): Promise<User> {
     return handle<User>(await fetch("/api/auth/me"));
   },
-  async listWorkflows(params: { search?: string; category?: string; state?: string; family?: string; review?: string } = {}): Promise<Workflow[]> {
+  async listWorkflows(params: { search?: string; category?: string; state?: string; family?: string; review?: string; sort?: string } = {}): Promise<Workflow[]> {
     const q = new URLSearchParams();
     for (const [k, v] of Object.entries(params)) if (v) q.set(k, v);
     return handle<Workflow[]>(await fetch(`/api/workflows?${q}`));
