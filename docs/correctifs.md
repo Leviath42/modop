@@ -305,3 +305,13 @@ Sur écran étroit, le wrap reste possible mais chaque élément est compact —
 **Fichiers** : `web/src/pages/editor.tsx`, `web/src/step-canvas.tsx`, `web/src/lib/editor-sticky.test.ts`
 
 **État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-22 — Boîte à outils en panneau flottant (réalisé)
+
+**Problème** : à l'ouverture de la palette « Outils », ses boutons s'inséraient dans la rangée du bandeau (flex) et **comprimaient latéralement la première ligne** (sélecteur d'étape rétréci).
+
+**Correctif** : la palette devient un **panneau flottant** (`position: absolute`, bord à bord sous la rangée, ombre + bordure) — elle se **pose par-dessus le contenu** au lieu de repousser la mise en page. La première ligne ne bouge plus d'un pixel, ouverte ou fermée. Fermeture par clic extérieur (en plus du bouton « Outils »).
+
+**Fichiers** : `web/src/pages/editor.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.

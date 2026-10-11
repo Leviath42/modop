@@ -67,6 +67,15 @@ export default function EditorPage() {
   const [confirmDeleteDoc2, setConfirmDeleteDoc2] = useState(false);
   const fileRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const pictosMenuRef = useRef<HTMLSpanElement | null>(null);
+  const toolsRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!showTools) return;
+    const onDown = (e: PointerEvent) => {
+      if (toolsRef.current && !toolsRef.current.contains(e.target as Node)) setShowTools(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [showTools]);
   useEffect(() => {
     if (!showPictos) return;
     const onDown = (e: PointerEvent) => {
@@ -264,7 +273,7 @@ export default function EditorPage() {
             </button>
           )}
           {!isNew && (
-            <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", flexWrap: "nowrap", overflow: "hidden", minWidth: 0, paddingTop: "0.4rem", borderTop: "1px solid var(--border-soft)" }}>
+            <div style={{ position: "relative", display: "flex", alignItems: "center", gap: "0.3rem", flexWrap: "nowrap", overflow: "visible", minWidth: 0, paddingTop: "0.4rem", borderTop: "1px solid var(--border-soft)" }}>
               <select
                 value={activeStepId ?? steps[0]?.id ?? ""}
                 onChange={(e) => {
@@ -302,7 +311,7 @@ export default function EditorPage() {
               >Outils</button>
 
               {showTools && steps.length > 0 && (
-                <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap", alignItems: "center", flexBasis: "100%", minWidth: 0, paddingTop: "0.25rem", borderTop: "1px solid var(--border-soft)" }}>
+                <div ref={toolsRef} style={{ position: "absolute", left: 0, right: 0, top: "calc(100% + 0.25rem)", zIndex: 130, display: "flex", gap: "0.25rem", flexWrap: "wrap", alignItems: "center", minWidth: 0, padding: "0.4rem 0.5rem", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", boxShadow: "0 6px 24px rgba(0,0,0,0.18)" }}>
                   <button
                     onClick={() => {
                       const target = activeStepId ?? steps[0].id;
