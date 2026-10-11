@@ -92,9 +92,9 @@ export default function AdminPage() {
         <section style={{ background: "var(--surface)", borderRadius: "10px", padding: "1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "grid", gap: "0.6rem" }}>
           <h2 style={{ margin: 0, fontSize: "1.05rem" }}>Créer un compte</h2>
           <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-            <input type="email" placeholder="email@entreprise.fr" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} style={{ ...input, flex: 2, minWidth: "200px" }} />
-            <input type="password" placeholder="Mot de passe (8+ car.)" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} style={{ ...input, flex: 1, minWidth: "150px" }} />
-            <select value={newRole} onChange={(e) => setNewRole(e.target.value as AdminUser["role"])} style={{ ...input, minWidth: "110px" }}>
+            <input type="email" placeholder="email@entreprise.fr" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} style={{ ...input, flex: "2 1 10rem" }} />
+            <input type="password" placeholder="Mot de passe (8+ car.)" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} style={{ ...input, flex: "1 1 8rem" }} />
+            <select value={newRole} onChange={(e) => setNewRole(e.target.value as AdminUser["role"])} style={{ ...input, flex: "1 1 6rem" }}>
               <option value="reader">Lecteur</option>
               <option value="author">Auteur</option>
               <option value="admin">Admin</option>
@@ -106,12 +106,12 @@ export default function AdminPage() {
         <section style={{ display: "grid", gap: "0.5rem" }}>
           {users.map((u) => (
             <div key={u.id} style={{ background: "var(--surface)", borderRadius: "10px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", opacity: u.active === 0 ? 0.55 : 1 }}>
-              <span style={{ fontWeight: 600, minWidth: "180px" }}>{u.email}</span>
+              <span style={{ fontWeight: 600, flex: "1 1 10rem", overflowWrap: "anywhere" }}>{u.email}</span>
               <select
                 value={u.role}
                 onChange={(e) => updateUser(u, { role: e.target.value as AdminUser["role"] })}
                 disabled={u.id === user?.id}
-                style={{ ...input, minWidth: "100px" }}
+                style={{ ...input, flex: "1 1 6rem" }}
                 aria-label={`Rôle de ${u.email}`}
               >
                 <option value="reader">Lecteur</option>

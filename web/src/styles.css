@@ -67,6 +67,11 @@ input, select, textarea { font-size: 16px; }
     min-width: 44px;
   }
 }
+/* Anti-débordement structurel : rien ne peut élargir la page, quoi qu'il
+   arrive (champs, pré, SVG, images) ; la page ne scrolle JAMAIS
+   horizontalement. */
+img, svg, video, canvas { max-width: 100%; }
+input, textarea, select { max-width: 100%; }
 body { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
 button, [role="button"] { touch-action: manipulation; }
 

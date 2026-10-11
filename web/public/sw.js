@@ -1,7 +1,7 @@
 // Service worker Modop — consultation hors ligne des éléments déjà chargés.
 // Stratégie : network-first avec repli cache (les MO déjà consultés restent
 // lisibles sans réseau ; l'API non consultée renvoie une erreur propre).
-const CACHE = "modop-v4";
+const CACHE = "modop-v5";
 const PRECACHE = ["/", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {

@@ -172,13 +172,13 @@ export default function EditorPage() {
   return (
     <>
       <NavBar />
-      <main style={{ maxWidth: "820px", width: "100%", margin: "0 auto", padding: "1rem", display: "grid", gap: "1rem", boxSizing: "border-box" }}>
+      <main style={{ maxWidth: "820px", width: "100%", margin: "0 auto", padding: "1rem", display: "grid", gap: "1rem", boxSizing: "border-box", minWidth: 0 }}>
         {error && <p role="alert" style={{ color: "var(--error-text)", background: "var(--error-bg)", padding: "0.5rem 0.8rem", borderRadius: "6px" }}>{error}</p>}
         {notice && <p style={{ color: "var(--ok-text)", background: "var(--ok-bg)", padding: "0.5rem 0.8rem", borderRadius: "6px" }}>{notice}</p>}
 
         <section style={{ background: "var(--surface)", borderRadius: "10px", padding: "1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "grid", gap: "0.6rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
-            <h1 style={{ margin: 0, fontSize: "1.2rem", flex: 1, minWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <h1 style={{ margin: 0, fontSize: "1.2rem", flex: 1, minWidth: "8rem", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {isNew ? "Nouveau mode opératoire" : (title || "Sans titre")}{" "}
               <code style={{ fontSize: "0.8em", background: "var(--surface-2)", padding: "0.1rem 0.4rem", borderRadius: "4px" }}>{reference || wf?.reference}</code>
             </h1>
@@ -218,8 +218,8 @@ export default function EditorPage() {
 
         {!isNew && (
           <section style={{ display: "grid", gap: "0.6rem" }}>
-            <div style={{ position: "sticky", top: 0, zIndex: 30, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", padding: "0.5rem 0.8rem", display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", boxShadow: "0 2px 6px rgba(0,0,0,0.15)" }}>
-              <h2 style={{ margin: 0, fontSize: "1rem", marginRight: "auto", minWidth: "80px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "30%" }}>Étapes — {title || "sans titre"}</h2>
+            <div style={{ position: "sticky", top: 0, zIndex: 30, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", padding: "0.5rem 0.8rem", display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", minWidth: 0 }}>
+              <h2 style={{ margin: 0, fontSize: "1rem", marginRight: "auto", minWidth: "6rem", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Étapes — {title || "sans titre"}</h2>
               {!isNew && (
                 <>
                   <button onClick={addStep} style={secondaryBtn}>+ Étape</button>
@@ -248,7 +248,7 @@ export default function EditorPage() {
                       }, 80);
                     }}
                     aria-label="Aller à une étape"
-                    style={{ padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border)" }}
+                    style={{ padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border)", maxWidth: "100%", minWidth: 0 }}
                   >
                     <option value="">Aller à…</option>
                     {steps.map((st, si) => <option key={st.id} value={st.id}>{si + 1}. {st.title}</option>)}
@@ -296,7 +296,7 @@ export default function EditorPage() {
                       value={step.title}
                       onChange={(e) => setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, title: e.target.value } : s)))}
                       onBlur={() => patchStep(step, { title: step.title })}
-                      style={{ ...input, fontWeight: 600, flex: 1, minWidth: "9rem" }}
+                      style={{ ...input, fontWeight: 600, flex: "1 1 8rem" }}
                       aria-label={`Titre étape ${i + 1}`}
                       onClick={() => { if (!openSteps.has(step.id)) setOpenSteps((prev) => new Set([...prev, step.id])); }}
                     />
@@ -369,7 +369,7 @@ export default function EditorPage() {
                           }}
                           onBlur={() => patchStep(step, { pictos: step.pictos })}
                           placeholder="Texte de l'avertissement"
-                          style={{ flex: 1, minWidth: "8rem", maxWidth: "100%", padding: "0.3rem 0.5rem", borderRadius: "4px", border: "1px solid var(--border)" }}
+                          style={{ flex: "1 1 7rem", maxWidth: "100%", padding: "0.3rem 0.5rem", borderRadius: "4px", border: "1px solid var(--border)", minWidth: 0, boxSizing: "border-box" }}
                           aria-label={`Texte du pictogramme ${pi + 1}`}
                         />
                         <button
@@ -433,8 +433,11 @@ export default function EditorPage() {
   );
 }
 
-const label: React.CSSProperties = { display: "grid", gap: "0.25rem", fontSize: "0.9rem", color: "var(--text-muted)" };
-const input: React.CSSProperties = { padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border)", fontSize: "1rem", fontFamily: "inherit" };
+// Base mobile-first : tout champ occupe 100% de la largeur disponible et
+// ne peut jamais élargir son conteneur (min-width: 0 est la clé anti-
+// débordement des flex/grid).
+const label: React.CSSProperties = { display: "grid", gap: "0.25rem", fontSize: "0.9rem", color: "var(--text-muted)", minWidth: 0 };
+const input: React.CSSProperties = { padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border)", fontSize: "1rem", fontFamily: "inherit", width: "100%", minWidth: 0, boxSizing: "border-box", maxWidth: "100%" };
 const primaryBtn: React.CSSProperties = { padding: "0.6rem 1rem", borderRadius: "6px", border: "none", background: "var(--accent)", color: "white", fontSize: "1rem" };
 const secondaryBtn: React.CSSProperties = { padding: "0.5rem 0.9rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.95rem" };
 const dangerBtn: React.CSSProperties = { padding: "0.3rem 0.5rem", borderRadius: "6px", border: "1px solid var(--danger-border)", background: "var(--danger-bg)", color: "var(--text)", fontSize: "0.9rem" };

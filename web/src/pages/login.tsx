@@ -42,7 +42,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main style={{ maxWidth: "360px", margin: "10vh auto", padding: "1rem" }}>
+    <main style={{ maxWidth: "360px", width: "100%", margin: "10vh auto", padding: "1rem", boxSizing: "border-box" }}>
       <button
         onClick={() => setTheme(toggleTheme())}
         aria-label={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}

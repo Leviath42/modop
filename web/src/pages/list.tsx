@@ -36,7 +36,7 @@ export default function ListPage() {
   return (
     <>
       <NavBar />
-      <main style={{ maxWidth: "800px", margin: "0 auto", padding: "1rem" }}>
+      <main style={{ maxWidth: "800px", width: "100%", margin: "0 auto", padding: "1rem", boxSizing: "border-box" }}>
         <h1>Modes opératoires</h1>
         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1rem" }}>
           <input
@@ -44,7 +44,7 @@ export default function ListPage() {
             placeholder="Rechercher (titre, référence)…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ flex: 1, minWidth: "200px", padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border)" }}
+            style={{ flex: "1 1 10rem", minWidth: 0, padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border)" }}
           />
           <select value={family} onChange={(e) => setFamily(e.target.value)} style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border)" }} aria-label="Filtrer par famille">
             <option value="">Toutes les familles</option>
