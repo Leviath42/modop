@@ -52,6 +52,8 @@ export default function EditorPage() {
   const [insertColor, setInsertColor] = useState(COLORS[0]);
   const [activeStepId, setActiveStepId] = useState<number | null>(null);
   const [showTools, setShowTools] = useState(false);
+  const [confirmDeleteStep, setConfirmDeleteStep] = useState<Step | null>(null);
+  const [confirmPublish, setConfirmPublish] = useState(false);
   const fileRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const isNew = id === "new";
@@ -117,6 +119,7 @@ export default function EditorPage() {
 
   async function removeStep(step: Step) {
     await api.deleteStep(step.id);
+    setConfirmDeleteStep(null);
     setSteps((arr) => arr.filter((s) => s.id !== step.id));
   }
 
@@ -229,7 +232,7 @@ export default function EditorPage() {
                 {(() => { const st = steps.find((x) => x.id === (activeStepId ?? steps[0]?.id)); return st ? st.title : (title || "sans titre"); })()}
               </h2>
               {steps.length > 0 && (
-                <button onClick={publish} style={iconBtn} title="Publier une nouvelle version" aria-label="Publier">
+                <button onClick={() => setConfirmPublish(true)} style={iconBtn} title="Publier une nouvelle version" aria-label="Publier">
                   <PublishIcon /><span style={{ fontSize: "0.8rem", fontWeight: 600 }}>Publier</span>
                 </button>
               )}
@@ -362,7 +365,7 @@ export default function EditorPage() {
                     >
                       {openSteps.has(step.id) ? "▾" : "▸"}
                     </button>
-                    <button onClick={() => removeStep(step)} style={dangerBtn} aria-label={`Supprimer étape ${i + 1}`}>🗑</button>
+                    <button onClick={() => setConfirmDeleteStep(step)} style={dangerBtn} aria-label={`Supprimer étape ${i + 1}`}>🗑</button>
                   </div>
                   {openSteps.has(step.id) && (
                   <>
@@ -416,7 +419,7 @@ export default function EditorPage() {
             <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
               <button onClick={addStep} style={secondaryBtn}>+ Ajouter une étape</button>
               {steps.length > 0 && (
-                <button onClick={publish} style={primaryBtn} title="Publie une nouvelle version">
+                <button onClick={() => setConfirmPublish(true)} style={primaryBtn} title="Publie une nouvelle version">
                   {wf?.state === "published" ? `Publier V${(wf.current_version ?? 0) + 1}` : "Publier V1"}
                 </button>
               )}
@@ -424,6 +427,36 @@ export default function EditorPage() {
           </section>
         )}
       </main>
+      {confirmDeleteStep && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", zIndex: 100 }} role="dialog" aria-modal="true" aria-label="Confirmer la suppression de l'étape">
+          <div style={{ background: "var(--surface)", color: "var(--text)", borderRadius: "10px", padding: "1.2rem", maxWidth: "400px", display: "grid", gap: "0.8rem" }}>
+            <h2 style={{ margin: 0, fontSize: "1.05rem" }}>Supprimer l'étape « {confirmDeleteStep.title} » ?</h2>
+            <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.9rem" }}>
+              Ses photos et annotations seront supprimées. Cette action est irréversible sans version publiée.
+            </p>
+            <div style={{ display: "flex", gap: "0.5rem", justifyContent: "end" }}>
+              <button onClick={() => setConfirmDeleteStep(null)} style={secondaryBtn}>Annuler</button>
+              <button onClick={() => void removeStep(confirmDeleteStep)} style={{ ...primaryBtn, background: "var(--error-text)" }}>Supprimer</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirmPublish && wf && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", zIndex: 100 }} role="dialog" aria-modal="true" aria-label="Confirmer la publication">
+          <div style={{ background: "var(--surface)", color: "var(--text)", borderRadius: "10px", padding: "1.2rem", maxWidth: "400px", display: "grid", gap: "0.8rem" }}>
+            <h2 style={{ margin: 0, fontSize: "1.05rem" }}>
+              {wf.state === "published" ? `Publier V${(wf.current_version ?? 0) + 1} ?` : "Publier en V1 ?"}
+            </h2>
+            <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.9rem" }}>
+              Un snapshot immuable de cette version sera créé ({steps.length} étape{steps.length > 1 ? "s" : ""}). La version restera consultable et exportable même après vos modifications suivantes.
+            </p>
+            <div style={{ display: "flex", gap: "0.5rem", justifyContent: "end" }}>
+              <button onClick={() => setConfirmPublish(false)} style={secondaryBtn}>Annuler</button>
+              <button onClick={() => { setConfirmPublish(false); void publish(); }} style={primaryBtn}>Confirmer la publication</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
