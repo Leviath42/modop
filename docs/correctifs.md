@@ -327,3 +327,13 @@ Sur écran étroit, le wrap reste possible mais chaque élément est compact —
 **Fichiers** : `web/src/pages/editor.tsx`
 
 **État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-24 — « + étape » invisible sans étape : régression C-23 corrigée (réalisé)
+
+**Problème** : malgré C-23, le bouton « + étape » n'apparaissait pas dans la palette d'un MO sans étape — lors du réordonnancement du fragment JSX (C-23), le bouton s'était retrouvé **à l'intérieur** de la garde `steps.length > 0`, donc masqué précisément quand il fallait le montrer.
+
+**Correctif** : le bouton « + étape » (et son filet) est sorti de la garde — il apparaît **toujours** dans la palette, seule la rangée photos/formes/couleurs reste conditionnelle à la présence d'une étape. Test `empty-tools.test.tsx` ajouté : MO sans étape → palette ouvre, message d'accueil, bouton « + étape » présent (le cas ne pourra plus régresser).
+
+**Fichiers** : `web/src/pages/editor.tsx`, `web/src/lib/empty-tools.test.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.

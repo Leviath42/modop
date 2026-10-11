@@ -315,6 +315,8 @@ export default function EditorPage() {
                   {steps.length === 0 && (
                     <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Créez d'abord une étape :</span>
                   )}
+                  <button onClick={addStep} style={iconBtn} title="Ajouter une étape" aria-label="Ajouter une étape"><PlusIcon /><span style={{ fontSize: "0.75rem" }}>étape</span></button>
+                  <span style={{ width: "1px", height: "20px", background: "var(--border)" }} aria-hidden="true" />
                   {steps.length > 0 && (
                   <>
                   <button
@@ -338,8 +340,6 @@ export default function EditorPage() {
                     <button key={c} onClick={() => setInsertColor(c)} aria-label={`Couleur ${c}`}
                       style={{ width: "18px", height: "18px", borderRadius: "50%", background: c, border: insertColor === c ? "2px solid var(--text)" : "1px solid var(--border)", padding: 0, cursor: "pointer", boxSizing: "border-box" }} />
                   ))}
-                  <button onClick={addStep} style={iconBtn} title="Ajouter une étape" aria-label="Ajouter une étape"><PlusIcon /><span style={{ fontSize: "0.75rem" }}>étape</span></button>
-                  <span style={{ width: "1px", height: "20px", background: "var(--border)" }} aria-hidden="true" />
                   <span ref={pictosMenuRef} style={{ position: "relative" }}>
                     {(() => {
                       const st = steps.find((x) => x.id === (activeStepId ?? steps[0].id));
