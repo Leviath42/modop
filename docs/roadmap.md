@@ -141,7 +141,12 @@ Travaillée sur la branche `delta` en parallèle du fix page blanche (C-10, sur 
 | RF-72 | Lecture guidée `/workflow/:id/guided` — une étape par écran, boutons zone pouce, progression n/N | W-GUIDED |
 | RF-70 | Gabarit qualité autoring : conseil une-action-par-étape, alerte >400 caractères, rappel photo manquante | W-TEMPLATE |
 
-**Reste du Lot 5/6 à spécifier** : champs GED dans l'UI éditeur (review_due/owner dans les détails), badge « à revoir » en liste, consultation des feedbacks côté auteur, intégration des stats dans la page admin.
+**UI de la vague v1.4 — livrée sur delta** (complément) :
+- **Éditeur** : champs « À revoir le » + « Responsable » dans les détails dépliables ; **changelog saisi dans la modale de publication** (visible dans l'historique et le sélecteur de versions du lecteur).
+- **Liste** : bouton-filtre « À revoir » (documents en retard de revue) + badge rouge « à revoir » par carte.
+- **Lecteur** (reconstruit intégralement — le sélecteur de versions de la vague 6 n'avait en réalité jamais été fusionné, corrige au passage F2/U6) : sélecteur de version avec changelog, badge « à revoir », bouton **« Signaler un problème sur cette étape »** (formulaire + toast), panneau **« Signalements terrain »** pour les auteurs, liens Guidé + QR.
+- **Page `/stats`** (admin, lien dans la nav) : chiffres clés (dont consultations), top consultés/exportés/auteurs, activité récente.
+- Test fumée `feedback-smoke.test.ts` (formulaire de signalement) ; POST feedback prouvé en runtime serveur.
 
 ## 🚧 Vague 8 — Gestion documentaire avancée (proposition, à spécifier)
 

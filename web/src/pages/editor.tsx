@@ -59,6 +59,9 @@ export default function EditorPage() {
   const [showTools, setShowTools] = useState(false);
   const [confirmDeleteStep, setConfirmDeleteStep] = useState<Step | null>(null);
   const [confirmPublish, setConfirmPublish] = useState(false);
+  const [reviewDue, setReviewDue] = useState("");
+  const [ownerEmail, setOwnerEmail] = useState("");
+  const [changelog, setChangelog] = useState("");
   const fileRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const isNew = id === "new";
@@ -70,6 +73,7 @@ export default function EditorPage() {
         setWf(w); setSteps(w.steps);
         setTitle(w.title); setReference(w.reference);
         setCategory(w.category); setFamily(w.family ?? ""); setDescription(w.description);
+        setReviewDue(w.review_due ?? ""); setOwnerEmail(w.owner_email ?? "");
       })
       .catch((e) => setError(e instanceof ApiError ? e.message : "Erreur de chargement"));
   }, [id, isNew]);
@@ -163,8 +167,8 @@ export default function EditorPage() {
     if (!wf) return;
     setError(null);
     try {
-      await api.updateWorkflow(wf.id, { title, category, family, description });
-      const { number } = await api.publishWorkflow(wf.id);
+      await api.updateWorkflow(wf.id, { title, category, family, description, review_due: reviewDue || null, owner_email: ownerEmail });
+      const { number } = await api.publishWorkflow(wf.id, changelog);
       setNotice(`Publié en V${number}`);
       setTimeout(() => setNotice(null), 2500);
       navigate(`/workflow/${wf.id}/read`);
@@ -218,6 +222,14 @@ export default function EditorPage() {
             <label style={label}>Description
               <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} style={input} />
             </label>
+            <div style={{ display: "grid", gap: "0.5rem", gridTemplateColumns: "1fr 1fr" }}>
+              <label style={label}>À revoir le
+                <input type="date" value={reviewDue} onChange={(e) => setReviewDue(e.target.value)} style={input} />
+              </label>
+              <label style={label}>Responsable
+                <input type="email" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} style={input} placeholder="resp@usine.fr" />
+              </label>
+            </div>
           </div>
           )}
           {isNew && (
@@ -493,6 +505,10 @@ export default function EditorPage() {
             <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.9rem" }}>
               Un snapshot immuable de cette version sera créé ({steps.length} étape{steps.length > 1 ? "s" : ""}). La version restera consultable et exportable même après vos modifications suivantes.
             </p>
+            <label style={label}>
+              Modifications apportées (visible dans l'historique)
+              <textarea value={changelog} onChange={(e) => setChangelog(e.target.value)} rows={2} style={input} placeholder="Ex. : ajout de l'étape de contrôle final, photo arrière remplacée" />
+            </label>
             <div style={{ display: "flex", gap: "0.5rem", justifyContent: "end" }}>
               <button onClick={() => setConfirmPublish(false)} style={secondaryBtn}>Annuler</button>
               <button onClick={() => { setConfirmPublish(false); void publish(); }} style={primaryBtn}>Confirmer la publication</button>

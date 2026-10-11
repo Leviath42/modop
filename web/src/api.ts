@@ -13,6 +13,8 @@ export interface Workflow {
   family: string;
   state: "draft" | "published";
   current_version: number;
+  review_due?: string | null;
+  owner_email?: string;
   updated_at: string;
 }
 
@@ -113,7 +115,7 @@ export const api = {
   async me(): Promise<User> {
     return handle<User>(await fetch("/api/auth/me"));
   },
-  async listWorkflows(params: { search?: string; category?: string; state?: string; family?: string } = {}): Promise<Workflow[]> {
+  async listWorkflows(params: { search?: string; category?: string; state?: string; family?: string; review?: string } = {}): Promise<Workflow[]> {
     const q = new URLSearchParams();
     for (const [k, v] of Object.entries(params)) if (v) q.set(k, v);
     return handle<Workflow[]>(await fetch(`/api/workflows?${q}`));
@@ -130,7 +132,7 @@ export const api = {
       })
     );
   },
-  async updateWorkflow(id: number, data: Partial<Pick<Workflow, "title" | "description" | "category" | "family">>): Promise<Workflow> {
+  async updateWorkflow(id: number, data: Partial<Pick<Workflow, "title" | "description" | "category" | "family" | "review_due" | "owner_email">>): Promise<Workflow> {
     return handle<Workflow>(
       await fetch(`/api/workflows/${id}`, {
         method: "PUT",
@@ -142,10 +144,16 @@ export const api = {
   async deleteWorkflow(id: number): Promise<void> {
     await handle<unknown>(await fetch(`/api/workflows/${id}`, { method: "DELETE" }));
   },
-  async publishWorkflow(id: number): Promise<{ number: number }> {
-    return handle<{ number: number }>(await fetch(`/api/workflows/${id}/publish`, { method: "POST" }));
+  async publishWorkflow(id: number, changelog?: string): Promise<{ number: number }> {
+    return handle<{ number: number }>(
+      await fetch(`/api/workflows/${id}/publish`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ changelog: changelog ?? "" }),
+      })
+    );
   },
-  async versions(id: number): Promise<{ id: number; number: number; author_email: string; published_at: string }[]> {
+  async versions(id: number): Promise<{ id: number; number: number; changelog: string; author_email: string; published_at: string }[]> {
     return handle(await fetch(`/api/workflows/${id}/versions`));
   },
   async getVersion(id: number | string, number: number): Promise<WorkflowDetail> {
@@ -207,6 +215,18 @@ export const api = {
         body: JSON.stringify({ annotations }),
       })
     );
+  },
+  async sendFeedback(workflowId: number, stepId: number, message: string): Promise<void> {
+    await handle<unknown>(
+      await fetch(`/api/workflows/${workflowId}/feedback`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ step_id: stepId, message }),
+      })
+    );
+  },
+  async listFeedback(workflowId: number): Promise<{ by: string; step_id: number; message: string; at: string }[]> {
+    return handle(await fetch(`/api/workflows/${workflowId}/feedback`));
   },
   exportUrl(id: number, version?: number): string {
     return `/api/workflows/${id}/export${version ? `?version=${version}` : ""}`;

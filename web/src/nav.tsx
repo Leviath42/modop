@@ -45,6 +45,9 @@ export default function NavBar() {
           <Link to="/admin" style={{ color: "white", fontSize: "0.78rem", opacity: 0.9, textDecoration: "none", border: "1px solid rgba(255,255,255,0.5)", padding: "0.15rem 0.45rem", borderRadius: "6px" }}>
             Comptes
           </Link>
+          <Link to="/stats" style={{ color: "white", fontSize: "0.78rem", opacity: 0.9, textDecoration: "none", border: "1px solid rgba(255,255,255,0.5)", padding: "0.15rem 0.45rem", borderRadius: "6px" }}>
+            Statistiques
+          </Link>
           <Link to="/deploy" style={{ color: "white", fontSize: "0.78rem", opacity: 0.9, textDecoration: "none", border: "1px solid rgba(255,255,255,0.5)", padding: "0.15rem 0.45rem", borderRadius: "6px" }}>
             Déploiement
           </Link>
