@@ -13,6 +13,7 @@ import { listRouter } from "./routes/list.js";
 import { photoRouter, staticPhotos, deletePhotoRouter } from "./routes/photos.js";
 import { publishRouter } from "./routes/publish.js";
 import { exportRouter } from "./routes/export.js";
+import { restoreRouter } from "./routes/restore.js";
 import { deployRouter } from "./routes/deploy.js";
 import { adminRouter } from "./routes/admin.js";
 
@@ -42,6 +43,7 @@ export function createApp(db: Database.Database, webDist?: string): express.Expr
   app.use("/api/workflows", listRouter(db));
   app.use("/api/workflows", publishRouter(db));
   app.use("/api/workflows", exportRouter(db));
+  app.use("/api/workflows", restoreRouter(db));
   app.use("/api/steps", stepRouter(db));
   app.use("/api/steps", photoRouter(db));
   app.use("/api/photos", deletePhotoRouter(db));
