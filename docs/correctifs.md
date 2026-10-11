@@ -337,3 +337,19 @@ Sur écran étroit, le wrap reste possible mais chaque élément est compact —
 **Fichiers** : `web/src/pages/editor.tsx`, `web/src/lib/empty-tools.test.tsx`
 
 **État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-25 — Export DOCX professionnel avec canevas annoté (réalisé)
+
+**Problème** : l'export docx empilait les photos brutes sans les annotations (formes du canevas absentes), avec une mise en page et une police par défaut peu soignées.
+
+**Benchmark avant implémentation** (npm-compare, pkgpulse 2025-26) : pas d'outil open source clé en main « annotations export » — la composition canevas est du code métier (coordonnées Modop). Choix validés : **`@napi-rs/canvas`** (Canvas API en bindings Rust, sans dépendances système — recommandé face à node-canvas/Cairo et au palliatif SVG de sharp qui ne dessine pas de formes) et **`docx`** conservé pour le document (docxtemplater = modules images payants, officegen moins maintenu).
+
+**Correctif** :
+1. **`render/canvas-composite.ts`** : compose le canevas de chaque étape en **une seule image PNG serveur**, reproduisant exactement le rendu du lecteur (repère 240px, photos positionnées via display_x/y/w, formes par-dessus : flèches à pointe, rectangles, textes, couleurs conservées).
+2. **Export DOCX repensé** : page de garde structurée (titre, bandeau de métadonnées Version/Publiée/Par/Famille/Type/Responsable), **changelog de version**, en-tête et pied de page (titre + pagination), titres d'étapes soulignés accent, pictos sur bandeau coloré, canevas composé **pleine largeur net** (800px → 600 affichés), styles de document cohérents (Calibri).
+
+**Test** : cycle complet — upload photo positionnée + formes sur l'étape → publication → export → docx valide (zip PK) + PNG composé aux dimensions attendues.
+
+**Fichiers** : `server/src/render/canvas-composite.ts` (nouveau), `server/src/routes/export.ts`, `server/test/export.test.ts` ; dépendance `@napi-rs/canvas`
+
+**État** : ✅ livré sur beta — 102/102 tests serveur, tsc OK.

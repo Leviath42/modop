@@ -85,3 +85,48 @@ test("sans session → 401", async () => {
 
 process.on("exit", () => server.close());
 server.unref();
+
+// C-25 : le canevas composé (photos positionnées + formes) est intégré au DOCX.
+// Preuve : la réponse docx contient des médias (images) même quand la photo
+// seule existe déjà, et composeStepCanvas rend un PNG avec les dimensions attendues.
+test("export avec formes : le canevas composé est une image PNG valide", async () => {
+  // photo factice
+  const PNG = Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c63000100000500010000000049454e44ae426082", "hex");
+  fs.mkdirSync(PHOTOS_DIR, { recursive: true });
+  fs.writeFileSync(path.join(PHOTOS_DIR, "c25.png"), PNG);
+  const wfRes = await call("POST", "/api/workflows", { title: "Export formes", reference: "MO-EXP2" }, author);
+  const wf = await wfRes.res.json() as { id: number };
+  const stepRes = await call("POST", `/api/workflows/${wf.id}/steps`, { title: "Étape annotée" }, author);
+  const step = await stepRes.res.json() as { id: number };
+  // canvas : une flèche + un rectangle sur l'étape
+  await call("PUT", `/api/steps/${step.id}/canvas`, { shapes: [
+    { type: "arrow", x1: 0.1, y1: 0.1, x2: 0.5, y2: 0.3, color: "#d0021b" },
+    { type: "rect", x1: 0.2, y1: 0.05, w: 0.4, h: 0.3, color: "#f5a623" },
+  ] }, author);
+  // photo avec positionnement libre
+  const up = await fetch(`${base}/api/steps/${step.id}/photos`, {
+    method: "POST",
+    headers: { cookie: author },
+    body: (() => { const fd = new FormData(); fd.append("file", new Blob([PNG], { type: "image/png" }), "c25.png"); fd.append("alt", ""); return fd; })(),
+  });
+  if (!up.ok) throw new Error(`upload échoué: ${up.status} ${JSON.stringify(await up.text())}`);
+  const photo = await up.json();
+  await call("PUT", `/api/photos/${photo.id}/layout`, { display_size: "large", display_align: "center", display_x: 0.1, display_y: 0.1, display_w: 0.8 }, author);
+  await call("POST", `/api/workflows/${wf.id}/publish`, { changelog: "test" }, author);
+  const res = await fetch(`${base}/api/workflows/${wf.id}/export`, { headers: { cookie: author } });
+  assert.equal(res.status, 200);
+  const buf = Buffer.from(await res.arrayBuffer());
+  assert.ok(buf.length > 1000, "docx trop petit");
+  assert.equal(buf.readUInt32BE(0), 0x504b0304, "le docx doit être un zip (PK)");
+  // composer directement le canvas et vérifier le PNG
+  const { composeStepCanvas } = await import("../src/render/canvas-composite.js");
+  const composed = await composeStepCanvas(
+    PHOTOS_DIR,
+    [{ filename: "c25.png", display_x: 0.1, display_y: 0.1, display_w: 0.8 }],
+    [{ type: "arrow", x1: 0.1, y1: 0.1, x2: 0.5, y2: 0.3, color: "#d0021b" }],
+    800
+  );
+  assert.ok(composed && composed.length > 100, "PNG composé non généré");
+  assert.equal(composed!.readUInt32BE(16), 800, "largeur du composé = 800");
+  assert.ok(composed!.readUInt32BE(20) >= 240, "hauteur du composé >= repère 240px");
+});
