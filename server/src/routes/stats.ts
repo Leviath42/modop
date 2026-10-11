@@ -24,6 +24,12 @@ export function statsRouter(db: Database.Database): Router {
         `SELECT actor_email, COUNT(*) n FROM audit_log WHERE action = 'publish' GROUP BY actor_email ORDER BY n DESC LIMIT 5`
       )
       .all() as { actor_email: string; n: number }[];
+    const views = (db.prepare("SELECT COUNT(*) c FROM audit_log WHERE action = 'view_workflow'").get() as { c: number }).c;
+    const topViewed = db
+      .prepare(
+        `SELECT target, COUNT(*) n FROM audit_log WHERE action = 'view_workflow' GROUP BY target ORDER BY n DESC LIMIT 5`
+      )
+      .all() as { target: string; n: number }[];
     const recentActivity = db
       .prepare(
         `SELECT actor_email, action, target, at FROM audit_log ORDER BY id DESC LIMIT 15`
@@ -36,6 +42,8 @@ export function statsRouter(db: Database.Database): Router {
       users,
       exports,
       logins,
+      views,
+      topViewed,
       topExported,
       topPublishers,
       recentActivity,
