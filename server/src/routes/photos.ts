@@ -92,3 +92,29 @@ export function staticPhotos(): express.RequestHandler {
     res.sendFile(file);
   };
 }
+
+export function annotationsRouter(db: Database.Database): Router {
+  const r = Router();
+
+  r.put("/:id/annotations", requireAuth("author"), (req, res) => {
+    const photo = db
+      .prepare("SELECT id FROM photos WHERE id = ?")
+      .get(Number(req.params.id)) as { id: number } | undefined;
+    if (!photo) {
+      res.status(404).json({ error: "not_found", message: "photo introuvable" });
+      return;
+    }
+    const { annotations } = req.body ?? {};
+    if (!Array.isArray(annotations)) {
+      res.status(422).json({ error: "validation", message: "annotations doit être un tableau" });
+      return;
+    }
+    db.prepare("UPDATE photos SET annotations = ? WHERE id = ?").run(
+      JSON.stringify(annotations),
+      photo.id
+    );
+    res.json({ ok: true, count: annotations.length });
+  });
+
+  return r;
+}

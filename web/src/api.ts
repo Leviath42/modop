@@ -21,6 +21,7 @@ export interface Photo {
   step_id?: number;
   filename: string;
   alt: string;
+  annotations?: unknown[];
 }
 
 export interface Picto {
@@ -167,6 +168,15 @@ export const api = {
   },
   async deletePhoto(id: number): Promise<void> {
     await handle<unknown>(await fetch(`/api/photos/${id}`, { method: "DELETE" }));
+  },
+  async saveAnnotations(photoId: number, annotations: unknown[]): Promise<void> {
+    await handle<unknown>(
+      await fetch(`/api/photos/${photoId}/annotations`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ annotations }),
+      })
+    );
   },
   exportUrl(id: number, version?: number): string {
     return `/api/workflows/${id}/export${version ? `?version=${version}` : ""}`;
