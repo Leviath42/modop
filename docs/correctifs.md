@@ -365,3 +365,11 @@ Sur écran étroit, le wrap reste possible mais chaque élément est compact —
 **Fichiers** : `web/src/step-canvas.tsx`
 
 **État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-27 — Corbeille de drag en carré, en haut à gauche (réalisé)
+
+**Changement** : la zone de suppression pendant un déplacement d'objet n'est plus la bande verticale à droite (qui entrait en conflit avec la poignée de redimensionnement des photos) mais un **carré en haut à gauche du canevas** (14 % de large, 56 px de haut, coin arrondi), affiché uniquement pendant le drag. Relâcher un objet dessus le supprime (« Relâchez ici » au survol).
+
+**Fichiers** : `web/src/step-canvas.tsx`, `web/src/lib/step-canvas-adaptive.test.ts` (clic fond déplacé hors zone)
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.

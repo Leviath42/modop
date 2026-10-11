@@ -86,8 +86,10 @@ console.log("U-CANVAS CLIC IMAGE = SÉLECTION UNIQUE OK");
 // clic sur le fond SANS déplacement : la sélection doit être conservée
 // (le rectangle ne s'applique qu'au relâchement avec déplacement)
 const c4 = (Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%") as HTMLElement[]).pop()!;
-fire(c4, "pointerdown", { clientX: 5, clientY: 5 });
-fire(dom.window, "pointerup", { clientX: 5, clientY: 5 });
+// C-27 : la corbeille est désormais un carré en haut à gauche (x<0.14, y<56) —
+// pointer le clic fond hors de cette zone.
+fire(c4, "pointerdown", { clientX: 400, clientY: 150 });
+fire(dom.window, "pointerup", { clientX: 400, clientY: 150 });
 await new Promise((r) => setTimeout(r, 30));
 const c5 = (Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%") as HTMLElement[]).pop()!;
 const imgBox3 = c5.querySelector("img")?.parentElement as HTMLElement;

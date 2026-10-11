@@ -200,7 +200,7 @@ export default function StepCanvas({
           if (c.x >= R.l && c.x <= R.r && c.y >= R.t && c.y <= R.b) ns.add(i);
         });
         setSelPhotos(np); setSelShapes(ns);
-        setOverTrash(p.x > 0.85);
+        setOverTrash(p.x < 0.14 && p.y * 240 < 56);
       } else if (drag.kind === "photo") {
         const dx = p.x - drag.from.x, dy = p.y - drag.from.y;
         setObjs((arr) => arr.map((o, i) => {
@@ -208,7 +208,7 @@ export default function StepCanvas({
           const g = drag.grabs[drag.ids.indexOf(i)];
           return { ...o, x: cx(p.x - g.x), y: cy(p.y - g.y) };
         }));
-        setOverTrash(p.x > 0.85);
+        setOverTrash(p.x < 0.14 && p.y * 240 < 56);
       } else if (drag.kind === "shape") {
         setShapes((arr) => arr.map((s, i) => {
           if (!drag.indices.includes(i)) return s;
@@ -220,7 +220,7 @@ export default function StepCanvas({
           }
           return { ...s, x1: ox, y1: oy };
         }));
-        setOverTrash(p.x > 0.85);
+        setOverTrash(p.x < 0.14 && p.y * 240 < 56);
       } else if (drag.kind === "resize") {
         const r = canvasRef.current!.getBoundingClientRect();
         const rel = Math.min(1, Math.max(0.1, (e.clientX - r.left) / r.width));
@@ -229,7 +229,7 @@ export default function StepCanvas({
     };
     const up = (e: PointerEvent) => {
       const p = pt(e);
-      const trash = p.x > 0.85;
+      const trash = p.x < 0.14 && p.y * 240 < 56;
       if (drag.kind === "selrect") {
         setSelRect(null);
         const moved = Math.hypot(p.x - drag.from.x, p.y - drag.from.y) >= 0.01;
@@ -464,14 +464,15 @@ export default function StepCanvas({
           }}>{textDraft.value || "…"}</span>
         )}
 
-        {/* bande de suppression pendant un drag */}
+        {/* carré de suppression pendant un drag — en haut à gauche (C-27) */}
         {(drag?.kind === "photo" || drag?.kind === "shape") && (
           <div style={{
-            position: "absolute", top: 0, bottom: 0, right: 0, width: "15%",
+            position: "absolute", top: 0, left: 0, width: "14%", height: "56px",
             background: overTrash ? "var(--error-bg)" : "var(--danger-bg, #fff5f5)",
             border: `2px dashed ${overTrash ? "var(--error-text)" : "var(--danger-border, #e0b4b4)"}`,
+            borderBottomRightRadius: "8px",
             display: "flex", alignItems: "center", justifyContent: "center", zIndex: 25, pointerEvents: "none",
-            fontSize: "0.75rem", color: "var(--error-text)", fontWeight: 600,
+            fontSize: "0.9rem", color: "var(--error-text)", fontWeight: 600,
           }}>{overTrash ? "Relâchez ici" : "🗑"}</div>
         )}
       </div>
