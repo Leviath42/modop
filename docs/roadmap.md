@@ -1,58 +1,64 @@
-# Roadmap Modop
+# Modop — Roadmap
 
-État au : vague 3 terminée (beta en ligne sur tunnel Cloudflare).
+*Dernière mise à jour : 2026-10-11 — basé sur [docs/cahier-des-charges.md](cahier-des-charges.md)*
 
-## ✅ Livré
+## 📋 Résumé
 
-### Vague 0 — Fondations
-- Contrat figé : schéma SQLite, types, API REST, routing
-- Cahier des charges, processus de développement par vagues
+Application web de création, publication et consultation de **modes opératoires** — pensée atelier : une étape, une photo, un pictogramme. Auto-hébergée (conteneur LXC Proxmox), accessible sur PC comme sur mobile (PWA), mise à jour depuis l'interface.
 
-### Vague 1 — MVP métier
-- Authentification maison (bcrypt, sessions, rôles lecteur/auteur/admin)
-- CRUD modes opératoires + étapes (réordonnancement glisser-déposer)
-- Photos : upload compressé côté client, stockage disque
-- Publication : versionnement automatique V1/V2/V3, snapshots, historique
-- Consultation : liste avec recherche, vue une-étape-par-écran mobile, sommaire PC
-- Export DOCX (en-tête, étapes, photos, pictos)
+**Accès** : LAN interne + beta publique via tunnel Cloudflare (`modop-beta.calironi.com`).
 
-### Vague 2 — Interface
-- UI React complète : login, liste, éditeur, lecteur responsive
+## 👥 Rôles
 
-### Vague 3 — Sécurité & exploitation
-- SSO OIDC générique (off par défaut, activable par env)
-- Sessions expirantes, rate-limit login, en-têtes de sécurité, audit log
-- Mise à jour depuis le front (page Déploiement, update.sh, rollback base)
-- Conteneur LXC Proxmox : install en une commande, pm2, migrations auto
-- Tunnel Cloudflare + durcissement (pare-feu, cookies sécurisés)
+| Rôle | Accès |
+|------|-------|
+| **Admin** | Tout + gestion des comptes, déploiement, statistiques |
+| **Author** | Créer, modifier, publier, versionner, exporter |
+| **Reader** | Consulter, rechercher, exporter |
 
-### Vague 4 — Gestion & ergonomie (répond aux retours beta)
-- **Gestion des comptes** (admin) : création, rôles, désactivation (révocation immédiate), reset mot de passe temporaire
-- **Suppression de mode opératoire** avec confirmation et cascade
-- **Pictogrammes enrichis** : couleur + texte libre par étape (édition, lecture, export)
-- **Classement famille / type** : champs dédiés, filtre par famille, badges
+## 📊 État du projet — vagues 0 à 5 TERMINÉES
 
-## 🚧 Prochaine vague — Vague 5 (proposée)
+| Vague | Fonctionnalité | État | Validation |
+|-------|---------------|------|-----------|
+| 0 | Contrat figé (schéma, API, routing) | ✅ | 79 tests runtime |
+| 1 | Auth, CRUD workflows/étapes, photos, publication V1/Vn, consultation, export DOCX | ✅ | Testé en réel sur CT 105 |
+| 2 | UI React complète (login, liste, éditeur, lecteur) | ✅ | Smoke tests jsdom |
+| 3 | Sécurité : SSO OIDC générique (off par défaut), sessions expirantes, rate-limit, en-têtes, audit log, deploy verrouillable | ✅ | Audit + tests |
+| 4 | Gestion comptes admin, suppression MO, pictos couleur+texte, familles/types | ✅ | Campagne beta |
+| 5 | Duplication, tri, recherche plein texte, PWA hors-ligne, annotations photo, restauration version, stats | ✅ | Tests runtime + interaction jsdom |
+| — | Thème sombre/clair (communauté, PR #4) | ✅ | Intégré |
+| — | Taille/position des photos (S/M/L/Plein + alignement), bandeaux sticky, clic-clic annotation | ✅ | À valider en campagne |
 
-| # | Fonctionnalité | Détail |
-|---|---|---|
-| 1 | **Annotations photo** | Flèches, rectangles, zones sur les photos (canvas), intégrées à l'export |
-| 2 | **Hors-ligne PWA** | Manifest + service worker, consultation des MO déjà vus sans réseau |
-| 3 | **Recherche plein texte** | Dans les descriptions d'étapes, pas seulement titre/référence |
-| 4 | **Duplication de mode opératoire** | Point de départ rapide d'un MO similaire |
-| 5 | **Tri de la liste** | Par famille, type, date, titre |
+### Constats des campagnes de tests
+- Annotation : le drag natif navigateur entre en conflit avec les cartes d'étapes → **clic-clic** retenu (départ/arrivée), plus le déplacement des formes posées.
+- Express : deux routers sur le même préfixe de path → le premier absorbe tout (règle « un-path-un-domaine » au contrat).
+- Les tests jsdom ne font pas de layout réel (`scrollWidth` = 0) : les vérifications visuelles restent manuelles sur le CT.
 
-## 🗺️ Visions moyenne / longue terme
+## 🛠️ Stack
 
-- **SSO réel** : brancher le SSO de l'entreprise (OIDC déjà prêt — il suffit de la config env) ; 2FA/TOTP pour les admins si pas de SSO
-- **Workflow de validation** : brouillon → relecture → publié (avec commentaires)
-- **Comparaison de versions** : diff entre Vn et Vn+1, restauration d'une version antérieure
-- **Statistiques d'usage** : MO les plus consultés, exports, activité par utilisateur
-- **API publique** : pour intégrations (Home Assistant, GMAO existante…)
-- **Multi-langue** : interface et contenus
+- **Serveur** : Express + better-sqlite3 (un seul process, sert aussi le front buildé)
+- **Front** : React + Vite (PWA : manifest + service worker)
+- **Tests** : `node:test` (79 backend) + smoke tests jsdom (UI)
+- **Déploiement** : conteneur LXC Proxmox, pm2, `update.sh` (sauvegarde base + git reset + build + healthcheck), tunnel Cloudflare
 
-## 🧭 Principes
+## 🚧 Prochaines étapes (vague 6 — proposition)
 
-- Processus : vagues IA supervisées (contrat figé, missions bornées, portes tsc/build/tests runtime, fusion séquentielle, validation humaine sur Proxmox)
-- Sécurité : LAN/tunnel uniquement, SSO dès que disponible, audit de tout
-- Simplicité : un conteneur, une base SQLite, zéro dépendance externe
+| # | Fonctionnalité | Notes |
+|---|---------------|-------|
+| 1 | **UI statistiques** | Page admin dédiée consommant `/api/stats` (existe déjà côté API) |
+| 2 | **Workflow de validation** | brouillon → relecture → publié, commentaires par relecteur |
+| 3 | **Comparaison de versions** | diff Vn/Vn+1 (titres, étapes ajoutées/supprimées) |
+| 4 | **SSO réel** | brancher l'IdP de l'entreprise (OIDC prêt — variables d'env) |
+| 5 | **Annotations sur le DOCX** | dessiner les shapes sur les images exportées |
+| 6 | **PWA : cache amélioré** | pré-cache des MO publiés pour lecture hors-ligne complète |
+
+## 🗺️ Vision long terme
+
+- Multi-langue (interface + contenus)
+- API publique (intégrations GMAO)
+- Comparaison/ restauration fine par étape
+- Statistiques d'usage par MO (vues, exports)
+
+## 🧭 Principes (inchangés)
+
+Vagues IA supervisées : contrat figé avant chaque vague, missions bornées, portes (typecheck + build + tests d'exécution réels), fusion séquentielle, validation humaine sur le CT.

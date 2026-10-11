@@ -1,5 +1,9 @@
 # Cahier des charges — Modop
 
+**Projet :** Application web de création et consultation de modes opératoires, auto-hébergée.
+
+**Statut :** **v1.3** — vagues 0→5 livrées sur `beta` ; ajoute le layout des photos, les annotations cliquables et le guide utilisateur. Historique : v1.2 (gestion comptes, pictos enrichis, familles), v1.1 (durcissement sécurité), v1.0 (MVP).
+
 ## 1. Présentation du projet
 
 ### 1.1 Contexte
@@ -30,6 +34,12 @@ Un mode opératoire se compose de :
 - un **numéro de version** (V1, V2, V3…) incrémenté automatiquement à chaque publication d'une modification.
 
 ### 1.3 bis Fonctionnalités ajoutées (suivi de projet)
+
+- **RF-57 — Layout des photos** : taille (S/M/L/Plein) et alignement (gauche/centre/droite) par photo, persistés, appliqués en édition et lecture.
+- **RF-58 — Annotations photo** : flèches, zones, textes colorés posés par **clic-clic** (départ/arrivée), déplaçables et supprimables ; rendu en lecture.
+- **RF-59 — Ergonomie éditeur** : étapes repliées par défaut, Tout ouvrir/replier, menu « Aller à… », bandeau d'actions sticky.
+- **RF-60 — Lecteur continu** : toutes les étapes à la suite, menu déroulant de navigation, bandeau sticky.
+- **RF-61 — Thème clair/sombre** : bascule dans la barre de navigation, persistée, appliquée partout (variables CSS).
 
 - **RF-50 à RF-53 — Gestion des comptes (admin)** : création (email/mot de passe/rôle), changement de rôle, désactivation/réactivation (sessions révoquées immédiatement), réinitialisation de mot de passe (temporaire affiché une fois).
 - **RF-54 — Suppression de mode opératoire** : confirmation explicite, suppression en cascade (étapes, photos, versions).
