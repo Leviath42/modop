@@ -1,3 +1,4 @@
+import PhotoAnnotator from "../photo-annotator";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError, type Step, type WorkflowDetail } from "../api";
@@ -291,10 +292,12 @@ export default function EditorPage() {
                   </div>
                   <div style={{ display: "grid", gap: "0.4rem" }}>
                     {step.photos.map((ph) => (
-                      <div key={ph.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        <img src={`/photos/${ph.filename}`} alt={ph.alt} style={{ width: "80px", height: "60px", objectFit: "cover", borderRadius: "6px" }} />
-                        <span style={{ flex: 1, fontSize: "0.85rem", color: "#555" }}>{ph.alt}</span>
-                        <button onClick={() => removePhoto(step, ph.id)} style={dangerBtn} aria-label="Supprimer la photo">🗑</button>
+                      <div key={ph.id} style={{ display: "grid", gap: "0.4rem", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "0.6rem" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                          <span style={{ flex: 1, fontSize: "0.85rem", color: "#555" }}>{ph.alt}</span>
+                          <button onClick={() => removePhoto(step, ph.id)} style={dangerBtn} aria-label="Supprimer la photo">🗑</button>
+                        </div>
+                        <PhotoAnnotator photoId={ph.id} filename={ph.filename} alt={ph.alt} initialAnnotations={ph.annotations} />
                       </div>
                     ))}
                     <div>

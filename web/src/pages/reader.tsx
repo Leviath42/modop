@@ -1,3 +1,4 @@
+import AnnotatedPhoto, { parseShapes } from "../annotated-photo";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, ApiError, type WorkflowDetail } from "../api";
@@ -75,20 +76,14 @@ export default function ReaderPage() {
             {step.photos.length > 0 && (
               <div style={{ display: "grid", gap: "0.6rem" }}>
                 {step.photos.map((ph) => (
-                  <figure key={ph.id} style={{ margin: 0 }}>
-                    <img
-                      src={`/photos/${ph.filename}`}
-                      alt={ph.alt || step.title}
-                      loading="lazy"
-                      style={{ width: "100%", borderRadius: "8px", cursor: "zoom-in" }}
-                      onClick={(e) => {
-                        const img = e.currentTarget;
-                        img.style.transform = img.style.transform === "scale(2)" ? "" : "scale(2)";
-                        img.style.transition = "transform 0.2s";
-                      }}
-                    />
-                    {ph.alt && <figcaption style={{ color: "#666", fontSize: "0.85rem" }}>{ph.alt}</figcaption>}
-                  </figure>
+                  <AnnotatedPhoto
+                    key={ph.id}
+                    filename={ph.filename}
+                    alt={ph.alt || step.title}
+                    shapes={parseShapes(ph.annotations)}
+                    maxWidth="100%"
+                    zoomable
+                  />
                 ))}
               </div>
             )}

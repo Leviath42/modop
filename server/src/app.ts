@@ -10,7 +10,7 @@ import { purgeAudit } from "./auth/audit.js";
 import { authRouter } from "./routes/auth.js";
 import { workflowRouter, stepRouter } from "./routes/workflows.js";
 import { listRouter } from "./routes/list.js";
-import { photoRouter, staticPhotos, deletePhotoRouter } from "./routes/photos.js";
+import { photoRouter, staticPhotos, deletePhotoRouter, annotationsRouter } from "./routes/photos.js";
 import { publishRouter } from "./routes/publish.js";
 import { exportRouter } from "./routes/export.js";
 import { deployRouter } from "./routes/deploy.js";
@@ -46,6 +46,7 @@ export function createApp(db: Database.Database, webDist?: string): express.Expr
   app.use("/api/steps", stepRouter(db));
   app.use("/api/steps", photoRouter(db));
   app.use("/api/photos", deletePhotoRouter(db));
+  app.use("/api/photos", annotationsRouter(db));
   app.use("/api/deploy", process.env.MODOP_DEPLOY === "off" ? disabledDeployRouter() : deployRouter(db));
   app.use("/api/admin", adminRouter(db));
   app.use("/api/workflows", duplicateRouter(db));
