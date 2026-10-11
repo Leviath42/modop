@@ -1,6 +1,6 @@
 # Modop — Roadmap
 
-*Dernière mise à jour : 2026-10-11 — basé sur [docs/cahier-des-charges.md](cahier-des-charges.md)*
+*Dernière mise à jour : 2026-10-11 — inclut la vague de correctifs issue de l'audit beta (S/F/U/I) — basé sur [docs/cahier-des-charges.md](cahier-des-charges.md)*
 
 ## 📋 Résumé
 
@@ -65,18 +65,65 @@ Application web de création, publication et consultation de **modes opératoire
 - **Tests** : `node:test` (79 backend) + smoke tests jsdom (UI)
 - **Déploiement** : conteneur LXC Proxmox, pm2, `update.sh` (sauvegarde base + git reset + build + healthcheck), tunnel Cloudflare
 
-## 🚧 Prochaines étapes (vague 6 — proposition)
+## 🚨 Vague 6 — Correctifs audit beta (prioritaire)
+
+Issue de l'audit complet de la branche beta (sécurité, fonctions, UX, UI) — commit de référence `20018c1`.
+Les identifiants (S/F/U/I) font référence au rapport d'audit.
+
+### 🔒 Sécurité
+
+| # | Correctif | Gravité | Notes |
+|---|-----------|---------|-------|
+| S1 | **Vérification d'origine/CSRF sur toutes les routes mutantes** | Haute | Middleware vérifiant `Origin` (ou `Sec-Fetch-Site`) sur tout ce qui n'est pas un GET sûr — défense en profondeur au-delà de `sameSite=lax` |
+| S2 | **Authentification sur `GET /photos/:filename`** | Haute | Les photos d'un MO industriel peuvent être confidentielles ; au minimum ajouter `Cross-Origin-Resource-Policy: same-origin` + `Cache-Control: private` ; idéalement `requireAuth("reader")` sur la route statique |
+| S3 | **Sniff des octets uploadés** (magic numbers JPEG/PNG/WebP) | Moyenne | Le mimetype déclaratif ne suffit pas ; réutiliser la lecture d'en-tête de `export.ts` (`imageSize`) |
+| S4 | **Ne pas renvoyer `err.message` au client sur les 500** | Moyenne | Message générique côté client, détail dans les logs serveur (mode prod) |
+| S5 | **Purge des fichiers photos orphelins** | Moyenne | GC au démarrage (fichiers sans ligne en base) ; crash entre `writeFileSync` et INSERT actuellement non couvert |
+| S8 | **En-têtes `Cross-Origin-Opener-Policy` / `Cross-Origin-Resource-Policy`** | Basse | Complète le durcissement existant |
+| S10 | **Ordre des middlewares : `express.json()` avant le rate-limiter** | Info | Sinon la clé de limitation ne voit jamais l'email (`req.body` indéfini) |
+
+### ⚙️ Fonctions
+
+| # | Correctif | Notes |
+|---|-----------|-------|
+| F1 | **Corriger le script `test` de `server/package.json`** | `tsx --test test/` échoue (`ERR_UNSUPPORTED_DIR_IMPORT`) ; passe uniquement via `tsx --test test/*.test.ts` — la porte de qualité documentée est en échec sur environnement sain |
+| F5 | **Restauration de version : restaurer `canvas` et `display_*`** | `restore.ts` ne copie que pictos/photos — un restore perd silencieusement les formes et la mise en page |
+| F6 | **Duplication : copier `canvas` et `display_*`** | Même perte silencieuse dans `duplicate.ts` |
+| F2 | **Lecteur : exposer la consultation d'une version publiée précise** | Le lecteur montre le brouillon courant ; un endpoint `GET /api/workflows/:id/versions/:n` + sélecteur de version dans le lecteur |
+| F7 | **Export DOCX : inclure le canevas** (formes, pictos couleur, positions) | Compléter avec le rendu des shapes sur les images exportées (rejoint l'objectif existant) |
+| F4 | **Confirmation avant suppression d'une étape** | Le workflow en a une, pas l'étape (🗑 irrécupérable sans version publiée) |
+| F8 | **Service worker : ne pas mettre en cache les réponses API authentifiées** | Un poste partagé peut servir le cache d'un autre profil (confidentialité) ; ne cacher que les assets statiques + navigations |
+| F9 | **Retirer le code mort `confirmDelete` de `admin.tsx`** | Nettoyage |
+
+### 🧭 UX / UI
+
+| # | Correctif | Notes |
+|---|-----------|-------|
+| U9 | **Bouton « Se connecter avec le SSO » sur la page login** | L'entrée `/api/auth/oidc/login` n'est liée nulle part dans le front — le SSO est inutilisable sans connaître l'URL |
+| U1 | **Réordonnancement tactile des étapes** | HTML5 drag & drop inutilisable au doigt ; flèches ↑/↓ de secours ou drag Pointer Events |
+| U2 | **Confirmation/récapitulatif avant publication** | « Publier Vn » agit immédiatement, sans aperçu des changements depuis Vn-1 |
+| U7 | **Debounce sur la recherche** | Une requête API par frappe actuellement |
+| U6 | **Accès à l'historique des versions depuis le lecteur** | L'API `/versions` existe, la page l'ignore |
+| I2 | **Focus visible (`:focus-visible`) pour la navigation clavier** | Aucun style défini |
+| I4 | **Modale de suppression : focus trap + fermeture Échap** | `role="dialog"` sans gestion du focus |
+| I3 | **Recalculer le `scroll-margin` sous le bandeau sticky déplié** | La palette sur 2 lignes dépasse la marge actuelle (5.5rem) |
+
+### ✅ Déjà résolus par le commit `20018c1` (header v2)
+
+- SW network-first sur les navigations + synchro multi-onglets (une partie de F8/thème) ; icônes SVG partagées via `icons.tsx` (début de réponse à I1) ; bouton thème unifié (U4).
+
+## 🚧 Vague 7 (proposition — reprise de l'ancienne vague 6)
 
 | # | Fonctionnalité | Notes |
 |---|---------------|-------|
 | 1 | **UI statistiques** | Page admin dédiée consommant `/api/stats` (existe déjà côté API) |
 | 2 | **Workflow de validation** | brouillon → relecture → publié, commentaires par relecteur |
 | 3 | **Comparaison de versions** | diff Vn/Vn+1 (titres, étapes ajoutées/supprimées) |
-| 4 | **SSO réel** | brancher l'IdP de l'entreprise (OIDC prêt — variables d'env) |
-| 5 | **Annotations sur le DOCX** | dessiner les shapes sur les images exportées |
-| 6 | **PWA : cache amélioré** | pré-cache des MO publiés pour lecture hors-ligne complète |
+| 4 | **SSO réel** | brancher l'IdP de l'entreprise (OIDC prêt — variables d'env ; dépend du correctif U9) |
+| 5 | **Annotations sur le DOCX** | dessiner les shapes sur les images exportées (fusionne avec F7) |
+| 6 | **PWA : cache amélioré** | pré-cache des MO publiés pour lecture hors-ligne complète (après assainissement F8) |
 
-## 🚧 Vague 7 — Gestion documentaire avancée (proposition, à spécifier)
+## 🚧 Vague 8 — Gestion documentaire avancée (proposition, à spécifier)
 
 Demandes du propriétaire à intégrer au cahier des charges :
 
