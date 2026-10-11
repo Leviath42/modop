@@ -6,7 +6,7 @@
 //   deploy-status.json : { mode, startedAt, pid }
 //   deploy.pid / deploy.log / deploy-exit.code : écrits par le script détaché
 
-import { execSync, spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { closeSync, existsSync, openSync, readFileSync, readSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { Router } from "express";
@@ -115,50 +115,44 @@ let gitInfoCache: {
   expiresAt: number;
 } | null = null;
 
-function getGitInfo() {
+// S-A5 : git interrogé de façon asynchrone (execFile) — plus d'event loop
+// bloquée pendant les appels git.
+function git(args: string[]): Promise<string> {
+  return new Promise((resolve) => {
+    execFile("git", args, { cwd: repoRoot(), encoding: "utf8" }, (err, stdout) => {
+      resolve(err ? "" : String(stdout).trim());
+    });
+  });
+}
+async function getGitInfo() {
   if (gitInfoCache && Date.now() < gitInfoCache.expiresAt) {
     return gitInfoCache;
   }
-  let commit: string | null = null;
-  try {
-    commit = execSync("git rev-parse --short HEAD", { cwd: repoRoot(), encoding: "utf8" }).trim();
-  } catch {
-    commit = null;
-  }
-  let headDetail = { subject: null, author: null, date: null } as {
-    subject: string | null; author: string | null; date: string | null;
+  const commit = (await git(["rev-parse", "--short", "HEAD"])) || null;
+  const headDetail = { subject: null, author: null, date: null } as {
+    subject: string | null;
+    author: string | null;
+    date: string | null;
   };
-  try {
-    const out = execSync("git show -s --format=%s%x1f%an%x1f%aI HEAD", {
-      cwd: repoRoot(), encoding: "utf8",
-    }).trim();
-    const [subject, author, date] = out.split("\x1f");
-    headDetail = {
-      subject: subject?.trim() || null,
-      author: author?.trim() || null,
-      date: date?.trim() || null,
-    };
-  } catch {
-    /* hors dépôt git : détail indisponible */
+  const showOut = await git(["show", "-s", "--format=%s%x1f%an%x1f%aI", "HEAD"]);
+  if (showOut) {
+    const [subject, author, date] = showOut.split("\x1f");
+    headDetail.subject = subject?.trim() || null;
+    headDetail.author = author?.trim() || null;
+    headDetail.date = date?.trim() || null;
   }
   let recentCommits: CommitSummary[] = [];
-  try {
-    const out = execSync("git log -5 --format=%h%x1f%s%x1f%an%x1f%aI", {
-      cwd: repoRoot(), encoding: "utf8",
-    }).trim();
-    if (out) {
-      recentCommits = out.split("\n").map((line) => {
-        const [hash, subject, author, date] = line.split("\x1f");
-        return {
-          hash: hash?.trim() ?? "",
-          subject: subject?.trim() ?? "",
-          author: author?.trim() ?? "",
-          date: date?.trim() ?? "",
-        };
-      });
-    }
-  } catch {
-    /* hors dépôt git */
+  const logOut = await git(["log", "-5", "--format=%h%x1f%s%x1f%an%x1f%aI"]);
+  if (logOut) {
+    recentCommits = logOut.split("\n").map((line) => {
+      const [hash, subject, author, date] = line.split("\x1f");
+      return {
+        hash: hash?.trim() ?? "",
+        subject: subject?.trim() ?? "",
+        author: author?.trim() ?? "",
+        date: date?.trim() ?? "",
+      };
+    });
   }
   gitInfoCache = { commit, headDetail, recentCommits, expiresAt: Date.now() + GIT_INFO_TTL_MS };
   return gitInfoCache;
@@ -169,10 +163,10 @@ export function deployRouter(db: Database.Database): Router {
 
   // Statut : accessible à tout utilisateur connecté (la version n'est pas
   // sensible) ; le journal (chemins serveur, sortie npm) est réservé admin.
-  r.get("/status", requireAuth("reader"), (req, res) => {
+  r.get("/status", requireAuth("reader"), async (req, res) => {
     const user = (req as { user?: { role: string } }).user!;
     const isAdmin = user.role === "admin";
-    const git = getGitInfo();
+    const git = await getGitInfo();
     const statusFile = readStatusFile();
     const exitCode = readExitCode();
     const pid = readPid() ?? statusFile?.pid ?? null;
@@ -205,7 +199,7 @@ export function deployRouter(db: Database.Database): Router {
   });
 
   // Déclenchement : admin uniquement.
-  r.post("/trigger", requireAuth("admin"), (req, res) => {
+  r.post("/trigger", requireAuth("admin"), async (req, res) => {
     const mode = (req.body as { mode?: string })?.mode;
     if (mode !== "update" && mode !== "rollback") {
       res.status(422).json({ error: "validation", message: "mode doit être 'update' ou 'rollback'" });
@@ -241,10 +235,7 @@ export function deployRouter(db: Database.Database): Router {
       let pid: number | null = null;
       for (let i = 0; i < 30 && pid === null; i++) {
         pid = readPid();
-        if (pid === null) {
-          const until = Date.now() + 100;
-          while (Date.now() < until) { /* attente active courte */ }
-        }
+        if (pid === null) await new Promise((r) => setTimeout(r, 100));
       }
       writeFileSync(
         dataPath("deploy-status.json"),

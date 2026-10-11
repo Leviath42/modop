@@ -212,3 +212,73 @@ test("anti-CSRF : X-Forwarded-Host honored derrière un reverse proxy/tunnel", a
   });
   assert.equal(csrf.status, 403);
 });
+
+// S-A1 : rétrogradation de rôle -> session révoquée immédiatement
+test("rétrogradation admin->reader : session révoquée (S-A1)", async () => {
+  db.prepare("INSERT OR IGNORE INTO users (email, password_hash, role) VALUES (?, ?, 'admin')").run(
+    "victim@modop.local",
+    bcrypt.hashSync("motdepasse1", 4)
+  );
+  const login = await call("POST", "/api/auth/login", { email: "victim@modop.local", password: "motdepasse1" });
+  assert.equal(login.status, 200);
+  const victim = db.prepare("SELECT id FROM users WHERE email = 'victim@modop.local'").get() as { id: number };
+  db.prepare("INSERT OR IGNORE INTO users (email, password_hash, role) VALUES (?, ?, 'admin')").run(
+    "boss@modop.local",
+    bcrypt.hashSync("motdepasse1", 4)
+  );
+  const adminLogin = await call("POST", "/api/auth/login", { email: "boss@modop.local", password: "motdepasse1" });
+  assert.equal(adminLogin.status, 200);
+  const put = await call("PUT", `/api/admin/users/${victim.id}`, { role: "reader" }, adminLogin.cookie!);
+  assert.equal(put.status, 200);
+  // la session de la victime doit être morte
+  const me = await call("GET", "/api/auth/me", undefined, login.cookie!);
+  assert.equal(me.status, 401);
+  db.prepare("DELETE FROM users WHERE email IN ('victim@modop.local', 'boss@modop.local')").run();
+});
+
+// S-A2 : allowlist MODOP_ALLOWED_HOSTS — un forwarded host hors liste est ignoré
+test("allowlist forwarded host (S-A2)", async () => {
+  const login = await call("POST", "/api/auth/login", { email: "user@modop.local", password: "motdepasse1" });
+  process.env.MODOP_ALLOWED_HOSTS = "modop-beta.calironi.com";
+  const bad = await fetch(base + "/api/auth/logout", {
+    method: "POST",
+    headers: {
+      origin: "https://attaquant.example",
+      "x-forwarded-host": "attaquant.example",
+      cookie: login.cookie!,
+    },
+  });
+  // le forwarded host forgé n'est PAS dans l'allowlist -> référence = Host local
+  // -> origin mismatch -> 403
+  assert.equal(bad.status, 403);
+  const ok = await fetch(base + "/api/auth/logout", {
+    method: "POST",
+    headers: {
+      origin: "https://modop-beta.calironi.com",
+      "x-forwarded-host": "modop-beta.calironi.com",
+      cookie: login.cookie!,
+    },
+  });
+  assert.equal(ok.status, 200);
+  delete process.env.MODOP_ALLOWED_HOSTS;
+});
+
+// S-A3 : borne sur le nombre de formes/annotations
+test("payload canvas borné à 500 formes (S-A3)", async () => {
+  db.prepare("INSERT OR IGNORE INTO users (email, password_hash, role) VALUES (?, ?, 'author')").run(
+    "writer3@modop.local",
+    bcrypt.hashSync("motdepasse1", 4)
+  );
+  const login = await call("POST", "/api/auth/login", { email: "writer3@modop.local", password: "motdepasse1" });
+  assert.equal(login.status, 200);
+  const wf = await call("POST", "/api/workflows", { title: "Bornes", reference: "BOUNDS-1" }, login.cookie!);
+  assert.equal(wf.status, 201);
+  const wfId = (wf.json as { id: number }).id;
+  const step = await call("POST", `/api/workflows/${wfId}/steps`, { title: "s" }, login.cookie!);
+  const stepId = (step.json as { id: number }).id;
+  const shapes = Array.from({ length: 501 }, (_, i) => ({ type: "rect", x1: 0, y1: 0, w: 0.1, h: 0.1, color: "#f00", x2: i }));
+  const tooMany = await call("PUT", `/api/steps/${stepId}/canvas`, { shapes }, login.cookie!);
+  assert.equal(tooMany.status, 422);
+  const fine = await call("PUT", `/api/steps/${stepId}/canvas`, { shapes: shapes.slice(0, 500) }, login.cookie!);
+  assert.equal(fine.status, 200);
+});

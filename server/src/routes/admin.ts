@@ -86,7 +86,8 @@ export function adminRouter(db: Database.Database): Router {
       target.id
     );
     // Révocation immédiate des sessions si désactivation ou rétrogradation
-    if (active === 0) {
+    // (S-A1 : un admin rétrogradé ne doit pas garder ses droits 24 h)
+    if (active === 0 || (role !== undefined && role !== target.role)) {
       db.prepare("DELETE FROM sessions WHERE user_id = ?").run(target.id);
     }
     auditLog(

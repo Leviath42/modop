@@ -51,3 +51,20 @@ export function loginRateLimiter() {
 export function cookieSecure(): boolean {
   return process.env.MODOP_SECURE_COOKIES === "1";
 }
+
+// S-A4 : rate limiting générique en mémoire (IP + clé), fenêtre glissante.
+const genericAttempts = new Map<string, number[]>();
+export function rateLimiter(name: string, windowMs: number, max: number) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const key = `${name}:${req.ip ?? "?"}`;
+    const now = Date.now();
+    const list = (genericAttempts.get(key) ?? []).filter((t) => now - t < windowMs);
+    if (list.length >= max) {
+      res.status(429).json({ error: "too_many_requests", message: "Trop de requêtes — réessayez plus tard" });
+      return;
+    }
+    list.push(now);
+    genericAttempts.set(key, list);
+    next();
+  };
+}

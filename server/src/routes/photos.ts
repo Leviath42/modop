@@ -204,6 +204,10 @@ export function annotationsRouter(db: Database.Database): Router {
       res.status(422).json({ error: "validation", message: "annotations doit être un tableau" });
       return;
     }
+    if (annotations.length > 500) {
+      res.status(422).json({ error: "validation", message: "trop d'annotations (500 maximum)" });
+      return;
+    }
     db.prepare("UPDATE photos SET annotations = ? WHERE id = ?").run(
       JSON.stringify(annotations),
       photo.id
