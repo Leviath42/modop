@@ -87,8 +87,8 @@ export default function DeployPage() {
   return (
     <>
       <NavBar />
-      <main style={{ maxWidth: "720px", margin: "0 auto", padding: "1rem" }}>
-        <section style={{ background: "white", borderRadius: "10px", padding: "1.2rem", boxShadow: "0 1px 4px rgba(0,0,0,0.1)", display: "grid", gap: "1rem" }}>
+      <main style={{ maxWidth: "720px", minWidth: 0, width: "100%", margin: "0 auto", padding: "1rem", boxSizing: "border-box" }}>
+        <section style={{ background: "white", borderRadius: "10px", padding: "1.2rem", boxShadow: "0 1px 4px rgba(0,0,0,0.1)", display: "grid", gap: "1rem", minWidth: 0, overflow: "hidden" }}>
           <h1 style={{ margin: 0 }}>Déploiement</h1>
 
           {!status ? (
@@ -179,7 +179,7 @@ export default function DeployPage() {
               {status.logTail && (
                 <div style={{ borderTop: "1px solid #eee", paddingTop: "0.8rem" }}>
                   <h2 style={{ margin: "0 0 0.4rem", fontSize: "0.95rem" }}>Journal</h2>
-                  <pre style={{ background: "#f2f3f5", borderRadius: "8px", padding: "0.8rem", fontSize: "0.75rem", maxHeight: "260px", overflow: "auto", whiteSpace: "pre-wrap", margin: 0 }}>
+                  <pre style={{ background: "#f2f3f5", borderRadius: "8px", padding: "0.8rem", fontSize: "0.75rem", maxWidth: "100%", overflowX: "hidden", overflowY: "auto", maxHeight: "260px", whiteSpace: "pre-wrap", overflowWrap: "anywhere", margin: 0 }}>
                     {status.logTail}
                   </pre>
                 </div>

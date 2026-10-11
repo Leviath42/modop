@@ -297,7 +297,12 @@ export default function EditorPage() {
                           <span style={{ flex: 1, fontSize: "0.85rem", color: "#555" }}>{ph.alt}</span>
                           <button onClick={() => removePhoto(step, ph.id)} style={dangerBtn} aria-label="Supprimer la photo">🗑</button>
                         </div>
-                        <PhotoAnnotator photoId={ph.id} filename={ph.filename} alt={ph.alt} initialAnnotations={ph.annotations} />
+                        <div
+                          onDragStart={(e) => e.preventDefault()}
+                          onDragEnter={(e) => e.stopPropagation()}
+                        >
+                          <PhotoAnnotator photoId={ph.id} filename={ph.filename} alt={ph.alt} initialAnnotations={ph.annotations} />
+                        </div>
                       </div>
                     ))}
                     <div>

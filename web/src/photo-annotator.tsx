@@ -89,6 +89,8 @@ export default function PhotoAnnotator({
     <div style={{ display: "grid", gap: "0.4rem" }}>
       <div
         ref={boxRef}
+        draggable={false}
+        onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
         style={{ position: "relative", touchAction: "none" }}
         onMouseDown={onPointerDown}
         onMouseMove={onPointerMove}
