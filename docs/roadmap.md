@@ -127,7 +127,7 @@ La série de petits correctifs UI/UX suivie après la vague 6 est journalisée d
 | 5 | **Annotations sur le DOCX** | dessiner les shapes sur les images exportées (fusionne avec F7) |
 | 6 | **PWA : cache amélioré** | pré-cache des MO publiés pour lecture hors-ligne complète (après assainissement F8) |
 
-## ✅ Vague v1.4 — socle GED + terrain — LIVRÉE SUR `delta` (en attente de fusion dans beta)
+## ✅ Vague v1.4 — socle GED + terrain + UI — FUSIONNÉE DANS `beta`
 
 Travaillée sur la branche `delta` en parallèle du fix page blanche (C-10, sur beta). 6 workers fusionnés séquentiellement, portes à chaque fusion (99/99 tests serveur + tsc + build web) :
 
