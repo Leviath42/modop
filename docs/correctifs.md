@@ -202,3 +202,18 @@ Sur écran étroit, le wrap reste possible mais chaque élément est compact —
 **Fichiers** : `web/src/pages/list.tsx`
 
 **État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-14 — Cartes minimales + suppression dans l'éditeur à double validation (réalisé)
+
+**Problème** : 1) avec les badges, les cartes de la liste faisaient toujours deux lignes sur mobile ; 2) la suppression d'un MO se déclenchait depuis la liste (🗑 à côté du titre) — action destructrice trop accessible.
+
+**Correctif** :
+1. **Cartes minimales** : uniquement **titre** (ellipsé), **référence** et **✎** (édition, auteurs) — une seule ligne garantie, même sur mobile. Badges version/famille/type/à revoir retirés des cartes (le filtre « À revoir » et le lecteur restent les sources d'info). Le bouton 🗑 disparaît de la liste.
+2. **Suppression déplacée en bas de la page d'édition**, dans une zone dédiée (fond danger), avec **triple barrière** :
+   - clic « Supprimer le mode opératoire… » →
+   - avertissement détaillé (titre, référence, irréversibilité) + « Continuer… » →
+   - **case à cocher obligatoire** (« Je comprends que… ») + bouton « Supprimer définitivement » **désactivé tant que la case n'est pas cochée**. Le serveur a déjà sa propre confirmation serveur-côté (DELETE cascade) — la double validation UI protège de tout clic accidentel.
+
+**Fichiers** : `web/src/pages/list.tsx`, `web/src/pages/editor.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.

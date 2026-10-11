@@ -62,6 +62,8 @@ export default function EditorPage() {
   const [reviewDue, setReviewDue] = useState("");
   const [ownerEmail, setOwnerEmail] = useState("");
   const [changelog, setChangelog] = useState("");
+  const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(false);
+  const [confirmDeleteDoc2, setConfirmDeleteDoc2] = useState(false);
   const fileRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const isNew = id === "new";
@@ -92,6 +94,18 @@ export default function EditorPage() {
     }
   }
 
+
+  async function deleteWorkflow() {
+    if (!wf) return;
+    try {
+      await api.deleteWorkflow(wf.id);
+      navigate("/", { replace: true });
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Suppression impossible");
+      setConfirmDeleteDoc(false);
+      setConfirmDeleteDoc2(false);
+    }
+  }
 
   async function addStep() {
     if (!wf) return;
@@ -474,6 +488,43 @@ export default function EditorPage() {
                 </li>
               ))}
             </ol>
+          {!isNew && (
+            <section style={{ marginTop: "1.2rem", padding: "0.9rem 1rem", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "10px", display: "grid", gap: "0.5rem" }} aria-label="Suppression du mode opératoire">
+              {!confirmDeleteDoc ? (
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "0.85rem", color: "var(--text-muted)", flex: 1, minWidth: "10rem" }}>Supprimer ce mode opératoire (étapes, photos, versions)</span>
+                  <button onClick={() => { setConfirmDeleteDoc(true); setConfirmDeleteDoc2(false); }} style={{ fontSize: "0.85rem", padding: "0.35rem 0.8rem", borderRadius: "6px", border: "1px solid var(--danger-border)", background: "var(--surface)", color: "var(--error-text)", cursor: "pointer" }}>Supprimer le mode opératoire…</button>
+                </div>
+              ) : !confirmDeleteDoc2 ? (
+                <div style={{ display: "grid", gap: "0.5rem" }}>
+                  <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 600 }}>
+                    ⚠ Supprimer « {title || wf?.title} » ({reference || wf?.reference}) ?
+                  </p>
+                  <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                    Toutes les étapes, photos, versions et exports seront définitivement supprimés. Cette action est irréversible.
+                  </p>
+                  <div style={{ display: "flex", gap: "0.5rem", justifyContent: "end" }}>
+                    <button onClick={() => setConfirmDeleteDoc(false)} style={{ padding: "0.35rem 0.8rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.85rem" }}>Annuler</button>
+                    <button onClick={() => setConfirmDeleteDoc2(true)} style={{ padding: "0.35rem 0.8rem", borderRadius: "6px", border: "1px solid var(--danger-border)", background: "var(--surface)", color: "var(--error-text)", fontSize: "0.85rem", fontWeight: 600 }}>Continuer…</button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: "grid", gap: "0.5rem" }}>
+                  <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 600, color: "var(--error-text)" }}>
+                    Dernière confirmation — cochez pour valider la suppression définitive :
+                  </p>
+                  <label style={{ display: "flex", gap: "0.4rem", alignItems: "center", fontSize: "0.85rem" }}>
+                    <input type="checkbox" checked={confirmDeleteDoc2} onChange={(e) => setConfirmDeleteDoc2(e.target.checked)} />
+                    Je comprends que « {title || wf?.title} » et tout son historique seront supprimés sans possibilité de retour
+                  </label>
+                  <div style={{ display: "flex", gap: "0.5rem", justifyContent: "end" }}>
+                    <button onClick={() => { setConfirmDeleteDoc(false); setConfirmDeleteDoc2(false); }} style={{ padding: "0.35rem 0.8rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.85rem" }}>Annuler</button>
+                    <button onClick={() => void deleteWorkflow()} disabled={!confirmDeleteDoc2} style={{ padding: "0.35rem 0.8rem", borderRadius: "6px", border: "none", background: "var(--error-text)", color: "white", fontSize: "0.85rem", fontWeight: 600 }}>Supprimer définitivement</button>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
         </>
         )}
       </main>

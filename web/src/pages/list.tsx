@@ -14,7 +14,6 @@ export default function ListPage() {
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [family, setFamily] = useState("");
   const [families, setFamilies] = useState<string[]>([]);
-  const [confirmDelete, setConfirmDelete] = useState<Workflow | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -84,35 +83,19 @@ export default function ListPage() {
           <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: "0.5rem" }}>
             {workflows.map((wf) => (
               <li key={wf.id} style={{ background: "var(--surface)", borderRadius: "8px", padding: "0.45rem 0.7rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", flexWrap: "wrap" }}>
-                  <Link to={`/workflow/${wf.id}/read`} style={{ fontWeight: 600, color: "var(--accent)", textDecoration: "none", fontSize: "0.95rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: "1 1 10rem", minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <Link to={`/workflow/${wf.id}/read`} style={{ fontWeight: 600, color: "var(--accent)", textDecoration: "none", fontSize: "0.95rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
                     {wf.title}
                   </Link>
-                  <code style={{ background: "var(--surface-2)", padding: "0.05rem 0.35rem", borderRadius: "4px", fontSize: "0.75rem" }}>{wf.reference}</code>
-                  {wf.family && <span style={{ background: "var(--accent-bg)", color: "var(--accent)", padding: "0.05rem 0.4rem", borderRadius: "4px", fontSize: "0.72rem" }}>{wf.family}</span>}
-                  {wf.category && <span style={{ background: "var(--surface-2)", padding: "0.05rem 0.4rem", borderRadius: "4px", fontSize: "0.72rem" }}>{wf.category}</span>}
-                  <span style={{ marginLeft: "auto", display: "flex", gap: "0.3rem", alignItems: "center" }}>
-                    <span style={{ fontSize: "0.72rem", padding: "0.1rem 0.45rem", borderRadius: "99px", background: wf.state === "published" ? "var(--ok-bg)" : "var(--warn-bg)", color: wf.state === "published" ? "var(--ok-text)" : "var(--warn-text)" }}>
-                      {wf.state === "published" ? `V${wf.current_version}` : "brouillon"}
-                    </span>
-                    {wf.review_due && wf.review_due < new Date().toISOString().slice(0, 10) && (
-                      <span title={`À revoir depuis le ${wf.review_due}`} style={{ fontSize: "0.7rem", padding: "0.1rem 0.45rem", borderRadius: "99px", background: "var(--error-bg)", color: "var(--error-text)", fontWeight: 600 }}>à revoir</span>
-                    )}
-                    {user && user.role !== "reader" && (
-                      <>
-                        <Link to={`/workflow/${wf.id}/edit`} style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>✎</Link>
-                        <button onClick={() => setConfirmDelete(wf)} aria-label={`Supprimer ${wf.title}`} style={{ fontSize: "0.78rem", color: "var(--error-text)", border: "none", background: "none" }}>🗑</button>
-                      </>
-                    )}
-                  </span>
+                  <code style={{ background: "var(--surface-2)", padding: "0.05rem 0.35rem", borderRadius: "4px", fontSize: "0.75rem", flexShrink: 0 }}>{wf.reference}</code>
+                  {user && user.role !== "reader" && (
+                    <Link to={`/workflow/${wf.id}/edit`} aria-label={`Modifier ${wf.title}`} title="Modifier" style={{ fontSize: "0.85rem", color: "var(--text-muted)", textDecoration: "none", flexShrink: 0 }}>✎</Link>
+                  )}
                 </div>
               </li>
             ))}
           </ul>
         )}
-        {confirmDelete && (
-          <ConfirmDeleteDialog workflow={confirmDelete} onClose={() => setConfirmDelete(null)} onDelete={async (w) => { try { await api.deleteWorkflow(w.id); setConfirmDelete(null); setWorkflows((arr) => arr.filter((x) => x.id !== w.id)); } catch (e) { setError(e instanceof ApiError ? e.message : "Suppression impossible"); } }} />
-          )}
       </main>
     </>
   );
@@ -122,37 +105,4 @@ const secondaryBtn: React.CSSProperties = { padding: "0.5rem 0.9rem", borderRadi
 const primaryBtn: React.CSSProperties = { padding: "0.5rem 0.9rem", borderRadius: "6px", border: "none", background: "var(--accent)", color: "white" };
 
 // Modale de confirmation de suppression — focus piégé, Échap pour fermer,
-// focus rendu au bouton Supprimer à l'ouverture (accessibilité clavier, I4).
-function ConfirmDeleteDialog({ workflow, onClose, onDelete }: { workflow: Workflow; onClose: () => void; onDelete: (w: Workflow) => Promise<void> }) {
-  const cancelRef = useRef<HTMLButtonElement | null>(null);
-  const dialogRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    cancelRef.current?.focus();
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") { onClose(); return; }
-      if (e.key !== "Tab" || !dialogRef.current) return;
-      const focusables = dialogRef.current.querySelectorAll<HTMLElement>("button, a, input, select, textarea");
-      if (focusables.length === 0) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", zIndex: 100 }} role="dialog" aria-modal="true" aria-label={`Supprimer ${workflow.title}`}>
-      <div ref={dialogRef} style={{ background: "var(--surface)", color: "var(--text)", borderRadius: "10px", padding: "1.2rem", maxWidth: "400px", display: "grid", gap: "0.8rem" }}>
-        <h2 style={{ margin: 0, fontSize: "1.05rem" }}>Supprimer « {workflow.title} » ?</h2>
-        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.9rem" }}>
-          Toutes les étapes, photos, versions et exports seront définitivement supprimés. Cette action est irréversible.
-        </p>
-        <div style={{ display: "flex", gap: "0.5rem", justifyContent: "end" }}>
-          <button ref={cancelRef} onClick={onClose} style={secondaryBtn}>Annuler</button>
-          <button onClick={() => void onDelete(workflow)} style={{ ...primaryBtn, background: "var(--error-text)" }}>Supprimer définitivement</button>
-        </div>
-      </div>
-    </div>
-  );
-}
+// focus rendu au bouton Supprimer à l'ouverture (accessibilité clavier, I4).\n
