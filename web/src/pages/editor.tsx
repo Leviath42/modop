@@ -450,14 +450,6 @@ export default function EditorPage() {
                 </li>
               ))}
             </ol>
-            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-              <button onClick={addStep} style={secondaryBtn}>+ Ajouter une étape</button>
-              {steps.length > 0 && (
-                <button onClick={() => setConfirmPublish(true)} style={primaryBtn} title="Publie une nouvelle version">
-                  {wf?.state === "published" ? `Publier V${(wf.current_version ?? 0) + 1}` : "Publier V1"}
-                </button>
-              )}
-            </div>
           </section>
         )}
       </main>

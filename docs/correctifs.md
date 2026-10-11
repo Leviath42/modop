@@ -63,7 +63,17 @@ systemctl restart cloudflared
 
 **État** : ✅ livré sur beta (`40e273d`) — tsc + build + 14/14 tests front verts.
 
+## C-04 — Boutons dupliqués en bas de l'éditeur (réalisé)
+
+**Problème** : « + Ajouter une étape » et « Publier Vn » apparaissaient deux fois — une fois dans le bandeau sticky (toujours accessible) et une fois en bas de la liste des étapes : redondance et bruit visuel en fin de page.
+
+**Correctif** : la rangée de boutons sous la liste des étapes est retirée. Les deux actions restent disponibles dans le bandeau sticky (« + étape » et « Publier », avec confirmation pour la publication).
+
+**Fichiers** : `web/src/pages/editor.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tests front verts (editor-smoke, editor-sticky, header-tools, step-drag, mobile-overflow).
+
 <!-- Prochains correctifs de la série :
 
-## C-04 — (titre à définir)
+## C-05 — (titre à définir)
 -->
