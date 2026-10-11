@@ -178,15 +178,20 @@ export default function EditorPage() {
         {error && <p role="alert" style={{ color: "var(--error-text)", background: "var(--error-bg)", padding: "0.5rem 0.8rem", borderRadius: "6px" }}>{error}</p>}
         {notice && <p style={{ color: "var(--ok-text)", background: "var(--ok-bg)", padding: "0.5rem 0.8rem", borderRadius: "6px" }}>{notice}</p>}
 
-        <section style={{ background: "var(--surface)", borderRadius: "10px", padding: "1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "grid", gap: "0.6rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
-            <h1 style={{ margin: 0, fontSize: "1.2rem", flex: 1, minWidth: "8rem", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <section style={{ position: "sticky", top: 0, zIndex: 30, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px", padding: "0.6rem 0.8rem", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", display: "grid", gap: "0.5rem", minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+            <h1 style={{ margin: 0, fontSize: "1.1rem", flex: "1 1 8rem", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
               {isNew ? "Nouveau mode opératoire" : (title || "Sans titre")}{" "}
               <code style={{ fontSize: "0.8em", background: "var(--surface-2)", padding: "0.1rem 0.4rem", borderRadius: "4px" }}>{reference || wf?.reference}</code>
             </h1>
             {!isNew && (
               <button onClick={() => setShowMeta((v) => !v)} aria-expanded={showMeta} style={secondaryBtn}>
-                {showMeta ? "Masquer les détails" : "✉ Détails"}
+                {showMeta ? "Masquer les détails" : "Détails"}
+              </button>
+            )}
+            {!isNew && steps.length > 0 && (
+              <button onClick={() => setConfirmPublish(true)} style={{ ...primaryBtn, marginLeft: "auto" }} title="Publier une nouvelle version" aria-label="Publier">
+                Publier
               </button>
             )}
           </div>
@@ -218,19 +223,11 @@ export default function EditorPage() {
               Créer
             </button>
           )}
-        </section>
-
-        {!isNew && (
-          <section style={{ display: "grid", gap: "0.6rem" }}>
-            <div style={{ position: "sticky", top: 0, zIndex: 30, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", padding: "0.3rem 0.5rem", display: "flex", alignItems: "center", gap: "0.35rem", flexWrap: "wrap", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", minWidth: 0 }}>
+          {!isNew && (
+            <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", flexWrap: "wrap", minWidth: 0, paddingTop: "0.4rem", borderTop: "1px solid var(--border-soft)" }}>
               <h2 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 600, flex: "1 1 6rem", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, color: "var(--text)" }}>
                 {(() => { const st = steps.find((x) => x.id === (activeStepId ?? steps[0]?.id)); return st ? st.title : (title || "sans titre"); })()}
               </h2>
-              {steps.length > 0 && (
-                <button onClick={() => setConfirmPublish(true)} style={iconBtn} title="Publier une nouvelle version" aria-label="Publier">
-                  <PublishIcon /><span style={{ fontSize: "0.8rem", fontWeight: 600 }}>Publier</span>
-                </button>
-              )}
               <button
                 onClick={() => {
                   if (steps.length === 0) return;
@@ -248,14 +245,13 @@ export default function EditorPage() {
                 title="Insertion : photos, flèches, zones, textes, pictogrammes"
                 aria-label="Insertion"
               ><PlusIcon /></button>
-              <button onClick={addStep} style={iconBtn} title="Ajouter une étape" aria-label="Ajouter une étape"><PlusIcon /><span style={{ fontSize: "0.8rem" }}>étape</span></button>
               {steps.length > 1 && (
                 <select value="" onChange={(e) => {
                   const stepId = Number(e.target.value);
                   setOpenSteps((prev) => new Set([...prev, stepId]));
                   setActiveStepId(stepId);
                   setTimeout(() => { document.getElementById(`edit-step-${stepId}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 80);
-                }} aria-label="Aller à une étape" style={{ padding: "0.25rem", borderRadius: "6px", border: "1px solid var(--border)", maxWidth: "100%", minWidth: 0, fontSize: "0.8rem", background: "var(--surface)", color: "var(--text)" }}
+                }} aria-label="Aller à une étape" style={{ padding: "0.2rem 0.3rem", borderRadius: "6px", border: "1px solid var(--border)", maxWidth: "100%", width: "2.6rem", minWidth: 0, fontSize: "0.8rem", background: "var(--surface)", color: "var(--text)" }}
                 >
                   <option value="">…</option>
                   {steps.map((st, si) => <option key={st.id} value={st.id}>{si + 1}. {st.title}</option>)}
@@ -284,6 +280,8 @@ export default function EditorPage() {
                     <button key={c} onClick={() => setInsertColor(c)} aria-label={`Couleur ${c}`}
                       style={{ width: "18px", height: "18px", borderRadius: "50%", background: c, border: insertColor === c ? "2px solid var(--text)" : "1px solid var(--border)", padding: 0, cursor: "pointer", boxSizing: "border-box" }} />
                   ))}
+                  <span style={{ width: "1px", height: "20px", background: "var(--border)" }} aria-hidden="true" />
+                  <button onClick={addStep} style={iconBtn} title="Ajouter une étape" aria-label="Ajouter une étape"><PlusIcon /><span style={{ fontSize: "0.75rem" }}>étape</span></button>
                   <span style={{ width: "1px", height: "20px", background: "var(--border)" }} aria-hidden="true" />
                   {PICTO_PRESETS.map((preset) => {
                     const st = steps.find((x) => x.id === (activeStepId ?? steps[0].id));
@@ -319,7 +317,8 @@ export default function EditorPage() {
                 </div>
               )}
             </div>
-            {steps.length === 0 && <p style={{ color: "var(--text-muted)" }}>Aucune étape. Ajoutez la première.</p>}
+          )}
+          {steps.length === 0 && <p style={{ color: "var(--text-muted)" }}>Aucune étape. Ajoutez la première.</p>}
             <ol style={{ listStyle: "none", padding: 0, display: "grid", gap: "0.6rem" }}>
               {steps.map((step, i) => (
                 <li
@@ -443,7 +442,6 @@ export default function EditorPage() {
               ))}
             </ol>
           </section>
-        )}
       </main>
       {dragIndex !== null && dragCursor && (
         <div ref={dragGhostRef} aria-hidden="true" style={{ position: "fixed", left: dragCursor.x, top: dragCursor.y, transform: "translate(-50%, -120%)", pointerEvents: "none", zIndex: 200, background: "var(--accent)", color: "white", padding: "0.25rem 0.6rem", borderRadius: "6px", fontSize: "0.85rem", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>

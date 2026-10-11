@@ -88,7 +88,21 @@ systemctl restart cloudflared
 
 **État** : ✅ livré sur beta — tsc + build + tests front verts.
 
+## C-06 — Header éditeur fusionné avec les détails (réalisé)
+
+**Problème** : la page d'édition commençait par une carte « détails du document » puis, plus bas, un bandeau sticky d'outils — deux blocs visuellement distincts pour un même contexte ; le bouton « Détails » portait une icône ✉, le champ « aller à » était large, « + étape » était un bouton permanent du bandeau et « Publier » se fondait parmi les icônes.
+
+**Correctif** :
+- **Fusion** : la carte détails et le bandeau d'outils forment **une seule section sticky** — rangée 1 : titre du document + « Détails » (sans icône) + **« Publier » poussé à droite (`marginLeft: auto`) en couleur d'accent** (fond bleu `primaryBtn`) ; champs de détails dépliables ; rangée outils (étape active, replier, insertion, « … » réduit).
+- « Aller à l'étape » réduit (largeur 2.6rem, padding compact).
+- « + étape » déplacé dans la **palette d'outils dépliante** (« + » → photos, formes, couleurs, **+ étape**, pictos, suppression).
+- Les étapes restent sous la section sticky (défilement normal).
+
+**Fichiers** : `web/src/pages/editor.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tests front verts (editor-smoke, editor-sticky, header-tools, step-drag, mobile-overflow).
+
 <!-- Prochains correctifs de la série :
 
-## C-06 — (titre à définir)
+## C-07 — (titre à définir)
 -->
