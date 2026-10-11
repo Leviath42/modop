@@ -83,33 +83,29 @@ export default function ListPage() {
         ) : (
           <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: "0.5rem" }}>
             {workflows.map((wf) => (
-              <li key={wf.id} style={{ background: "var(--surface)", borderRadius: "8px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
-                  <Link to={`/workflow/${wf.id}/read`} style={{ fontWeight: 600, color: "var(--accent)", textDecoration: "none", fontSize: "1.05rem" }}>
+              <li key={wf.id} style={{ background: "var(--surface)", borderRadius: "8px", padding: "0.45rem 0.7rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", flexWrap: "wrap" }}>
+                  <Link to={`/workflow/${wf.id}/read`} style={{ fontWeight: 600, color: "var(--accent)", textDecoration: "none", fontSize: "0.95rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: "1 1 10rem", minWidth: 0 }}>
                     {wf.title}
                   </Link>
-                  <code style={{ background: "var(--surface-2)", padding: "0.1rem 0.4rem", borderRadius: "4px", fontSize: "0.85rem" }}>{wf.reference}</code>
-                  <span style={{ marginLeft: "auto", display: "flex", gap: "0.4rem", alignItems: "center" }}>
-                    <span style={{ fontSize: "0.8rem", padding: "0.15rem 0.5rem", borderRadius: "99px", background: wf.state === "published" ? "var(--ok-bg)" : "var(--warn-bg)", color: wf.state === "published" ? "var(--ok-text)" : "var(--warn-text)" }}>
+                  <code style={{ background: "var(--surface-2)", padding: "0.05rem 0.35rem", borderRadius: "4px", fontSize: "0.75rem" }}>{wf.reference}</code>
+                  {wf.family && <span style={{ background: "var(--accent-bg)", color: "var(--accent)", padding: "0.05rem 0.4rem", borderRadius: "4px", fontSize: "0.72rem" }}>{wf.family}</span>}
+                  {wf.category && <span style={{ background: "var(--surface-2)", padding: "0.05rem 0.4rem", borderRadius: "4px", fontSize: "0.72rem" }}>{wf.category}</span>}
+                  <span style={{ marginLeft: "auto", display: "flex", gap: "0.3rem", alignItems: "center" }}>
+                    <span style={{ fontSize: "0.72rem", padding: "0.1rem 0.45rem", borderRadius: "99px", background: wf.state === "published" ? "var(--ok-bg)" : "var(--warn-bg)", color: wf.state === "published" ? "var(--ok-text)" : "var(--warn-text)" }}>
                       {wf.state === "published" ? `V${wf.current_version}` : "brouillon"}
                     </span>
                     {wf.review_due && wf.review_due < new Date().toISOString().slice(0, 10) && (
-                      <span title={`À revoir depuis le ${wf.review_due}`} style={{ fontSize: "0.75rem", padding: "0.15rem 0.5rem", borderRadius: "99px", background: "var(--error-bg)", color: "var(--error-text)", fontWeight: 600 }}>à revoir</span>
+                      <span title={`À revoir depuis le ${wf.review_due}`} style={{ fontSize: "0.7rem", padding: "0.1rem 0.45rem", borderRadius: "99px", background: "var(--error-bg)", color: "var(--error-text)", fontWeight: 600 }}>à revoir</span>
                     )}
                     {user && user.role !== "reader" && (
                       <>
-                        <Link to={`/workflow/${wf.id}/edit`} style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>Modifier</Link>
-                        <button onClick={() => setConfirmDelete(wf)} style={{ fontSize: "0.85rem", color: "var(--error-text)", border: "none", background: "none" }}>Supprimer</button>
+                        <Link to={`/workflow/${wf.id}/edit`} style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>✎</Link>
+                        <button onClick={() => setConfirmDelete(wf)} aria-label={`Supprimer ${wf.title}`} style={{ fontSize: "0.78rem", color: "var(--error-text)", border: "none", background: "none" }}>🗑</button>
                       </>
                     )}
                   </span>
                 </div>
-                {(wf.family || wf.category) && (
-                  <p style={{ margin: "0.2rem 0 0", color: "var(--text-muted)", fontSize: "0.9rem" }}>
-                    {wf.family && <span style={{ background: "var(--accent-bg)", color: "var(--accent)", padding: "0.1rem 0.5rem", borderRadius: "4px", fontSize: "0.8rem", marginRight: "0.3rem" }}>{wf.family}</span>}
-                    {wf.category && <span style={{ background: "var(--surface-2)", padding: "0.1rem 0.5rem", borderRadius: "4px", fontSize: "0.8rem" }}>{wf.category}</span>}
-                  </p>
-                )}
               </li>
             ))}
           </ul>

@@ -187,3 +187,18 @@ systemctl restart cloudflared
 **Fichiers** : `web/src/nav.tsx`, `web/src/pages/editor.tsx`, `web/src/pages/reader.tsx`, `web/src/lib/nav-menu.test.tsx`
 
 **État** : ✅ livré sur beta — tsc + build + tous tests front + 100/100 serveur.
+
+## C-13 — Cartes de la liste compactées en une ligne (réalisé)
+
+**Problème** : chaque mode opératoire de l'accueil occupait jusqu'à trois lignes (titre/badges, badges famille/type sur une seconde ligne, wrap mobile des actions).
+
+**Correctif** : tout tient sur **une ligne** par carte :
+- badges famille/type remontés **inline** à côté de la référence (plus de bloc séparé) ;
+- titre à ellipsis (flex 1 1 10rem) : les longs titres ne font plus déborder la ligne ;
+- « Modifier »/« Supprimer » remplacés par icônes ✎ / 🗑 (aria-label conservé) ;
+- padding de carte réduit (0.45rem × 0.7rem) et typographie resserrée (0.72–0.95rem).
+Sur écran étroit, le wrap reste possible mais chaque élément est compact — la carte ne dépasse plus deux lignes au pire.
+
+**Fichiers** : `web/src/pages/list.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.
