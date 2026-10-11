@@ -260,6 +260,54 @@ export default function EditorPage() {
                 </>
               )}
             </div>
+            {steps.length > 0 && (
+              <div style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.35rem" }}>
+                <button
+                  onClick={() => {
+                    const target = activeStepId ?? steps[0].id;
+                    if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); }
+                    fileRefs.current[target]?.click();
+                  }}
+                  style={toolBtn}
+                  aria-label="Ajouter des photos à l'étape ouverte"
+                  title="Photos de l'étape ouverte"
+                >📷</button>
+                {TOOLS.map((t) => (
+                  <button
+                    key={t.kind}
+                    onClick={() => { setInsertTool(insertTool === t.kind ? null : t.kind); const target = activeStepId ?? steps[0].id; if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); } }}
+                    style={{ ...toolBtn, background: insertTool === t.kind ? "var(--accent-bg)" : "var(--surface)", borderColor: insertTool === t.kind ? "var(--accent)" : "var(--border)" }}
+                    aria-pressed={insertTool === t.kind}
+                    title={`${t.label} sur l'étape ouverte`}
+                  >{t.kind === "arrow" ? "➶" : t.kind === "rect" ? "▭" : "T"}</button>
+                ))}
+                {insertTool && insertTool !== "text" && COLORS.map((c) => (
+                  <button key={c} onClick={() => setInsertColor(c)} aria-label={`Couleur ${c}`}
+                    style={{ width: "18px", height: "18px", borderRadius: "50%", background: c, border: insertColor === c ? "2px solid var(--text)" : "1px solid var(--border)", padding: 0, cursor: "pointer", boxSizing: "border-box" }} />
+                ))}
+                <span style={{ width: "1px", height: "18px", background: "var(--border)" }} aria-hidden="true" />
+                {PICTO_PRESETS.map((preset) => {
+                  const st = steps.find((x) => x.id === (activeStepId ?? steps[0].id));
+                  const on = st ? st.pictos.some((x) => x.kind === preset.kind) : false;
+                  return (
+                    <button
+                      key={preset.kind}
+                      onClick={() => {
+                        const target = activeStepId ?? steps[0].id;
+                        const stp = steps.find((x) => x.id === target);
+                        if (!stp) return;
+                        if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); }
+                        const idx = stp.pictos.findIndex((x) => x.kind === preset.kind);
+                        void patchStep(stp, { pictos: idx >= 0 ? stp.pictos.filter((_, k) => k !== idx) : [...stp.pictos, { kind: preset.kind, label: preset.label, color: preset.color }] });
+                      }}
+                      style={{ ...toolBtn, fontSize: "0.75rem", borderColor: on ? preset.color : "var(--border)", background: on ? `${preset.color}22` : "var(--surface)" }}
+                      aria-pressed={on}
+                      title={`${preset.label} sur l'étape ouverte`}
+                    >{preset.label}</button>
+                  );
+                })}
+              </div>
+            )}
             {steps.length === 0 && <p style={{ color: "var(--text-muted)" }}>Aucune étape. Ajoutez la première.</p>}
             <ol style={{ listStyle: "none", padding: 0, display: "grid", gap: "0.6rem" }}>
               {steps.map((step, i) => (
@@ -326,67 +374,6 @@ export default function EditorPage() {
                     aria-label={`Description étape ${i + 1}`}
                   />
                   <div style={{ display: "grid", gap: "0.4rem" }}>
-                    <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
-                      {PICTO_PRESETS.map((preset) => {
-                        const idx = step.pictos.findIndex((x) => x.kind === preset.kind);
-                        const on = idx >= 0;
-                        return (
-                          <button
-                            key={preset.kind}
-                            onClick={() =>
-                              patchStep(step, {
-                                pictos: on
-                                  ? step.pictos.filter((_, i) => i !== idx)
-                                  : [...step.pictos, { kind: preset.kind, label: preset.label, color: preset.color }],
-                              })
-                            }
-                            style={{
-                              padding: "0.2rem 0.55rem", borderRadius: "4px", fontSize: "0.8rem",
-                              border: on ? `2px solid ${preset.color}` : "1px solid var(--border)",
-                              background: on ? `${preset.color}22` : "var(--surface)",
-                              color: "var(--text)",
-                            }}
-                            aria-pressed={on}
-                          >
-                            {preset.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {step.pictos.map((ph, pi) => (
-                      <div key={pi} style={{ display: "flex", gap: "0.4rem", alignItems: "center", flexWrap: "wrap" }}>
-                        <input
-                          type="color"
-                          value={ph.color}
-                          onChange={(e) => {
-                            const next = step.pictos.map((x, i) => (i === pi ? { ...x, color: e.target.value } : x));
-                            setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, pictos: next } : s)));
-                          }}
-                          onBlur={() => patchStep(step, { pictos: step.pictos })}
-                          aria-label={`Couleur du pictogramme ${pi + 1}`}
-                        />
-                        <input
-                          value={ph.label}
-                          onChange={(e) => {
-                            const next = step.pictos.map((x, i) => (i === pi ? { ...x, label: e.target.value } : x));
-                            setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, pictos: next } : s)));
-                          }}
-                          onBlur={() => patchStep(step, { pictos: step.pictos })}
-                          placeholder="Texte de l'avertissement"
-                          style={{ flex: "1 1 7rem", maxWidth: "100%", padding: "0.3rem 0.5rem", borderRadius: "4px", border: "1px solid var(--border)", minWidth: 0, boxSizing: "border-box" }}
-                          aria-label={`Texte du pictogramme ${pi + 1}`}
-                        />
-                        <button
-                          onClick={() => patchStep(step, { pictos: step.pictos.filter((_, i) => i !== pi) })}
-                          style={dangerBtn}
-                          aria-label="Retirer ce pictogramme"
-                        >
-                          🗑
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ display: "grid", gap: "0.4rem" }}>
                     <StepCanvas
                       stepId={step.id}
                       tool={activeStepId === step.id ? insertTool : null}
@@ -417,7 +404,6 @@ export default function EditorPage() {
                           e.target.value = "";
                         }}
                       />
-                      <button onClick={() => fileRefs.current[step.id]?.click()} style={secondaryBtn}>📷 Photo(s)…</button>
                     </div>
                   </div>
                   </>
