@@ -71,6 +71,12 @@ Le header affiche le **nom de l'étape active**, **Publier**, **▸/▾** (tout 
 - **Clic sur une image ou une forme** : sélectionne cet objet (Maj-clic pour ajouter à la sélection).
 - **Glisser sur le fond** : dessine un **rectangle de sélection** (appliqué au relâchement).
 - **Clic ou tap ailleurs** (fond du canevas, autre zone de l'éditeur) : **désélectionne** l'image ou la forme sélectionnée.
+- **En lecture** : cliquez/touchez une photo pour l'ouvrir **plein écran** (Échap ou toucher le fond pour fermer, pincez pour zoomer).
+- **Titre/description/famille…** : enregistrés automatiquement ~1 s après la dernière frappe (badge « Enregistrement… » dans le bandeau).
+- **Envoi de plusieurs photos** : parallèle, avec compteur de progression ; une photo en échec n'interrompt pas les autres.
+- **En lecture** : cliquez/touchez une photo pour l'ouvrir **plein écran** (Échap ou toucher le fond pour fermer, pincez pour zoomer).
+- **Titre/description/famille…** : enregistrés automatiquement ~1 s après la dernière frappe (badge « Enregistrement… » dans le bandeau).
+- **Envoi de plusieurs photos** : parallèle, avec compteur de progression ; une photo en échec n'interrompt pas les autres.
 - **Glisser un objet** : le déplace (le groupe complet si plusieurs sélectionnés) ; relâcher dans la **colonne de droite** supprime.
 - **Poignée en bas à droite d'une image** : redimensionne.
 - Les positions sont enregistrées dans un repère fixe : vos objets restent exactement où vous les posez.

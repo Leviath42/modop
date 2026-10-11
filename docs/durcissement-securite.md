@@ -18,6 +18,7 @@ Sans configuration, Modop utilise l'auth maison (bcrypt), les cookies `sameSite=
 | `MODOP_OIDC_ADMIN_GROUP` / `_AUTHOR_GROUP` | Valeurs du claim → rôles | ex. `modop-admin` |
 | `MODOP_SECURE_COOKIES` | Cookies `secure` (derrière TLS) | `1` |
 | `MODOP_SESSION_TTL_HOURS` | Durée de session | `24` |
+| `MODOP_ALLOWED_HOSTS` | Allowlist des hôtes acceptés dans `X-Forwarded-Host` (anti-CSRF derrière proxy/tunnel), séparés par des virgules. Vide = aucun contrôle (comportement historique) | — |
 | `MODOP_DEPLOY` | `off` désactive totalement /api/deploy (statut inclus) | `off` en prod stricte |
 
 Le SSO est **générique** : aucun fournisseur codé en dur, tout passe par OIDC Discovery. En mode SSO, les mots de passe locaux sont ignorés pour ces comptes (`change-password` refusé) ; le login maison reste disponible en fallback si l'IdP tombe.

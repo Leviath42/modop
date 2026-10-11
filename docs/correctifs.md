@@ -5,6 +5,42 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 *Les correctifs listés ici sont retirés de la roadmap (vague 6 livrée) : ce journal trace la série en cours.*
 
+## C-32 — Vague 6bis : correctifs de l'audit complet (4 workers, réalisé)
+
+Audit complet (sécurité, bugs, code mort, UI/UX — items S-A1..S-A5, B-A1..B-A5, D-A1..D-A4, U-B1..U-B4 détaillés dans la roadmap, vague 6bis) corrigés par 4 workers fusionnés séquentiellement sur beta.
+
+**Sécurité** : révocation immédiate des sessions au changement de rôle (S-A1) ; allowlist `MODOP_ALLOWED_HOSTS` pour `X-Forwarded-Host` (S-A2) ; payloads canvas/annotations bornés à 500 formes (S-A3) ; rate limiting 20/15 min sur les signalements terrain (S-A4) ; git interrogé en asynchrone dans la page déploiement, plus d'event loop bloquée (S-A5).
+
+**Bugs** : « Terminé ✓ » de la lecture guidée navigue vers la lecture classique (B-A1, + test) ; autosave des métadonnées 800 ms après la frappe avec badge « Enregistrement… » (B-A2, RF-16) ; uploads de photos parallèles avec progression et tolérance d'échec (B-A3) ; bandaux succès/erreur distincts dans le lecteur (B-A4) ; compression client renvoie le fichier brut si l'image n'est pas parsable (B-A5).
+
+**Code mort** : `photo-annotator.tsx` (398 lignes jamais rendues) et composant `AnnotatedPhoto` supprimés, avec leurs tests (D-A1/D-A2) ; `GET /api/admin/audit` expose enfin le journal (D-A3, + test admin 200 / auteur 403) ; dépendances de test déplacées en devDependencies (D-A4).
+
+**UI/UX** : lightbox plein écran sur les photos en lecture (U-B1, RF-31) ; stats admin lisibles — titre + référence au lieu de « workflow:12 » (U-B2) ; titres de liste repliés sur 2 lignes (U-B3) ; section « Journal d'audit » dans /stats (U-B4).
+
+**Fichiers** : serveur (`admin.ts`, `origin.ts`, `security.ts`, `deploy.ts`, `photos.ts`, `workflows.ts`, `stats.ts`, `app.ts`), front (`editor.tsx`, `guided-reader.tsx`, `reader.tsx`, `step-canvas-view.tsx`, `stats.tsx`, `list.tsx`, `api.ts`, `annotated-photo.tsx`), tests (`security.test.ts`, `guided-finish.test.ts`).
+
+**État** : ✅ livré sur beta — 106/106 tests serveur, tsc + build + tous tests front verts.
+
+---
+
+## C-32 — Vague 6bis : correctifs de l'audit complet (4 workers, réalisé)
+
+Audit complet (sécurité, bugs, code mort, UI/UX — items S-A1..S-A5, B-A1..B-A5, D-A1..D-A4, U-B1..U-B4 détaillés dans la roadmap, vague 6bis) corrigés par 4 workers fusionnés séquentiellement sur beta.
+
+**Sécurité** : révocation immédiate des sessions au changement de rôle (S-A1) ; allowlist `MODOP_ALLOWED_HOSTS` pour `X-Forwarded-Host` (S-A2) ; payloads canvas/annotations bornés à 500 formes (S-A3) ; rate limiting 20/15 min sur les signalements terrain (S-A4) ; git interrogé en asynchrone dans la page déploiement, plus d'event loop bloquée (S-A5).
+
+**Bugs** : « Terminé ✓ » de la lecture guidée navigue vers la lecture classique (B-A1, + test) ; autosave des métadonnées 800 ms après la frappe avec badge « Enregistrement… » (B-A2, RF-16) ; uploads de photos parallèles avec progression et tolérance d'échec (B-A3) ; bandaux succès/erreur distincts dans le lecteur (B-A4) ; compression client renvoie le fichier brut si l'image n'est pas parsable (B-A5).
+
+**Code mort** : `photo-annotator.tsx` (398 lignes jamais rendues) et composant `AnnotatedPhoto` supprimés, avec leurs tests (D-A1/D-A2) ; `GET /api/admin/audit` expose enfin le journal (D-A3, + test admin 200 / auteur 403) ; dépendances de test déplacées en devDependencies (D-A4).
+
+**UI/UX** : lightbox plein écran sur les photos en lecture (U-B1, RF-31) ; stats admin lisibles — titre + référence au lieu de « workflow:12 » (U-B2) ; titres de liste repliés sur 2 lignes (U-B3) ; section « Journal d'audit » dans /stats (U-B4).
+
+**Fichiers** : serveur (`admin.ts`, `origin.ts`, `security.ts`, `deploy.ts`, `photos.ts`, `workflows.ts`, `stats.ts`, `app.ts`), front (`editor.tsx`, `guided-reader.tsx`, `reader.tsx`, `step-canvas-view.tsx`, `stats.tsx`, `list.tsx`, `api.ts`, `annotated-photo.tsx`), tests (`security.test.ts`, `guided-finish.test.ts`).
+
+**État** : ✅ livré sur beta — 106/106 tests serveur, tsc + build + tous tests front verts.
+
+---
+
 ## C-31 — Désélection : clic/tap ailleurs que sur l'image (réalisé)
 
 **Problème** : une image (ou forme) sélectionnée dans le canevas d'édition ne pouvait être désélectionnée QUE par un clic souris sur le fond du canevas. Trois cas restaient bloqués : 1) au **tactile/stylo**, un tap sur le fond ne désélectionnait rien (le `return` C-19 court-circuitait tout traitement du fond au doigt) ; 2) **les formes** n'étaient jamais vidées par un clic fond (seules les photos l'étaient) ; 3) un clic **ailleurs dans l'éditeur** (champs, boutons, fond de page — hors canevas) laissait la sélection intacte.

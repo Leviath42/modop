@@ -116,9 +116,9 @@ La série de petits correctifs UI/UX suivie après la vague 6 est journalisée d
 
 - SW network-first sur les navigations + synchro multi-onglets (une partie de F8/thème) ; icônes SVG partagées via `icons.tsx` (début de réponse à I1) ; bouton thème unifié (U4).
 
-## 🔍 Vague 6bis — Audit complet (4 workers : sécurité, bugs, code mort, UI/UX)
+## ✅ Vague 6bis — Audit complet (4 workers) — CORRIGÉE
 
-Audit du code beta post-C-31, un worker par domaine. Chaque item : constat → action proposée → fichiers.
+Audit du code beta post-C-31, un worker par domaine. **Tous les items S-A1..S-A5, B-A1..B-A5, D-A1..D-A4 et U-B1..U-B4 sont corrigés et fusionnés sur beta** (cf. C-32 dans [correctifs.md](correctifs.md)). Le tableau ci-dessous reste comme référence de l'audit initial.
 
 ### 🔒 Sécurité (worker S)
 
