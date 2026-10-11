@@ -49,7 +49,8 @@ export default function AnnotatedPhoto({
           src={`/photos/${filename}`}
           alt={alt}
           loading="lazy"
-          style={{ width: "100%", display: "block", borderRadius: "8px", cursor: zoomable ? "zoom-in" : undefined }}
+          draggable={false}
+          style={{ width: "100%", display: "block", borderRadius: "8px", userSelect: "none", cursor: zoomable ? "zoom-in" : undefined }}
           onClick={onImageClick}
         />
         {shapes.length > 0 && (
