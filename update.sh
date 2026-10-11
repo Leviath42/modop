@@ -89,14 +89,23 @@ cp "$BACKUP_DIR/db-$STAMP.db" "$DB_FILE"
 [ -f "$BACKUP_DIR/db-$STAMP.db-wal" ] && cp "$BACKUP_DIR/db-$STAMP.db-wal" "$DB_FILE-wal" || true
 [ -f "$BACKUP_DIR/db-$STAMP.db-shm" ] && cp "$BACKUP_DIR/db-$STAMP.db-shm" "$DB_FILE-shm" || true
 
-if ! git diff --quiet "$BEFORE" "$AFTER" -- server/package-lock.json; then
-  log "server/package-lock.json a changé : npm ci"
+# npm ci si le lock a changé OU si node_modules est absent (installation
+# fraîche : un clone neuf n'a jamais de node_modules, et "le lock n'a pas
+# changé" ne doit pas empêcher l'installation).
+if ! git diff --quiet "$BEFORE" "$AFTER" -- server/package-lock.json || [ ! -d server/node_modules ]; then
+  log "serveur : npm ci (lock changé ou node_modules absent)"
   (cd server && NODE_ENV=development npm ci) || die "npm ci serveur a échoué"
 fi
-if ! git diff --quiet "$BEFORE" "$AFTER" -- web/package-lock.json; then
-  log "web/package-lock.json a changé : npm ci"
+if ! git diff --quiet "$BEFORE" "$AFTER" -- web/package-lock.json || [ ! -d web/node_modules ]; then
+  log "web : npm ci (lock changé ou node_modules absent)"
   (cd web && NODE_ENV=development npm ci) || die "npm ci web a échoué"
 fi
+
+# Garde-fou : dépendances critiques résolues avant de relancer (un npm ci
+# partiel ou un dossier corrompu plantait le serveur en boucle pm2).
+(cd server && node -e "require.resolve('better-sqlite3')" 2>/dev/null) \
+  || { log "better-sqlite3 introuvable : réinstallation complète"; \
+       (cd server && NODE_ENV=development npm ci) || die "npm ci serveur a échoué"; }
 
 log "build du front"
 (cd web && npm run build) || die "build web a échoué"
