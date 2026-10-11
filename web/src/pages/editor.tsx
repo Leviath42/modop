@@ -318,6 +318,9 @@ export default function EditorPage() {
               )}
             </div>
           )}
+        </section>
+        {!isNew && (
+        <>
           {steps.length === 0 && <p style={{ color: "var(--text-muted)" }}>Aucune étape. Ajoutez la première.</p>}
             <ol style={{ listStyle: "none", padding: 0, display: "grid", gap: "0.6rem" }}>
               {steps.map((step, i) => (
@@ -441,7 +444,8 @@ export default function EditorPage() {
                 </li>
               ))}
             </ol>
-          </section>
+        </>
+        )}
       </main>
       {dragIndex !== null && dragCursor && (
         <div ref={dragGhostRef} aria-hidden="true" style={{ position: "fixed", left: dragCursor.x, top: dragCursor.y, transform: "translate(-50%, -120%)", pointerEvents: "none", zIndex: 200, background: "var(--accent)", color: "white", padding: "0.25rem 0.6rem", borderRadius: "6px", fontSize: "0.85rem", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>

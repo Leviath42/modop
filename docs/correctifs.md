@@ -102,7 +102,17 @@ systemctl restart cloudflared
 
 **État** : ✅ livré sur beta — tsc + build + tests front verts (editor-smoke, editor-sticky, header-tools, step-drag, mobile-overflow).
 
+## C-07 — Header sticky cassé par la fusion C-06 (réalisé)
+
+**Problème** : après la fusion C-06, le header n'était plus persistant au scroll. Cause : la liste des étapes (`<ol>`) s'était retrouvée **à l'intérieur** de la section sticky — un élément `position: sticky` aussi haut que son propre contenu n'a plus d'espace de défilement pour « coller » en haut : il défilait avec la page.
+
+**Correctif** : la section sticky (titre + détails + rangée d'outils) est refermée **avant** la liste des étapes. Celle-ci redevient un fragment séparé (`{!isNew && (<>...</>)}`) sous la section. Le header reste collé pendant le défilement des étapes.
+
+**Fichiers** : `web/src/pages/editor.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tests front verts.
+
 <!-- Prochains correctifs de la série :
 
-## C-07 — (titre à définir)
+## C-08 — (titre à définir)
 -->
