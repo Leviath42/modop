@@ -41,16 +41,17 @@ Un mode opératoire déjà consulté reste **lisible sans réseau** (PWA) — ut
 
 ### Éditer — les étapes
 - **« + Ajouter une étape »** : les étapes apparaissent **repliées** (titre seul).
-- Ouvrir une étape : bouton **▸** (ou cliquer dans son titre).
+- Ouvrir une étape : **cliquer sur son titre** ou le bouton **▸/▾** (plus visible) ; le focus dans le titre ne l'ouvre plus.
 - **« Tout ouvrir » / « Tout replier »** et menu **« Aller à… »** dans le bandeau du haut (toujours visible).
 - **Réordonner** : glissez la poignée **⠿** à gauche du titre, ou boutons **▲/▼**.
 - Chaque étape : titre, description, pictogrammes, photos.
+- **Métadonnées repliées** : en édition, seul le titre + la référence restent visibles ; bouton **✉ Détails** pour éditer famille/type/description.
 
 ### Pictogrammes
 Boutons préréglés (Attention, Danger, EPI, Risque électrique, Point chaud, Outillage, Information) — cliquez pour activer/désactiver. Chaque picto accepte une **couleur** (pastilles) et un **texte libre** modifiable.
 
 ### Photos
-1. **« 📷 Photo… »** : depuis l'appareil ou l'appareil photo du téléphone (compression automatique).
+1. **« 📷 Photo(s)… »** : depuis l'appareil ou l'appareil photo du téléphone (compression automatique) — **plusieurs images peuvent être sélectionnées d'un coup**.
 2. **Taille** : S (35 %) / M (60 %) / L (85 %) / Plein — appliqué en direct, sauvegardé.
 3. **Position** : ⯇ gauche / ≡ centre / ⯈ droite.
 4. **Annoter** : outil **Flèche**, **Zone** ou **Texte** :
@@ -65,7 +66,7 @@ Boutons préréglés (Attention, Danger, EPI, Risque électrique, Point chaud, O
 - La zone d'édition **s'adapte automatiquement** à la hauteur et à la position des images : tout reste visible, même une image placée en bas.
 - **Clic sur une image ou une forme** : sélectionne cet objet (Maj-clic pour ajouter à la sélection).
 - **Glisser sur le fond** : dessine un **rectangle de sélection** (appliqué au relâchement) ; un simple clic sur le fond ne change pas la sélection.
-- **Glisser un objet** : le déplace (le groupe complet si plusieurs sélectionnés) ; relâcher dans la **bande du bas** supprime.
+- **Glisser un objet** : le déplace (le groupe complet si plusieurs sélectionnés) ; relâcher dans la **colonne de droite** supprime.
 - **Poignée en bas à droite d'une image** : redimensionne.
 - Les positions sont enregistrées dans un repère fixe : vos objets restent exactement où vous les posez.
 

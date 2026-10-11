@@ -37,6 +37,11 @@ Application web de création, publication et consultation de **modes opératoire
 - **Pointe des flèches** : un marqueur SVG par couleur de forme — la pointe prend enfin la couleur de la flèche (éditeur et lecteur).
 - **Thème sombre/clair** : icône ☀️/🌙 homogène partout (fini le bouton texte « Clair/Sombre » de la nav), `meta theme-color` mobile mis à jour au changement, cache service worker passé en v2 pour éviter qu'un vieux front servi hors-ligne fasse régresser le réglage.
 - **Lecteur** : plus de nom d'étape en légende sous les photos (l'ancien rendu affichait `alt = titre de l'étape` sous chaque image ; le composant `AnnotatedPhoto` et son import mort sont retirés du lecteur).
+- **Zones qui se collaient TOUJOURS en haut** (2e cause) : la conversion clic→position bornait y à [0,1] alors que le canevas fait souvent plus de 240px de référence — tout ce qui était posé sous 240px était écrasé vers le haut. Borne supérieure retirée, le canevas s'agrandit selon les formes aussi.
+- **Corbeille déplacée à droite** : la bande de suppression était en bas (conflit avec la poignée de redimensionnement des images) ; c'est désormais une colonne verticale à droite, uniquement pendant un drag d'objets.
+- **Mobile** : largeurs bornées dans la nav (email tronqué) et le bandeau éditeur — plus de débordement.
+- **Éditeur** : métadonnées repliées par défaut (titre + référence visibles, bouton « ✉ Détails ») ; clic sur le titre d'une étape l'ouvre directement (plus besoin du petit bouton ▸, qui reste et est plus visible).
+- **Journal de déploiement** : séquences ANSI, spinners npm et \r filtrés côté serveur.
 
 ### Constats des campagnes de tests
 - Annotation : le drag natif navigateur entre en conflit avec les cartes d'étapes → **clic-clic** retenu (départ/arrivée), plus le déplacement des formes posées.
@@ -72,6 +77,7 @@ Demandes du propriétaire à intégrer au cahier des charges :
 | 3 | **Nouvelle image : drag & drop / presse-papiers** | Coller une capture d'écran (Ctrl+V) dans l'étape + glisser-déposer un fichier sur le canevas ; compression existante conservée |
 | 4 | **Gestion des versions enrichie** | Historique par version avec **description des modifications apportées** (changelog saisi à la publication), affichage côte à côte avec la liste actuelle (auteur, date) et la restauration |
 | 5 | **Documents parents** | Un MO peut être rattaché à un document parent (ex. notice machine > modes opératoires associés) ; navigation parent/enfants |
+| 6b | **Import multiple d'images** — FAIT | Le sélecteur accepte plusieurs fichiers à la fois (attribut `multiple`, upload séquentiel compressé) |
 | 6 | **Gestion de statut** | Statut éditorial paramétrable sur le document (ex. brouillon / en relecture / validé / obsolète), distinct de l'état publication actuel ; filtrage et badges |
 
 À décider avant dév : modèle de données (tables types/regroupements, colonnes parent_id, status), permissions par statut, migration des données existantes.

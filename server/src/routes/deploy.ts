@@ -60,6 +60,14 @@ function pidAlive(pid: number): boolean {
   }
 }
 
+function stripAnsi(str: string): string {
+  return str
+    .replace(/\u001B\[[0-9;?]*[A-Za-z]/g, "")
+    .replace(/\u001B\][^\u0007]*(\u0007|\u001B\\)/g, "")
+    .replace(/[\u2800-\u28FF]/g, "")
+    .replace(/\r/g, "");
+}
+
 function tail(file: string, lines: number): string | null {
   try {
     const size = statSync(file).size;
@@ -191,7 +199,7 @@ export function deployRouter(db: Database.Database): Router {
       startedAt: statusFile?.startedAt ?? null,
       exitCode,
       finishedAt,
-      logTail: isAdmin ? tail(dataPath("deploy.log"), 60) : null,
+      logTail: isAdmin ? stripAnsi(tail(dataPath("deploy.log"), 60) ?? "") || null : null,
     };
     res.json(status);
   });

@@ -103,6 +103,12 @@ export default function StepCanvas({
   const H = Math.round(Math.max(
     REF_H,
     ...objs.map((o) => (o.y + photoH(o)) * REF_H + 12),
+    ...shapes.map((sh) => {
+      const bottom = sh.type === "rect" && sh.h !== undefined ? sh.y1 + sh.h
+        : sh.type === "arrow" && sh.y2 !== undefined ? Math.max(sh.y1, sh.y2)
+        : sh.y1 + 0.1;
+      return bottom * REF_H + 12;
+    }),
   ));
 
   async function saveShapes(next: Shape[]) {
@@ -130,7 +136,7 @@ export default function StepCanvas({
     const r = canvasRef.current!.getBoundingClientRect();
     return {
       x: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)),
-      y: Math.min(1, Math.max(0, (e.clientY - r.top) / REF_H)),
+      y: Math.max(0, (e.clientY - r.top) / REF_H),
     };
   }
 
@@ -162,7 +168,8 @@ export default function StepCanvas({
   // glissements : listeners globaux, positions absolues, bornage
   useEffect(() => {
     if (!drag) return;
-    const bx = (v: number) => Math.min(1, Math.max(0, v));
+    const cx = (v: number) => Math.min(1, Math.max(0, v));
+    const cy = (v: number) => Math.max(0, v);
     const move = (e: MouseEvent) => {
       const p = pt(e);
       if (drag.kind === "selrect") {
@@ -180,27 +187,27 @@ export default function StepCanvas({
           if (c.x >= R.l && c.x <= R.r && c.y >= R.t && c.y <= R.b) ns.add(i);
         });
         setSelPhotos(np); setSelShapes(ns);
-        setOverTrash(p.y * REF_H > H - 0.07 * H);
+        setOverTrash(p.x > 0.85);
       } else if (drag.kind === "photo") {
         const dx = p.x - drag.from.x, dy = p.y - drag.from.y;
         setObjs((arr) => arr.map((o, i) => {
           if (!drag.ids.includes(i)) return o;
           const g = drag.grabs[drag.ids.indexOf(i)];
-          return { ...o, x: bx(p.x - g.x), y: bx(p.y - g.y) };
+          return { ...o, x: cx(p.x - g.x), y: cy(p.y - g.y) };
         }));
-        setOverTrash(p.y * REF_H > H - 0.07 * H);
+        setOverTrash(p.x > 0.85);
       } else if (drag.kind === "shape") {
         setShapes((arr) => arr.map((s, i) => {
           if (!drag.indices.includes(i)) return s;
           const g = drag.grabs[drag.indices.indexOf(i)];
-          const ox = bx(p.x - g.x), oy = bx(p.y - g.y);
+          const ox = cx(p.x - g.x), oy = cy(p.y - g.y);
           if (s.type === "arrow") {
             const lenX = (s.x2 ?? 0) - s.x1, lenY = (s.y2 ?? 0) - s.y1;
             return { ...s, x1: ox, y1: oy, x2: ox + lenX, y2: oy + lenY };
           }
           return { ...s, x1: ox, y1: oy };
         }));
-        setOverTrash(p.y * REF_H > H - 0.07 * H);
+        setOverTrash(p.x > 0.85);
       } else if (drag.kind === "resize") {
         const r = canvasRef.current!.getBoundingClientRect();
         const rel = Math.min(1, Math.max(0.1, (e.clientX - r.left) / r.width));
@@ -209,7 +216,7 @@ export default function StepCanvas({
     };
     const up = (e: MouseEvent) => {
       const p = pt(e);
-      const trash = p.y * REF_H > H - 0.07 * H;
+      const trash = p.x > 0.85;
       if (drag.kind === "selrect") {
         setSelRect(null);
         const moved = Math.hypot(p.x - drag.from.x, p.y - drag.from.y) >= 0.01;
@@ -442,14 +449,14 @@ export default function StepCanvas({
         )}
 
         {/* bande de suppression pendant un drag */}
-        {drag && drag.kind !== "resize" && (
+        {(drag?.kind === "photo" || drag?.kind === "shape") && (
           <div style={{
-            position: "absolute", bottom: 0, left: 0, right: 0, height: "7%",
+            position: "absolute", top: 0, bottom: 0, right: 0, width: "15%",
             background: overTrash ? "var(--error-bg)" : "var(--danger-bg, #fff5f5)",
             border: `2px dashed ${overTrash ? "var(--error-text)" : "var(--danger-border, #e0b4b4)"}`,
             display: "flex", alignItems: "center", justifyContent: "center", zIndex: 25, pointerEvents: "none",
             fontSize: "0.75rem", color: "var(--error-text)", fontWeight: 600,
-          }}>{overTrash ? "Relâchez pour supprimer" : "🗑 Suppression"}</div>
+          }}>{overTrash ? "Relâchez ici" : "🗑"}</div>
         )}
       </div>
 

@@ -23,10 +23,10 @@ export default function NavBar() {
         flexWrap: "wrap",
       }}
     >
-      <Link to="/" style={{ color: "white", fontWeight: 700, textDecoration: "none" }}>
+      <Link to="/" style={{ color: "white", fontWeight: 700, textDecoration: "none", flexShrink: 0 }}>
         Modop
       </Link>
-      <span style={{ opacity: 0.85, fontSize: "0.9rem" }}>{user.email}</span>
+      <span style={{ opacity: 0.85, fontSize: "0.9rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "40vw" }}>{user.email}</span>
       <span style={{ opacity: 0.7, fontSize: "0.8rem" }}>({user.role})</span>
       {user.role === "admin" && (
         <>

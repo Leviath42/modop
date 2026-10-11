@@ -45,6 +45,7 @@ export default function EditorPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [openSteps, setOpenSteps] = useState<Set<number>>(new Set());
+  const [showMeta, setShowMeta] = useState(false);
   const fileRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const isNew = id === "new";
@@ -143,6 +144,13 @@ export default function EditorPage() {
     }
   }
 
+  async function uploadPhotos(step: Step, files: FileList) {
+    for (const f of Array.from(files)) {
+      if (f.type && !f.type.startsWith("image/")) continue;
+      await uploadPhoto(step, f, "");
+    }
+  }
+
   async function removePhoto(step: Step, photoId: number) {
     await api.deletePhoto(photoId);
     setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, photos: s.photos.filter((p) => p.id !== photoId) } : s)));
@@ -164,12 +172,23 @@ export default function EditorPage() {
   return (
     <>
       <NavBar />
-      <main style={{ maxWidth: "820px", margin: "0 auto", padding: "1rem", display: "grid", gap: "1rem" }}>
+      <main style={{ maxWidth: "820px", width: "100%", margin: "0 auto", padding: "1rem", display: "grid", gap: "1rem", boxSizing: "border-box" }}>
         {error && <p role="alert" style={{ color: "var(--error-text)", background: "var(--error-bg)", padding: "0.5rem 0.8rem", borderRadius: "6px" }}>{error}</p>}
         {notice && <p style={{ color: "var(--ok-text)", background: "var(--ok-bg)", padding: "0.5rem 0.8rem", borderRadius: "6px" }}>{notice}</p>}
 
         <section style={{ background: "var(--surface)", borderRadius: "10px", padding: "1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "grid", gap: "0.6rem" }}>
-          <h1 style={{ margin: 0, fontSize: "1.2rem" }}>{isNew ? "Nouveau mode opératoire" : "Modifier"}</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
+            <h1 style={{ margin: 0, fontSize: "1.2rem", flex: 1, minWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {isNew ? "Nouveau mode opératoire" : (title || "Sans titre")}{" "}
+              <code style={{ fontSize: "0.8em", background: "var(--surface-2)", padding: "0.1rem 0.4rem", borderRadius: "4px" }}>{reference || wf?.reference}</code>
+            </h1>
+            {!isNew && (
+              <button onClick={() => setShowMeta((v) => !v)} aria-expanded={showMeta} style={secondaryBtn}>
+                {showMeta ? "Masquer les détails" : "✉ Détails"}
+              </button>
+            )}
+          </div>
+          {(isNew || showMeta) && (
           <div style={{ display: "grid", gap: "0.5rem" }}>
             <label style={label}>Titre
               <input value={title} onChange={(e) => setTitle(e.target.value)} style={input} placeholder="Remplacement courroie" />
@@ -191,11 +210,10 @@ export default function EditorPage() {
               <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} style={input} />
             </label>
           </div>
-          {isNew ? (
-            <button onClick={createWorkflow} disabled={!title.trim() || !reference.trim()} style={primaryBtn}>Créer</button>
-          ) : (
-            <button onClick={saveMeta} style={primaryBtn}>Enregistrer</button>
           )}
+          <button onClick={isNew ? createWorkflow : saveMeta} disabled={isNew && (!title.trim() || !reference.trim())} style={primaryBtn}>
+            {isNew ? "Créer" : "Enregistrer les détails"}
+          </button>
         </section>
 
         {!isNew && (
@@ -280,13 +298,13 @@ export default function EditorPage() {
                       onBlur={() => patchStep(step, { title: step.title })}
                       style={{ ...input, fontWeight: 600, flex: 1 }}
                       aria-label={`Titre étape ${i + 1}`}
-                      onFocus={() => setOpenSteps((prev) => new Set([...prev, step.id]))}
+                      onClick={() => { if (!openSteps.has(step.id)) setOpenSteps((prev) => new Set([...prev, step.id])); }}
                     />
                     <button
                       onClick={() => setOpenSteps((prev) => { const n = new Set(prev); if (n.has(step.id)) n.delete(step.id); else n.add(step.id); return n; })}
                       aria-expanded={openSteps.has(step.id)}
                       aria-label={openSteps.has(step.id) ? `Replier l'étape ${i + 1}` : `Ouvrir l'étape ${i + 1}`}
-                      style={{ border: "none", background: "var(--surface-2)", color: "var(--text)", borderRadius: "6px", padding: "0.25rem 0.6rem", fontSize: "0.85rem" }}
+                      style={{ border: "1px solid var(--border)", background: openSteps.has(step.id) ? "var(--accent-bg)" : "var(--surface-2)", color: "var(--text)", borderRadius: "6px", padding: "0.35rem 0.8rem", fontSize: "0.95rem", minWidth: "2.2rem" }}
                     >
                       {openSteps.has(step.id) ? "▾" : "▸"}
                     </button>
@@ -383,15 +401,16 @@ export default function EditorPage() {
                       <input
                         type="file"
                         accept="image/jpeg,image/png,image/webp"
+                        multiple
                         ref={(el) => { fileRefs.current[step.id] = el; }}
                         style={{ display: "none" }}
                         onChange={async (e) => {
-                          const f = e.target.files?.[0];
-                          if (f) await uploadPhoto(step, f, "");
+                          const files = e.target.files;
+                          if (files && files.length > 0) await uploadPhotos(step, files);
                           e.target.value = "";
                         }}
                       />
-                      <button onClick={() => fileRefs.current[step.id]?.click()} style={secondaryBtn}>📷 Photo…</button>
+                      <button onClick={() => fileRefs.current[step.id]?.click()} style={secondaryBtn}>📷 Photo(s)…</button>
                     </div>
                   </div>
                   </>
