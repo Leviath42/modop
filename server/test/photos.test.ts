@@ -51,7 +51,7 @@ test("upload d'une photo écrit en base ET sur disque", async () => {
 
 test("la photo est servie en HTTP", async () => {
   const photos = db.prepare("SELECT filename FROM photos WHERE step_id = ?").all(step.id) as { filename: string }[];
-  const res = await fetch(`${base}/photos/${photos[0].filename}`);
+  const res = await fetch(`${base}/photos/${photos[0].filename}`, { headers: { cookie } });
   assert.equal(res.status, 200);
   assert.equal(res.headers.get("content-type"), "image/png");
 });

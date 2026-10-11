@@ -7,6 +7,50 @@ import path from "node:path";
 import type Database from "better-sqlite3";
 import { requireAuth } from "../auth/middleware.js";
 
+// Sniff du contenu réel (magic numbers) : le mimetype déclaratif de la
+// requête ne prouve rien. Retourne le type réel si le binaire est une
+// image autorisée, null sinon.
+export function sniffImage(buf: Buffer): "image/jpeg" | "image/png" | "image/webp" | null {
+  if (buf.length < 12) return null;
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "image/jpeg";
+  const pngSig = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  if (pngSig.every((byte, i) => buf[i] === byte)) return "image/png";
+  if (
+    buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
+    buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50
+  ) return "image/webp";
+  return null;
+}
+
+// Purge des fichiers orphelins : tout binaire présent dans data/photos sans
+// ligne correspondante en base (crash entre écriture disque et INSERT,
+// suppression de ligne ratée) est supprimé. Appelée au démarrage.
+export function purgeOrphanPhotos(db: Database.Database, dir: string): number {
+  let removed = 0;
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(dir);
+  } catch {
+    return 0;
+  }
+  const known = new Set(
+    (db.prepare("SELECT filename FROM photos").all() as { filename: string }[]).map((x) => x.filename)
+  );
+  for (const name of entries) {
+    if (known.has(name)) continue;
+    const file = path.join(dir, name);
+    try {
+      if (fs.statSync(file).isFile()) {
+        fs.unlinkSync(file);
+        removed++;
+      }
+    } catch {
+      /* fichier déjà parti */
+    }
+  }
+  return removed;
+}
+
 function photosDir(): string {
   const dir = process.env.MODOP_PHOTOS_DIR ?? path.resolve("data/photos");
   fs.mkdirSync(dir, { recursive: true });
@@ -30,6 +74,11 @@ export function photoRouter(db: Database.Database): Router {
     }
     if (!ALLOWED.has(req.file.mimetype)) {
       res.status(422).json({ error: "validation", message: "type de fichier non autorisé (jpeg, png, webp)" });
+      return;
+    }
+    const realType = sniffImage(req.file.buffer);
+    if (!realType || realType !== req.file.mimetype) {
+      res.status(422).json({ error: "validation", message: "contenu du fichier non conforme (jpeg, png, webp)" });
       return;
     }
     const step = db
@@ -74,7 +123,7 @@ export function deletePhotoRouter(db: Database.Database): Router {
   return r;
 }
 
-export function staticPhotos(): express.RequestHandler {
+export function staticPhotos(db: Database.Database): express.RequestHandler {
   const mime: Record<string, string> = {
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",

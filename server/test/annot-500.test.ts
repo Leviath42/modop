@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import Database from "better-sqlite3";
-import fs from "node:fs";
+import fs from "node:fs";const PNG_MIN = Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c63000100000500010000000049454e44ae426082","hex");
 
 // Reproduit le parcours utilisateur complet sur une BASE MIGRÉE v1->v3
 // (comme la prod) : upload photo via l'API, puis PUT annotations avec les
@@ -57,7 +57,7 @@ test("annotations sur base migrée : parcours complet sans 500", async () => {
   assert.equal(wf.status, 201);
   const step = await call("POST", `/api/workflows/${wf.json.id}/steps`, { title: "S" }, ck);
   const fd = new FormData();
-  fd.append("file", new Blob([Buffer.from("89504e47", "hex")], { type: "image/png" }), "p.png");
+  fd.append("file", new Blob([PNG_MIN], { type: "image/png" }), "p.png");
   fd.append("alt", "photo test");
   const up = await call("POST", `/api/steps/${step.json.id}/photos`, fd, ck, true);
   assert.equal(up.status, 201, "upload: " + JSON.stringify(up.json));

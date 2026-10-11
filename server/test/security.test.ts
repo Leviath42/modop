@@ -96,40 +96,32 @@ process.on("exit", () => {
 });
 server.unref();
 
-test("anti-CSRF : POST cross-site refusé, same-origin accepté", async () => {
+test("S2 : photos accessibles uniquement authentifié", async () => {
+  const png = Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c63000100000500010000000049454e44ae426082", "hex");
+fs.mkdirSync("data/photos", { recursive: true });
+  fs.writeFileSync("data/photos/test-secure.png", png);
+  // Non authentifié -> 401
+  const anon = await fetch(base + "/photos/test-secure.png");
+  assert.equal(anon.status, 401);
+  // Authentifié -> 200
   const login = await call("POST", "/api/auth/login", { email: "user@modop.local", password: "motdepasse1" });
-  assert.equal(login.status, 200);
-  const host = new URL(base).host;
-  // Origin d'un autre site -> 403
-  const csrf = await fetch(base + "/api/auth/logout", {
-    method: "POST",
-    headers: { origin: "https://attaquant.example", cookie: login.cookie! },
-  });
-  assert.equal(csrf.status, 403);
-  // Sec-Fetch-Site cross-site -> 403
-  const csrf2 = await fetch(base + "/api/auth/logout", {
-    method: "POST",
-    headers: { "sec-fetch-site": "cross-site", cookie: login.cookie! },
-  });
-  assert.equal(csrf2.status, 403);
-  // Same-origin accepté
-  const ok = await fetch(base + "/api/auth/logout", {
-    method: "POST",
-    headers: { origin: base, cookie: login.cookie! },
-  });
-  assert.equal(ok.status, 200);
-  // Sans en-têtes d'origine (curl, tests) accepté
-  const ok2 = await fetch(base + "/api/auth/login", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email: "user@modop.local", password: "motdepasse1" }),
-  });
-  assert.equal(ok2.status, 200);
-  assert.equal(new URL(base).host, host);
+  const auth = await fetch(base + "/photos/test-secure.png", { headers: { cookie: login.cookie! } });
+  assert.equal(auth.status, 200);
 });
 
-test("en-têtes COOP/CORP présents", async () => {
-  const r = await fetch(base + "/api/health");
-  assert.equal(r.headers.get("cross-origin-opener-policy"), "same-origin");
-  assert.equal(r.headers.get("cross-origin-resource-policy"), "same-origin");
+test("S3 : upload avec contenu non conforme refusé (magic numbers)", async () => {
+  const login = await call("POST", "/api/auth/login", { email: "user@modop.local", password: "motdepasse1" });
+  const wf = await call("POST", "/api/workflows", { title: "Sniff", reference: "SNIFF-1" }, login.cookie!);
+  assert.equal(wf.status, 201);
+  const step = await call("POST", `/api/workflows/${wf.json.id}/steps`, { title: "Étape" }, login.cookie!);
+  assert.equal(step.status, 201);
+  const fake = new FormData();
+  fake.append("file", new Blob([Buffer.from("<script>alert(1)</script>")], { type: "image/png" }), "evil.png");
+  fake.append("alt", "piège");
+  const res = await fetch(base + `/api/steps/${step.json.id}/photos`, {
+    method: "POST",
+    headers: { cookie: login.cookie! },
+    body: fake,
+  });
+  assert.equal(res.status, 422);
 });

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { openDb } from "../src/db/schema.js";
 import bcrypt from "bcryptjs";
 import { createApp } from "../src/app.js";
-import http from "node:http";
+import http from "node:http";const PNG_MIN = Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c63000100000500010000000049454e44ae426082","hex");
 import fs from "node:fs";
 
 fs.rmSync("data", { recursive: true, force: true });
@@ -29,7 +29,7 @@ test("annotations persistées et relues via GET workflow", async () => {
   const wf = await call("POST", "/api/workflows", { title: "T", reference: "MO-AN1" }, cookie);
   const step = await call("POST", `/api/workflows/${wf.json.id}/steps`, { title: "S" }, cookie);
   const fd = new FormData();
-  fd.append("file", new Blob([Buffer.from("89504e47", "hex")], { type: "image/png" }), "p.png");
+  fd.append("file", new Blob([PNG_MIN], { type: "image/png" }), "p.png");
   fd.append("alt", "dispositif");
   const up = await fetch(`${base}/api/steps/${step.json.id}/photos`, { method: "POST", headers: { cookie }, body: fd });
   const photo = await up.json();
