@@ -116,6 +116,49 @@ La série de petits correctifs UI/UX suivie après la vague 6 est journalisée d
 
 - SW network-first sur les navigations + synchro multi-onglets (une partie de F8/thème) ; icônes SVG partagées via `icons.tsx` (début de réponse à I1) ; bouton thème unifié (U4).
 
+## 🔍 Vague 6bis — Audit complet (4 workers : sécurité, bugs, code mort, UI/UX)
+
+Audit du code beta post-C-31, un worker par domaine. Chaque item : constat → action proposée → fichiers.
+
+### 🔒 Sécurité (worker S)
+
+| # | Constat | Action proposée |
+|---|---------|----------------|
+| S-A1 | **Rétrogradation de rôle sans révocation de session** : `PUT /api/admin/users/:id` ne supprime les sessions que si `active === 0` — un admin rétrogradé reader garde ses droits jusqu'à expiration (24 h) | Révoquer aussi les sessions quand `role` change (`server/src/routes/admin.ts`) |
+| S-A2 | **`X-Forwarded-Host` accepté sans allowlist** dans `forwardedHost()` : le header n'est pas signé ; combiné à une `Origin` forgée identique, la vérification anti-CSRF peut être contournée par un client direct (l'anti-CSRF tient surtout grâce à `sameSite=lax` + `Sec-Fetch-Site`) | Allowlist des hôtes attendus (env `MODOP_ALLOWED_HOSTS`) ou retirer le header de la référence |
+| S-A3 | **Taille des payloads canvas/annotations non bornée** : `PUT /steps/:id/canvas` et `PUT /photos/:id/annotations` acceptent un tableau sans limite d'éléments (jusqu'au cap express.json 100 kb stocké tel quel en base) | Rejeter au-delà de ~500 formes (`server/src/routes/workflows.ts`, `photos.ts`) |
+| S-A4 | **Pas de rate limiting sur `POST /:id/feedback`** : un lecteur peut spammer les signalements (500 car. chacun) | Réutiliser le pattern `loginRateLimiter` |
+| S-A5 | `deploy.ts` : `execSync` git synchrone + boucle d'attente active (~3 s max) au `trigger` — bloque l'event loop | Passer en `execFile` async / `setTimeout` (perf, pas d'injection : commandes figées) |
+| S-A6 | ✅ Acquis vérifiés : bcrypt, magic numbers upload, purge orphelins, PKCE+state OIDC, révocation à la désactivation, audit log, CSP/HSTS/COOP/CORP, anti-CSRF `Sec-Fetch-Site` | — |
+
+### 🐞 Bugs fonctionnels (worker B)
+
+| # | Constat | Action proposée |
+|---|---------|----------------|
+| B-A1 | **« Terminé ✓ » de la lecture guidée ne fait rien** : `setSearchParams({})` sur la route `/workflow/:id/guided` — les search params sont déjà vides, l'utilisateur reste bloqué sur la dernière étape | Rediriger vers la liste ou la lecture classique (`web/src/pages/guided-reader.tsx`) |
+| B-A2 | **Échec de sauvegarde des métadonnées invisible** : titre/description/type ne sont envoyés qu'à la publication (`publish()` enchaîne `updateWorkflow` + `publishWorkflow`) — un échec au premier appel laisse l'utilisateur croire que tout est enregistré | Autosave (RF-16 du cahier des charges) ou bandeau « modifications non enregistrées » (`web/src/pages/editor.tsx`) |
+| B-A3 | **Uploads de photos séquentiels sans feedback** : `for…await` — 10 photos = longue attente, une erreur interrompt les suivantes silencieusement | Paralleliser (limité), afficher une progression, continuer malgré les échecs (`editor.tsx`) |
+| B-A4 | `feedbackNotice` du lecteur sert à la fois de message de succès ET d'erreur (même style vert) | Séparer les états succès/erreur (`reader.tsx`) |
+| B-A5 | `compressImage` : si `createImageBitmap` échoue (fichier corrompu), le fichier original n'est jamais tenté en secours | try/catch → envoi du fichier brut si non parsable |
+
+### 🧟 Code mort (worker D)
+
+| # | Constat | Action proposée |
+|---|---------|----------------|
+| D-A1 | **`web/src/photo-annotator.tsx` (398 lignes) n'est jamais rendu** : importé dans `editor.tsx` mais aucun `<PhotoAnnotator…>` — l'édition d'annotations passe intégralement par `StepCanvas`. Ses 2 tests (`annotator-smoke`, `annotator-interaction`) testent un composant non monté | Supprimer le fichier + l'import + les 2 tests (~540 lignes) |
+| D-A2 | **Composant `AnnotatedPhoto` (default d'`annotated-photo.tsx`) jamais rendu** — seuls `parseShapes` et le type `Shape` sont consommés | Réduire `annotated-photo.ts` aux seuls exports utilisés |
+| D-A3 | **`listAudit()` (`server/src/auth/audit.ts`) n'est exposé nulle part** : aucun endpoint `/api/admin/audit` — l'admin ne peut pas consulter le journal complet (la page stats n'en montre qu'un extrait) | Soit exposer `GET /api/admin/audit` (+ UI), soit supprimer la fonction |
+| D-A4 | `web/package.json` : `jsdom`, `@types/jsdom`, `@types/node` en `dependencies` au lieu de `devDependencies` (usage test uniquement) | Déplacer vers devDependencies |
+
+### 🎨 UI/UX (worker U)
+
+| # | Constat | Action proposée |
+|---|---------|----------------|
+| U-B1 | **RF-31 non implémenté : pas de zoom ni plein écran photo en lecture** (reader, guided-reader, step-canvas-view) — besoin atelier n°1 : voir un détail de photo au doigt | Lightbox plein écran (tap = zoom, pinch = loupe) sur les photos du lecteur |
+| U-B2 | **Stats admin illisibles** : « MO #12 » (id technique) au lieu du titre/référence dans « Les plus consultés / exportés » et `recentActivity` (`workflow:12` brut) | Jointure SQL titre/référence côté `/api/stats`, affichage lisible |
+| U-B3 | Titre tronqué (`nowrap` + ellipsis) dans la liste, illisible en entier sur mobile sans interaction | Levée du nowrap en mobile ou tap pour déplier |
+| U-B4 | Le journal d'audit complet n'a pas d'UI (cf. D-A3) — l'admin n'a que « Activité récente » (15 lignes) | Page/filtre journal d'audit dans l'admin |
+
 ## 🚧 Vague 7 (proposition — reprise de l'ancienne vague 6)
 
 | # | Fonctionnalité | Notes |
