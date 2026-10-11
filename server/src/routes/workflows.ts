@@ -133,6 +133,10 @@ export function workflowRouter(db: Database.Database): Router {
       res.status(422).json({ error: "validation", message: "shapes doit être un tableau" });
       return;
     }
+    if (shapes.length > 500) {
+      res.status(422).json({ error: "validation", message: "trop de formes (500 maximum)" });
+      return;
+    }
     db.prepare("UPDATE steps SET canvas = ? WHERE id = ?").run(JSON.stringify(shapes), step.id);
     res.json({ ok: true, count: shapes.length });
   });
@@ -322,6 +326,10 @@ export function stepRouter(db: Database.Database): Router {
     const { shapes } = req.body ?? {};
     if (!Array.isArray(shapes)) {
       res.status(422).json({ error: "validation", message: "shapes doit être un tableau" });
+      return;
+    }
+    if (shapes.length > 500) {
+      res.status(422).json({ error: "validation", message: "trop de formes (500 maximum)" });
       return;
     }
     db.prepare("UPDATE steps SET canvas = ? WHERE id = ?").run(JSON.stringify(shapes), step.id);

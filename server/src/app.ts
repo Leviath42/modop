@@ -4,7 +4,7 @@ import path from "node:path";
 import fs from "node:fs";
 import type Database from "better-sqlite3";
 import { attachAuth, requireAuth } from "./auth/middleware.js";
-import { securityHeaders, loginRateLimiter } from "./auth/security.js";
+import { securityHeaders, loginRateLimiter, rateLimiter } from "./auth/security.js";
 import { assertSameOrigin } from "./auth/origin.js";
 import { purgeExpiredSessions } from "./auth/sessions.js";
 import { purgeAudit } from "./auth/audit.js";
@@ -59,6 +59,14 @@ export function createApp(db: Database.Database, webDist?: string): express.Expr
   app.use("/api/stats", statsRouter(db));
   app.use("/api/workflows", duplicateRouter(db));
   app.use("/api/stats", statsRouter(db));
+  // S-A4 : anti-spam sur les signalements terrain (20/15 min par IP).
+  app.use("/api/workflows", (req, res, next) => {
+    if (req.method === "POST" && /\/feedback$/.test(req.path)) {
+      rateLimiter("feedback", 15 * 60_000, 20)(req, res, next);
+      return;
+    }
+    next();
+  });
   app.get("/photos/:filename", requireAuth("reader"), staticPhotos(db));
 
   // Handler d'erreurs : la cause est logguée côté serveur ; le client ne

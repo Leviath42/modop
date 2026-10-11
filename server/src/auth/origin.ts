@@ -9,11 +9,22 @@ import type { Request, Response, NextFunction } from "express";
 // Hôte de référence : X-Forwarded-Host (reverse proxy/tunnel Cloudflare qui
 // préserve l'hôte public) sinon Host. La config du tunnel ne doit PAS
 // réécrire le Host (httpHostHeader) — cf. scripts/hardening-tunnel.sh.
+// S-A2 : X-Forwarded-Host n'est pas signé par le client direct — si une
+// allowlist est configurée (MODOP_ALLOWED_HOSTS, hôtes séparés par des
+// virgules), une valeur absente de la liste est ignorée (retour au Host).
+function allowedForwardedHosts(): Set<string> | null {
+  const raw = process.env.MODOP_ALLOWED_HOSTS;
+  if (!raw) return null;
+  return new Set(raw.split(",").map((h) => h.trim().toLowerCase()).filter(Boolean));
+}
+
 function forwardedHost(req: Request): string | null {
   const xfh = req.headers["x-forwarded-host"];
   const first = Array.isArray(xfh) ? xfh[0] : xfh;
   if (typeof first === "string" && first.trim()) {
-    return first.split(",")[0].trim().toLowerCase();
+    const host = first.split(",")[0].trim().toLowerCase();
+    const allow = allowedForwardedHosts();
+    if (!allow || allow.has(host)) return host;
   }
   const host = req.headers.host;
   return typeof host === "string" ? host.toLowerCase() : null;
