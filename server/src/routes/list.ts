@@ -12,13 +12,26 @@ export function listRouter(db: Database.Database): Router {
     const family = typeof req.query.family === "string" && req.query.family ? req.query.family : null;
     const clauses: string[] = [];
     const params: unknown[] = [];
-    if (search) { clauses.push("(title LIKE ? OR reference LIKE ?)"); params.push(search, search); }
+    const textClauses: string[] = [];
+    if (search) {
+      textClauses.push("title LIKE ?", "reference LIKE ?", "id IN (SELECT workflow_id FROM steps WHERE title LIKE ? OR body LIKE ?)");
+      params.push(search, search, search, search);
+    }
+    if (textClauses.length) clauses.push(`(${textClauses.join(" OR ")})`);
     if (category) { clauses.push("category = ?"); params.push(category); }
     if (family) { clauses.push("family = ?"); params.push(family); }
     if (state) { clauses.push("state = ?"); params.push(state); }
+    const SORTS: Record<string, string> = {
+      title: "title COLLATE NOCASE ASC",
+      reference: "reference ASC",
+      family: "family COLLATE NOCASE ASC",
+      updated_at: "updated_at DESC",
+    };
+    const sortCol = typeof req.query.sort === "string" ? SORTS[req.query.sort] : undefined;
+    const orderBy = sortCol ?? "updated_at DESC";
     const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
     const rows = db
-      .prepare(`SELECT id, title, reference, category, family, state, current_version, updated_at FROM workflows ${where} ORDER BY updated_at DESC`)
+      .prepare(`SELECT id, title, reference, category, family, state, current_version, updated_at FROM workflows ${where} ORDER BY ${orderBy}`)
       .all(...params);
     res.json(rows);
   });
