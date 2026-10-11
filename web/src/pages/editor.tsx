@@ -46,6 +46,9 @@ export default function EditorPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const dragGhostRef = useRef<HTMLDivElement | null>(null);
+  const dragFromRef = useRef<number | null>(null);
+  const [dragCursor, setDragCursor] = useState<{ x: number; y: number } | null>(null);
   const [openSteps, setOpenSteps] = useState<Set<number>>(new Set());
   const [showMeta, setShowMeta] = useState(false);
   const [insertTool, setInsertTool] = useState<Shape["type"] | null>(null);
@@ -330,19 +333,52 @@ export default function EditorPage() {
                 <li
                   key={step.id}
                   id={`edit-step-${step.id}`}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => { if (dragIndex !== null && dragIndex !== i) void moveStep(dragIndex, i); setDragIndex(null); }}
                   style={{ background: "var(--surface)", borderRadius: "10px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "grid", gap: "0.5rem", outline: dragIndex === i ? "2px dashed var(--accent)" : "none", scrollMarginTop: "8rem" }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
                     <span
-                      draggable
-                      onDragStart={() => setDragIndex(i)}
-                      onDragEnd={() => setDragIndex(null)}
+                      onPointerDown={(e) => {
+                        if (e.button !== 0 && e.pointerType === "mouse") return;
+                        e.preventDefault();
+                        const from = i;
+                        dragFromRef.current = from;
+                        setDragIndex(from);
+                        setDragCursor({ x: e.clientX, y: e.clientY });
+                        const onMove = (ev: PointerEvent) => { setDragCursor({ x: ev.clientX, y: ev.clientY }); };
+                        const finish = (ev: PointerEvent) => {
+                          window.removeEventListener("pointermove", onMove);
+                          window.removeEventListener("pointerup", onUp);
+                          window.removeEventListener("pointercancel", onCancel);
+                          const el = document.elementFromPoint(ev.clientX, ev.clientY);
+                          const li = el?.closest?.("li");
+                          let to: number | null = null;
+                          if (li) {
+                            const stepId = Number(String(li.id).replace("edit-step-", ""));
+                            const idx = steps.findIndex((st) => st.id === stepId);
+                            if (idx >= 0) to = idx;
+                          }
+                          dragFromRef.current = null;
+                          setDragIndex(null);
+                          setDragCursor(null);
+                          if (to !== null && to !== from) void moveStep(from, to);
+                        };
+                        const onUp = (ev: PointerEvent) => finish(ev);
+                        const onCancel = () => {
+                          window.removeEventListener("pointermove", onMove);
+                          window.removeEventListener("pointerup", onUp);
+                          window.removeEventListener("pointercancel", onCancel);
+                          dragFromRef.current = null;
+                          setDragIndex(null);
+                          setDragCursor(null);
+                        };
+                        window.addEventListener("pointermove", onMove, { passive: true });
+                        window.addEventListener("pointerup", onUp);
+                        window.addEventListener("pointercancel", onCancel);
+                      }}
                       title="Glisser pour réordonner"
                       role="button"
                       aria-label={`Réordonner l'étape ${i + 1} (glisser)`}
-                      style={{ cursor: "grab", color: "var(--text-muted)", padding: "0.2rem 0.3rem", touchAction: "none" }}
+                      style={{ cursor: "grab", color: "var(--text-muted)", padding: "0.3rem 0.4rem", touchAction: "none", userSelect: "none" }}
                     >
                       ⠿
                     </span>
@@ -425,6 +461,11 @@ export default function EditorPage() {
           </section>
         )}
       </main>
+      {dragIndex !== null && dragCursor && (
+        <div ref={dragGhostRef} aria-hidden="true" style={{ position: "fixed", left: dragCursor.x, top: dragCursor.y, transform: "translate(-50%, -120%)", pointerEvents: "none", zIndex: 200, background: "var(--accent)", color: "white", padding: "0.25rem 0.6rem", borderRadius: "6px", fontSize: "0.85rem", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
+          Déplacer « {steps[dragIndex]?.title ?? ""} »
+        </div>
+      )}
       {confirmDeleteStep && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", zIndex: 100 }} role="dialog" aria-modal="true" aria-label="Confirmer la suppression de l'étape">
           <div style={{ background: "var(--surface)", color: "var(--text)", borderRadius: "10px", padding: "1.2rem", maxWidth: "400px", display: "grid", gap: "0.8rem" }}>
