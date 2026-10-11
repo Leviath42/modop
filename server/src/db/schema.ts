@@ -78,6 +78,9 @@ const COLUMN_MIGRATIONS: { table: string; column: string; ddl: string }[] = [
   { table: "users", column: "active", ddl: "INTEGER NOT NULL DEFAULT 1" },
   { table: "sessions", column: "expires_at", ddl: "TEXT" },
   { table: "workflows", column: "family", ddl: "TEXT NOT NULL DEFAULT ''" },
+  { table: "photos", column: "annotations", ddl: "TEXT NOT NULL DEFAULT '[]'" },
+  { table: "photos", column: "display_size", ddl: "TEXT NOT NULL DEFAULT 'medium'" },
+  { table: "photos", column: "display_align", ddl: "TEXT NOT NULL DEFAULT 'center'" },
 ];
 
 // Réparation des pictos corrompus par le bug de l’ancien éditeur : la réponse

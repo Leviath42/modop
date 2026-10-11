@@ -58,6 +58,14 @@ export function createApp(db: Database.Database, webDist?: string): express.Expr
   app.use("/api/stats", statsRouter(db));
   app.get("/photos/:filename", staticPhotos());
 
+  // Handler d'erreurs : les 500 renvoient un JSON explicite et loggué
+  // (l'HTML par défaut d'Express masque la cause côté client).
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error("[500]", err);
+    res.status(500).json({ error: "internal", message: err instanceof Error ? err.message : "Erreur interne" });
+  });
+
   if (webDist && fs.existsSync(webDist)) {
     app.use(express.static(webDist));
     app.get(/^(?!\/api|\/photos).*/, (_req, res) => {
