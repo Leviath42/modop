@@ -21,7 +21,12 @@ const PICTO_PRESETS: { kind: string; label: string; color: string }[] = [
 ];
 
 export async function compressImage(file: File, maxSize = 1280, quality = 0.82): Promise<File> {
-  const bitmap = await createImageBitmap(file);
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    return file; // B-A5 : fichier non parsable côté client — envoi du brut (le serveur valide le contenu réel)
+  }
   const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(bitmap.width * scale);
@@ -65,6 +70,7 @@ export default function EditorPage() {
   const [changelog, setChangelog] = useState("");
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(false);
   const [confirmDeleteDoc2, setConfirmDeleteDoc2] = useState(false);
+  const [metaSaved, setMetaSaved] = useState(true);
   const fileRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const pictosMenuRef = useRef<HTMLSpanElement | null>(null);
   const toolsRef = useRef<HTMLDivElement | null>(null);
@@ -104,6 +110,22 @@ export default function EditorPage() {
   useEffect(() => {
     if (user?.role === "reader") navigate("/", { replace: true });
   }, [user, navigate]);
+  // B-A2 : autosave des métadonnées (RF-16) — 800 ms après la dernière
+  // frappe ; bandeau "Enregistrement…" pendant la requête, restauration de
+  // l'indicateur si elle échoue.
+  const wfId = wf?.id;
+  useEffect(() => {
+    if (isNew || !wfId || metaSaved) return;
+    const t = setTimeout(async () => {
+      try {
+        await api.updateWorkflow(wfId, { title, category, family, description, review_due: reviewDue || null, owner_email: ownerEmail });
+        setMetaSaved(true);
+      } catch {
+        /* l'indicateur reste "à enregistrer" ; la publication retentera */
+      }
+    }, 800);
+    return () => clearTimeout(t);
+  }, [wfId, isNew, metaSaved, title, category, family, description, reviewDue, ownerEmail]);
 
   async function createWorkflow() {
     setError(null);
@@ -186,11 +208,27 @@ export default function EditorPage() {
     }
   }
 
+  const [uploadProgress, setUploadProgress] = useState<{ stepId: number; done: number; total: number } | null>(null);
   async function uploadPhotos(step: Step, files: FileList) {
-    for (const f of Array.from(files)) {
-      if (f.type && !f.type.startsWith("image/")) continue;
-      await uploadPhoto(step, f, "");
-    }
+    const list = Array.from(files).filter((f) => !f.type || f.type.startsWith("image/"));
+    if (list.length === 0) return;
+    setUploadProgress({ stepId: step.id, done: 0, total: list.length });
+    // B-A3 : uploads parallèles (tous d'un coup — le serveur tient n connexions),
+    // chaque fichier est indépendant : un échec n'interrompt pas les autres.
+    let done = 0;
+    let firstError: string | null = null;
+    await Promise.all(list.map(async (f) => {
+      try {
+        await uploadPhoto(step, f, "");
+      } catch {
+        if (!firstError) firstError = f.name;
+      } finally {
+        done++;
+        setUploadProgress({ stepId: step.id, done, total: list.length });
+      }
+    }));
+    setUploadProgress(null);
+    if (firstError) setError(`Photo(s) non envoyée(s) : ${firstError}${list.length > 1 ? " (les autres ont été envoyées)" : ""}`);
   }
 
   async function removePhoto(step: Step, photoId: number) {
@@ -225,6 +263,9 @@ export default function EditorPage() {
               {isNew ? "Nouveau mode opératoire" : (title || "Sans titre")}{" "}
               <code style={{ fontSize: "0.8em", background: "var(--surface-2)", padding: "0.1rem 0.4rem", borderRadius: "4px" }}>{reference || wf?.reference}</code>
             </h1>
+            {!isNew && !metaSaved && (
+              <span style={{ fontSize: "0.75rem", color: "var(--warn-text)", background: "var(--warn-bg)", padding: "0.15rem 0.5rem", borderRadius: "99px", fontWeight: 600 }} role="status">Enregistrement…</span>
+            )}
             {!isNew && (
               <button onClick={() => setShowMeta((v) => !v)} aria-expanded={showMeta} style={secondaryBtn}>
                 {showMeta ? "Masquer les détails" : "Détails"}
@@ -239,7 +280,7 @@ export default function EditorPage() {
           {(isNew || showMeta) && (
           <div style={{ display: "grid", gap: "0.5rem" }}>
             <label style={label}>Titre
-              <input value={title} onChange={(e) => setTitle(e.target.value)} style={input} placeholder="Remplacement courroie" />
+              <input value={title} onChange={(e) => { setTitle(e.target.value); setMetaSaved(false); }} style={input} placeholder="Remplacement courroie" />
             </label>
             {isNew ? (
               <label style={label}>Référence
@@ -249,20 +290,20 @@ export default function EditorPage() {
               <p style={{ margin: 0, color: "var(--text-muted)" }}><code>{wf?.reference}</code> — {wf?.state === "published" ? `publié (V${wf.current_version})` : "brouillon"}</p>
             )}
             <label style={label}>Famille
-              <input value={family} onChange={(e) => setFamily(e.target.value)} style={input} placeholder="Mécanique / Électrique / Qualité…" />
+              <input value={family} onChange={(e) => { setFamily(e.target.value); setMetaSaved(false); }} style={input} placeholder="Mécanique / Électrique / Qualité…" />
             </label>
             <label style={label}>Type
-              <input value={category} onChange={(e) => setCategory(e.target.value)} style={input} placeholder="Maintenance, Contrôle…" />
+              <input value={category} onChange={(e) => { setCategory(e.target.value); setMetaSaved(false); }} style={input} placeholder="Maintenance, Contrôle…" />
             </label>
             <label style={label}>Description
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} style={input} />
+              <textarea value={description} onChange={(e) => { setDescription(e.target.value); setMetaSaved(false); }} rows={2} style={input} />
             </label>
             <div style={{ display: "grid", gap: "0.5rem", gridTemplateColumns: "1fr 1fr" }}>
               <label style={label}>À revoir le
-                <input type="date" value={reviewDue} onChange={(e) => setReviewDue(e.target.value)} style={input} />
+                <input type="date" value={reviewDue} onChange={(e) => { setReviewDue(e.target.value); setMetaSaved(false); }} style={input} />
               </label>
               <label style={label}>Responsable
-                <input type="email" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} style={input} placeholder="resp@usine.fr" />
+                <input type="email" value={ownerEmail} onChange={(e) => { setOwnerEmail(e.target.value); setMetaSaved(false); }} style={input} placeholder="resp@usine.fr" />
               </label>
             </div>
           </div>
@@ -502,6 +543,11 @@ export default function EditorPage() {
                     style={input}
                     aria-label={`Description étape ${i + 1}`}
                   />
+                  {uploadProgress?.stepId === step.id && (
+                    <p role="status" style={{ margin: 0, fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                      Envoi des photos… {uploadProgress.done}/{uploadProgress.total}
+                    </p>
+                  )}
                   {(step.photos ?? []).length === 0 && (
                       <p role="note" style={{ margin: 0, fontSize: "0.75rem", color: "var(--warn-text)", background: "var(--warn-bg)", padding: "0.15rem 0.45rem", borderRadius: "4px" }}>
                         Cette étape n'a pas de photo — une photo bien cadrée remplace un paragraphe de texte.

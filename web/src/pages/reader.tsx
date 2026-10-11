@@ -16,7 +16,7 @@ export default function ReaderPage() {
   // Retour terrain (RF-73)
   const [feedbackOpenStep, setFeedbackOpenStep] = useState<number | null>(null);
   const [feedbackMsg, setFeedbackMsg] = useState("");
-  const [feedbackNotice, setFeedbackNotice] = useState<string | null>(null);
+  const [feedbackNotice, setFeedbackNotice] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [feedbacks, setFeedbacks] = useState<{ id: number; by: string; step_id: number; message: string; status: "open" | "resolved"; resolved_by: string | null; resolved_at: string | null; at: string }[]>([]);
 
   useEffect(() => {
@@ -98,7 +98,7 @@ export default function ReaderPage() {
           </p>
         )}
         {feedbackNotice && (
-          <p role="status" style={{ position: "fixed", bottom: "1rem", left: "50%", transform: "translateX(-50%)", background: "var(--ok-bg)", color: "var(--ok-text)", padding: "0.5rem 1rem", borderRadius: "8px", boxShadow: "0 2px 8px rgba(0,0,0,0.2)", zIndex: 100, margin: 0 }}>{feedbackNotice}</p>
+          <p role={feedbackNotice.kind === "ok" ? "status" : "alert"} style={{ position: "fixed", bottom: "1rem", left: "50%", transform: "translateX(-50%)", background: feedbackNotice.kind === "ok" ? "var(--ok-bg)" : "var(--error-bg)", color: feedbackNotice.kind === "ok" ? "var(--ok-text)" : "var(--error-text)", fontWeight: 600, padding: "0.5rem 1rem", borderRadius: "8px", boxShadow: "0 2px 8px rgba(0,0,0,0.2)", zIndex: 100, margin: 0 }}>{feedbackNotice.text}</p>
         )}
         {feedbacks.length > 0 && (
           <section style={{ background: "var(--warn-bg)", border: "1px solid var(--warn-text)", borderRadius: "8px", padding: "0.8rem", marginBottom: "1rem" }} aria-label="Signalements terrain">
@@ -125,10 +125,10 @@ export default function ReaderPage() {
                             try {
                               await api.resolveFeedback(wf.id, f.id);
                               setFeedbacks((arr) => arr.map((x) => (x.id === f.id ? { ...x, status: "resolved" as const, resolved_by: user?.email ?? null, resolved_at: new Date().toISOString() } : x)));
-                              setFeedbackNotice("Signalement marqué résolu");
+                              setFeedbackNotice({ kind: "ok", text: "Signalement marqué résolu" });
                               setTimeout(() => setFeedbackNotice(null), 2500);
                             } catch (e) {
-                              setFeedbackNotice(e instanceof ApiError ? e.message : "Résolution impossible");
+                              setFeedbackNotice({ kind: "error", text: e instanceof ApiError ? e.message : "Résolution impossible" });
                               setTimeout(() => setFeedbackNotice(null), 2500);
                             }
                           }}
@@ -169,12 +169,12 @@ export default function ReaderPage() {
                     onClick={async () => {
                       try {
                         await api.sendFeedback(wf.id, step.id, feedbackMsg);
-                        setFeedbackNotice("Signalement envoyé — merci !");
+                        setFeedbackNotice({ kind: "ok", text: "Signalement envoyé — merci !" });
                         setFeedbackOpenStep(null);
                         setFeedbackMsg("");
                         setTimeout(() => setFeedbackNotice(null), 3000);
                       } catch (e) {
-                        setFeedbackNotice(e instanceof ApiError ? e.message : "Envoi impossible");
+                        setFeedbackNotice({ kind: "error", text: e instanceof ApiError ? e.message : "Envoi impossible" });
                         setTimeout(() => setFeedbackNotice(null), 3000);
                       }
                     }}
