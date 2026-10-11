@@ -28,12 +28,20 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 1. `assertSameOrigin` compare désormais l'`Origin` au **`X-Forwarded-Host`** (première valeur) sinon au `Host`, insensible à la casse. Un vrai cross-site derrière le même proxy reste refusé (test runtime).
 2. `scripts/hardening-tunnel.sh` n'écrit plus `httpHostHeader: localhost` — le tunnel préserve l'hôte public.
 
-**⚠️ Action requise sur le CT existant** : la config du tunnel déjà installée ne se corrige pas toute seule. Sur le conteneur :
+**Si vous avez accès au CT** :
 ```bash
 sed -i '/httpHostHeader/d' /etc/cloudflared/config.yml
 systemctl restart cloudflared
 ```
 (ou relancer `bash scripts/hardening-tunnel.sh --tunnel-only`, qui resynchronise la config)
+
+**⚠️ Sans accès au CT (procédure dashboard Cloudflare uniquement)** — la porte de sortie : le code C-02 accepte déjà `X-Forwarded-Host`, que l'**ancienne** config du tunnel envoie (cloudflared y sauvegarde l'hôte original quand `httpHostHeader` réécrit le `Host`). Il suffit donc de faire passer la mise à jour, puis tout rentre dans l'ordre :
+
+1. Dashboard Cloudflare → **Rules → Overview → Create rule → Request Header Transform Rule**
+2. Expression : `http.host eq "modop-beta.calironi.com"`
+3. Action : **Remove** — nom d'en-tête : `Origin` (l'anti-CSRF déployé laisse passer les requêtes sans Origin)
+4. Dans Modop : **Mettre à jour depuis GitHub** → déploie le correctif C-02
+5. **Supprimer la règle Cloudflare** — le nouveau code honore X-Forwarded-Host, l'anti-CSRF refonctionne complètement ; la config cloudflared du CT n'a jamais besoin d'être modifiée
 
 **Fichiers** : `server/src/auth/origin.ts`, `scripts/hardening-tunnel.sh`, `server/test/security.test.ts`
 
