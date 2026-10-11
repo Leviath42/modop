@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError, type Workflow } from "../api";
 import { useAuth } from "../auth-context";
@@ -7,7 +7,9 @@ import NavBar from "../nav";
 export default function ListPage() {
   const { user } = useAuth();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [state, setState] = useState("");
   const [family, setFamily] = useState("");
   const [families, setFamilies] = useState<string[]>([]);
@@ -15,6 +17,11 @@ export default function ListPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  function onSearchChange(value: string) {
+    setSearchInput(value);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => setSearch(value), 250);
+  }
   useEffect(() => {
     let cancelled = false;
     api.listWorkflows({ search, state, family })
@@ -42,8 +49,8 @@ export default function ListPage() {
           <input
             type="search"
             placeholder="Rechercher (titre, référence)…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchInput}
+            onChange={(e) => onSearchChange(e.target.value)}
             style={{ flex: "1 1 10rem", minWidth: 0, padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border)" }}
           />
           <select value={family} onChange={(e) => setFamily(e.target.value)} style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border)" }} aria-label="Filtrer par famille">
@@ -98,32 +105,8 @@ export default function ListPage() {
           </ul>
         )}
         {confirmDelete && (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }} role="dialog" aria-modal="true">
-            <div style={{ background: "var(--surface)", color: "var(--text)", borderRadius: "10px", padding: "1.2rem", maxWidth: "400px", display: "grid", gap: "0.8rem" }}>
-              <h2 style={{ margin: 0, fontSize: "1.05rem" }}>Supprimer « {confirmDelete.title} » ?</h2>
-              <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.9rem" }}>
-                Toutes les étapes, photos, versions et exports seront définitivement supprimés. Cette action est irréversible.
-              </p>
-              <div style={{ display: "flex", gap: "0.5rem", justifyContent: "end" }}>
-                <button onClick={() => setConfirmDelete(null)} style={secondaryBtn}>Annuler</button>
-                <button
-                  onClick={async () => {
-                    try {
-                      await api.deleteWorkflow(confirmDelete.id);
-                      setConfirmDelete(null);
-                      setWorkflows((arr) => arr.filter((w) => w.id !== confirmDelete.id));
-                    } catch (e) {
-                      setError(e instanceof ApiError ? e.message : "Suppression impossible");
-                    }
-                  }}
-                  style={{ ...primaryBtn, background: "var(--error-text)" }}
-                >
-                  Supprimer définitivement
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+          <ConfirmDeleteDialog workflow={confirmDelete} onClose={() => setConfirmDelete(null)} onDelete={async (w) => { try { await api.deleteWorkflow(w.id); setConfirmDelete(null); setWorkflows((arr) => arr.filter((x) => x.id !== w.id)); } catch (e) { setError(e instanceof ApiError ? e.message : "Suppression impossible"); } }} />
+          )}
       </main>
     </>
   );
@@ -131,3 +114,39 @@ export default function ListPage() {
 
 const secondaryBtn: React.CSSProperties = { padding: "0.5rem 0.9rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)" };
 const primaryBtn: React.CSSProperties = { padding: "0.5rem 0.9rem", borderRadius: "6px", border: "none", background: "var(--accent)", color: "white" };
+
+// Modale de confirmation de suppression — focus piégé, Échap pour fermer,
+// focus rendu au bouton Supprimer à l'ouverture (accessibilité clavier, I4).
+function ConfirmDeleteDialog({ workflow, onClose, onDelete }: { workflow: Workflow; onClose: () => void; onDelete: (w: Workflow) => Promise<void> }) {
+  const cancelRef = useRef<HTMLButtonElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    cancelRef.current?.focus();
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") { onClose(); return; }
+      if (e.key !== "Tab" || !dialogRef.current) return;
+      const focusables = dialogRef.current.querySelectorAll<HTMLElement>("button, a, input, select, textarea");
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", zIndex: 100 }} role="dialog" aria-modal="true" aria-label={`Supprimer ${workflow.title}`}>
+      <div ref={dialogRef} style={{ background: "var(--surface)", color: "var(--text)", borderRadius: "10px", padding: "1.2rem", maxWidth: "400px", display: "grid", gap: "0.8rem" }}>
+        <h2 style={{ margin: 0, fontSize: "1.05rem" }}>Supprimer « {workflow.title} » ?</h2>
+        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.9rem" }}>
+          Toutes les étapes, photos, versions et exports seront définitivement supprimés. Cette action est irréversible.
+        </p>
+        <div style={{ display: "flex", gap: "0.5rem", justifyContent: "end" }}>
+          <button ref={cancelRef} onClick={onClose} style={secondaryBtn}>Annuler</button>
+          <button onClick={() => void onDelete(workflow)} style={{ ...primaryBtn, background: "var(--error-text)" }}>Supprimer définitivement</button>
+        </div>
+      </div>
+    </div>
+  );
+}
