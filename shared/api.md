@@ -40,6 +40,6 @@ Auth par cookie de session (httpOnly). Codes : 401 non connecté, 403 rôle insu
 - `GET  /api/workflows?sort=title|updated_at|reference|family` → tri (défaut updated_at DESC)
 - `GET  /api/workflows?search=` → étendu au texte des étapes (LIKE sur steps.title/body)
 - `POST /api/workflows/:id/versions/:number/restore` → recrée les étapes depuis le snapshot (author+)
-- `GET  /api/admin/stats` → { workflows, published, users, topViewed[], recentActivity[] } (admin)
+- `GET  /api/stats` → { workflows, published, users, exports, logins, topExported[], topPublishers[], recentActivity[] } (admin) — NOTE: ne pas monter deux routers Express sur le même préfixe de path (le premier absorbe tout)
 - `POST /api/photos/:id/annotations` { annotations: Shape[] } → persiste l'overlay (author+)
 - Colonne `photos.annotations` (JSON, défaut '[]') : shapes {type: arrow|rect|text, ...}
