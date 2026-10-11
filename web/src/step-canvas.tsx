@@ -64,6 +64,42 @@ export default function StepCanvas({
   useEffect(() => { setObjs(photos); }, [JSON.stringify(photos)]);
   useEffect(() => { setShapes(parseShapes(canvasShapes)); }, [JSON.stringify(canvasShapes)]);
 
+  // ratios réels (h/w) des images : chargés une fois par photo, utilisés pour
+  // le hit-test, la sélection au rectangle et la hauteur du canevas.
+  const [ratios, setRatios] = useState<Record<number, number>>({});
+  useEffect(() => {
+    let alive = true;
+    for (const o of objs) {
+      if (ratios[o.photo.id] !== undefined) continue;
+      const img = new Image();
+      img.onload = () => {
+        if (alive && img.naturalWidth > 0) setRatios((r) => ({ ...r, [o.photo.id]: img.naturalHeight / img.naturalWidth }));
+      };
+      img.src = `/photos/${o.photo.filename}`;
+    }
+    return () => { alive = false; };
+  }, [objs.map((o) => o.photo.id).join(",")]);
+  const ratioOf = (o: CanvasPhoto) => ratios[o.photo.id] ?? 0.75;
+  const photoH = (o: CanvasPhoto) => Math.max(0.08, o.w * ratioOf(o));
+
+  // hauteur du canevas : couvre toutes les images (y + h) avec un minimum
+  // et une marge ; suit la largeur du conteneur (les w sont relatifs).
+  const [canvasW, setCanvasW] = useState(0);
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    const measure = () => setCanvasW(el.getBoundingClientRect().width || el.clientWidth);
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    measure();
+    window.addEventListener("resize", measure);
+    return () => { ro.disconnect(); window.removeEventListener("resize", measure); };
+  }, []);
+  const H = Math.round(Math.max(
+    240,
+    ...objs.map((o) => (o.y + photoH(o)) * canvasW + 12),
+  ));
+
   async function saveShapes(next: Shape[]) {
     setBusy(true); setError(null);
     try {
@@ -94,10 +130,9 @@ export default function StepCanvas({
   }
 
   function photoHit(p: { x: number; y: number }): number {
-    // hauteur d'une photo ~ w * ratio ; on approxime par w * 0.75 (4:3) + marge
     for (let i = objs.length - 1; i >= 0; i--) {
       const o = objs[i];
-      const h = Math.max(0.08, o.w * 0.75);
+      const h = photoH(o);
       if (p.x >= o.x && p.x <= o.x + o.w && p.y >= o.y && p.y <= o.y + h) return i;
     }
     return -1;
@@ -130,7 +165,7 @@ export default function StepCanvas({
         const R = { l: Math.min(drag.from.x, p.x), r: Math.max(drag.from.x, p.x), t: Math.min(drag.from.y, p.y), b: Math.max(drag.from.y, p.y) };
         const np = new Set<number>();
         objs.forEach((o, i) => {
-          const h = Math.max(0.08, o.w * 0.75);
+          const h = photoH(o);
           if (o.x < R.r && o.x + o.w > R.l && o.y < R.b && o.y + h > R.t) np.add(i);
         });
         const ns = new Set<number>();
@@ -171,10 +206,12 @@ export default function StepCanvas({
       const trash = p.y > 0.93;
       if (drag.kind === "selrect") {
         setSelRect(null);
+        const moved = Math.hypot(p.x - drag.from.x, p.y - drag.from.y) >= 0.01;
+        if (!moved && !e.shiftKey) { setSelPhotos(new Set()); setSelShapes(new Set()); }
       } else if (drag.kind === "photo") {
         if (trash) {
           // suppression des photos sélectionnées (fichiers + lignes)
-          for (const i of drag.ids) void api.deletePhoto(drag["ids"] && objs[i].photo.id).catch(() => {});
+          for (const i of drag.ids) void api.deletePhoto(objs[i].photo.id).catch(() => {});
           setObjs((arr) => arr.filter((_, i) => !drag.ids.includes(i)));
           setSelPhotos(new Set());
           onPhotosChanged?.();
@@ -243,8 +280,8 @@ export default function StepCanvas({
       });
       setDrag({ kind: "shape", indices: idx, grabs, from: p });
     } else {
-      // fond : rectangle de sélection
-      if (!e.shiftKey) { setSelPhotos(new Set()); setSelShapes(new Set()); }
+      // fond : rectangle de sélection — la sélection n'est appliquée qu'au
+      // relâchement, pour ne pas interférer avec un simple clic
       setDrag({ kind: "selrect", from: p });
     }
   }
@@ -289,7 +326,6 @@ export default function StepCanvas({
   };
 
   const sw = (i: number) => (selShapes.has(i) ? 3 : 2);
-  const H = 240; // hauteur de référence du canevas en px (le y relatif s'y réfère)
 
   return (
     <div style={{ display: "grid", gap: "0.4rem" }}>

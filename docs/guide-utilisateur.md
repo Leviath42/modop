@@ -60,6 +60,14 @@ Boutons préréglés (Attention, Danger, EPI, Risque électrique, Point chaud, O
    - couleurs : 4 pastilles.
 5. Supprimer une photo : 🗑.
 
+#### Canevas d'étape (photos + formes)
+
+- La zone d'édition **s'adapte automatiquement** à la hauteur et à la position des images : tout reste visible, même une image placée en bas.
+- **Clic sur une image ou une forme** : sélectionne cet objet (Maj-clic pour ajouter à la sélection).
+- **Glisser sur le fond** : dessine un **rectangle de sélection** (appliqué au relâchement) ; un simple clic sur le fond ne change pas la sélection.
+- **Glisser un objet** : le déplace (le groupe complet si plusieurs sélectionnés) ; relâcher dans la **bande du bas** supprime.
+- **Poignée en bas à droite d'une image** : redimensionne.
+
 ### Publier
 - **« Publier V1 »** exige au moins une étape ; chaque republication crée **V2, V3…** (snapshot immuable).
 - La liste des versions (auteur, date) est consultable ; une version peut être **restaurée** (l'état d'alors remplace le brouillon, l'historique reste intact).

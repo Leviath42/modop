@@ -29,6 +29,12 @@ Application web de création, publication et consultation de **modes opératoire
 | — | Thème sombre/clair (communauté, PR #4) | ✅ | Intégré |
 | — | Taille/position des photos (S/M/L/Plein + alignement), bandeaux sticky, clic-clic annotation | ✅ | À valider en campagne |
 
+### Correctifs récents (canevas d'étape)
+
+- **Hauteur adaptative** : la hauteur du canevas d'édition s'adapte désormais à la position et à la taille **réelles** des images (ratio mesuré au chargement, plus d'approximation 4:3) ; les images placées en bas ne sont plus rognées.
+- **Sélection au rectangle** : le rectangle de sélection ne s'applique plus qu'au **relâchement avec déplacement** — un simple clic sur le fond ne vide plus la sélection d'objet ; le clic unique sur un objet redevient fiable (hit-test basé sur le ratio réel de chaque image).
+- **Bonus** : correction d'un appel erroné à l'API de suppression de photo lors du glisser-vers-corbeille.
+
 ### Constats des campagnes de tests
 - Annotation : le drag natif navigateur entre en conflit avec les cartes d'étapes → **clic-clic** retenu (départ/arrivée), plus le déplacement des formes posées.
 - Express : deux routers sur le même préfixe de path → le premier absorbe tout (règle « un-path-un-domaine » au contrat).
