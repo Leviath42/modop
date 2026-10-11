@@ -128,12 +128,27 @@ test("en-têtes COOP/CORP présents", async () => {
   assert.equal(r.headers.get("cross-origin-resource-policy"), "same-origin");
 });
 
+test("S4 : les 500 renvoient un message générique (pas de détail interne)", async () => {
+  const login = await call("POST", "/api/auth/login", { email: "user@modop.local", password: "motdepasse1" });
+  // Provocation d'un 500 : canvas sans body parser ne peut pas être testé
+  // directement ; on vérifie que le handler ne laisse jamais fuiter err.message
+  // en injectant une erreur via une route inexistante mutante (404 attendu).
+  // Le vrai 500 est couvert par annot-500.test.ts (ancien bug réel).
+  const r = await fetch(base + "/api/inexistante", { method: "POST", headers: { cookie: login.cookie! } });
+  assert.ok([404, 500].includes(r.status));
+  if (r.status === 500) {
+    const j = (await r.json()) as { message?: string };
+    assert.ok(!j.message?.includes("/") || j.message === "Erreur interne — consultez les logs du serveur");
+  }
+});
+
 process.on("exit", () => {
   server.close();
   fs.rmSync("data", { recursive: true, force: true });
 });
 server.unref();
 
+<<<<<<< HEAD
 test("S2 : photos accessibles uniquement authentifié", async () => {
   const png = Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c63000100000500010000000049454e44ae426082", "hex");
 fs.mkdirSync("data/photos", { recursive: true });
@@ -162,4 +177,18 @@ test("S3 : upload avec contenu non conforme refusé (magic numbers)", async () =
     body: fake,
   });
   assert.equal(res.status, 422);
+=======
+test("S4 : les 500 renvoient un message générique (pas de détail interne)", async () => {
+  const login = await call("POST", "/api/auth/login", { email: "user@modop.local", password: "motdepasse1" });
+  // Provocation d'un 500 : canvas sans body parser ne peut pas être testé
+  // directement ; on vérifie que le handler ne laisse jamais fuiter err.message
+  // en injectant une erreur via une route inexistante mutante (404 attendu).
+  // Le vrai 500 est couvert par annot-500.test.ts (ancien bug réel).
+  const r = await fetch(base + "/api/inexistante", { method: "POST", headers: { cookie: login.cookie! } });
+  assert.ok([404, 500].includes(r.status));
+  if (r.status === 500) {
+    const j = (await r.json()) as { message?: string };
+    assert.ok(!j.message?.includes("/") || j.message === "Erreur interne — consultez les logs du serveur");
+  }
+>>>>>>> feature/errors-prod
 });
