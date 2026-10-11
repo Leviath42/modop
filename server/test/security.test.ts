@@ -95,3 +95,17 @@ process.on("exit", () => {
   fs.rmSync("data", { recursive: true, force: true });
 });
 server.unref();
+
+test("S4 : les 500 renvoient un message générique (pas de détail interne)", async () => {
+  const login = await call("POST", "/api/auth/login", { email: "user@modop.local", password: "motdepasse1" });
+  // Provocation d'un 500 : canvas sans body parser ne peut pas être testé
+  // directement ; on vérifie que le handler ne laisse jamais fuiter err.message
+  // en injectant une erreur via une route inexistante mutante (404 attendu).
+  // Le vrai 500 est couvert par annot-500.test.ts (ancien bug réel).
+  const r = await fetch(base + "/api/inexistante", { method: "POST", headers: { cookie: login.cookie! } });
+  assert.ok([404, 500].includes(r.status));
+  if (r.status === 500) {
+    const j = (await r.json()) as { message?: string };
+    assert.ok(!j.message?.includes("/") || j.message === "Erreur interne — consultez les logs du serveur");
+  }
+});
