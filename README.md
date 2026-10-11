@@ -59,8 +59,23 @@ Le front de production est servi par l'API (build via `npm run build` dans `web/
 
 ## Documentation
 
-- `docs/cahier-des-charges.md` — exigences (RF/RNF) et périmètre
-- `docs/roadmap.md` — état d'avancement et prochaines vagues
-- `docs/guide-test-proxmox.md` — installation et tests dans le conteneur
-- `docs/durcissement-securite.md` — mode production (SSO, TLS, sauvegardes)
-- `docs/processus-vagues.md` — processus de développement
+| Document | Contenu |
+|---|---|
+| [docs/cahier-des-charges.md](docs/cahier-des-charges.md) | Exigences RF/RNF, périmètre, historique des versions |
+| [docs/roadmap.md](docs/roadmap.md) | État des vagues, validation, prochaines étapes |
+| [docs/guide-utilisateur.md](docs/guide-utilisateur.md) | **Guide utilisateur** : consulter, créer, publier, administrer |
+| [docs/guide-test-proxmox.md](docs/guide-test-proxmox.md) | Installation conteneur LXC + tests |
+| [docs/durcissement-securite.md](docs/durcissement-securite.md) | Mode production : SSO OIDC, TLS, sauvegardes chiffrées |
+| [docs/processus-vagues.md](docs/processus-vagues.md) | Processus de développement (vagues IA supervisées) |
+
+## Rôles
+
+| Rôle | Accès |
+|---|---|
+| **Admin** | Tout + comptes, déploiement, statistiques |
+| **Auteur** | Créer, publier, versionner, exporter |
+| **Lecteur** | Consulter, rechercher, exporter |
+
+## Thème
+
+Clair / sombre — bouton dans la barre de navigation, choix mémorisé par appareil.
