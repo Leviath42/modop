@@ -120,3 +120,10 @@ li { list-style: none; }
 
 /* I3 : le bandeau éditeur déplié (palette 2 lignes) dépasse le scroll-margin
    de 5.5rem — marge portée à 8rem pour ne jamais masquer le haut d'une étape. */
+
+/* RF-71 : impression de la vignette QR — la feuille seule, sans l'interface. */
+@media print {
+  .no-print { display: none !important; }
+  nav { display: none !important; }
+  .qr-sheet { box-shadow: none !important; border: 1px solid #ccc; }
+}
