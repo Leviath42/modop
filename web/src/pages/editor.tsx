@@ -86,17 +86,6 @@ export default function EditorPage() {
     }
   }
 
-  async function saveMeta() {
-    if (!wf) return;
-    setError(null);
-    try {
-      await api.updateWorkflow(wf.id, { title, category, family, description });
-      setNotice("Enregistré");
-      setTimeout(() => setNotice(null), 1500);
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Enregistrement impossible");
-    }
-  }
 
   async function addStep() {
     if (!wf) return;
@@ -172,6 +161,7 @@ export default function EditorPage() {
     if (!wf) return;
     setError(null);
     try {
+      await api.updateWorkflow(wf.id, { title, category, family, description });
       const { number } = await api.publishWorkflow(wf.id);
       setNotice(`Publié en V${number}`);
       setTimeout(() => setNotice(null), 2500);
@@ -223,9 +213,11 @@ export default function EditorPage() {
             </label>
           </div>
           )}
-          <button onClick={isNew ? createWorkflow : saveMeta} disabled={isNew && (!title.trim() || !reference.trim())} style={primaryBtn}>
-            {isNew ? "Créer" : "Enregistrer les détails"}
-          </button>
+          {isNew && (
+            <button onClick={createWorkflow} disabled={!title.trim() || !reference.trim()} style={primaryBtn}>
+              Créer
+            </button>
+          )}
         </section>
 
         {!isNew && (

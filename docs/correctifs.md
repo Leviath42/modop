@@ -73,7 +73,22 @@ systemctl restart cloudflared
 
 **État** : ✅ livré sur beta — tsc + build + tests front verts (editor-smoke, editor-sticky, header-tools, step-drag, mobile-overflow).
 
+## C-05 — Bouton « Enregistrer les détails » retiré (réalisé)
+
+**Problème** : le bouton « Enregistrer les détails » en tête de l'éditeur entrait en conflit avec le modèle mental « tout se joue à la publication » — deux moments d'enregistrement à gérer.
+
+**Correctif** :
+- Bouton retiré (en mode création, le bouton « Créer » reste — il est nécessaire pour obtenir l'identifiant du document).
+- **La publication sauvegarde d'abord les métadonnées** (titre, famille, type, description) via `PUT /api/workflows/:id` avant le `POST /publish` — sinon les champs en cours d'édition n'auraient jamais été persistés (le serveur ne les enregistre pas seul).
+- Fonction `saveMeta` devenue morte : supprimée.
+
+**Note UX** : les métadonnées modifiées ne sont donc visibles des lecteurs qu'après publication ; le brouillon garde les valeurs en cours d'édition côté client (état React).
+
+**Fichiers** : `web/src/pages/editor.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tests front verts.
+
 <!-- Prochains correctifs de la série :
 
-## C-05 — (titre à définir)
+## C-06 — (titre à définir)
 -->
