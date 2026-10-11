@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { parseShapes, type Shape } from "./annotated-photo";
 import { api } from "./api";
 
@@ -62,27 +62,52 @@ export default function PhotoAnnotator({
     setDraft({ x1: p.x, y1: p.y, x2: p.x, y2: p.y });
   }
 
-  function onPointerMove(e: React.MouseEvent) {
-    if (!draft) return;
-    const p = relative(e);
-    setDraft({ ...draft, x2: p.x, y2: p.y });
-  }
+  // signature conservée pour compat
 
-  function onPointerUp() {
+  // Pendant un dessin, mousemove/mouseup sont écoutés sur WINDOW : le
+  // relâcher hors de la photo (cas très courant) doit toujours finaliser.
+  useEffect(() => {
     if (!draft) return;
-    const { x1, y1, x2, y2 } = draft;
-    setDraft(null);
-    const dist = Math.hypot(x2 - x1, y2 - y1);
+    const move = (e: MouseEvent) => {
+      const rect = boxRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setDraft((d) =>
+        d
+          ? {
+              ...d,
+              x2: Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
+              y2: Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height)),
+            }
+          : d
+      );
+    };
+    const up = () => {
+      setDraft((d) => {
+        if (d) void commitShape(d);
+        return null;
+      });
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+    return () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft !== null]);
+
+  function commitShape(d: { x1: number; y1: number; x2: number; y2: number }) {
+    const dist = Math.hypot(d.x2 - d.x1, d.y2 - d.y1);
     if (dist < 0.01) return;
     const shape: Shape =
       tool === "arrow"
-        ? { type: "arrow", x1, y1, x2, y2, color }
+        ? { type: "arrow", x1: d.x1, y1: d.y1, x2: d.x2, y2: d.y2, color }
         : {
             type: "rect",
-            x1: Math.min(x1, x2),
-            y1: Math.min(y1, y2),
-            w: Math.abs(x2 - x1),
-            h: Math.abs(y2 - y1),
+            x1: Math.min(d.x1, d.x2),
+            y1: Math.min(d.y1, d.y2),
+            w: Math.abs(d.x2 - d.x1),
+            h: Math.abs(d.y2 - d.y1),
             color,
           };
     void persist([...shapes, shape]);
@@ -96,9 +121,6 @@ export default function PhotoAnnotator({
         onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
         style={{ position: "relative", touchAction: "none" }}
         onMouseDown={onPointerDown}
-        onMouseMove={onPointerMove}
-        onMouseUp={onPointerUp}
-        onMouseLeave={onPointerUp}
       >
         <img
           src={`/photos/${filename}`}
