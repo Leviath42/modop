@@ -74,7 +74,7 @@ export default function AnnotatedPhoto({
                 return (
                   <rect
                     key={i}
-                    x={s.x1 * 100} y={s.y1 * 100} width={s.w * 100} height={s.h * 100}
+                    x={s.x1 * 100} y1={s.y1 * 100} width={s.w * 100} height={s.h * 100}
                     fill="none" stroke={s.color} strokeWidth="1.2" vectorEffect="non-scaling-stroke"
                   />
                 );
@@ -107,7 +107,7 @@ export default function AnnotatedPhoto({
             </span>
           ))}
       </div>
-      {alt && <figcaption style={{ color: "#666", fontSize: "0.85rem" }}>{alt}</figcaption>}
+      {alt && <figcaption style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>{alt}</figcaption>}
     </figure>
   );
 }
