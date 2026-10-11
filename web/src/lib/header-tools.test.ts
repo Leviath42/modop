@@ -69,7 +69,8 @@ if (!html2.includes('aria-label="Photos"')) throw new Error("bouton photo absent
 if (!/title="Flèche"/.test(html2)) throw new Error("outil flèche absent de la palette");
 if (!/title="Zone"/.test(html2)) throw new Error("outil zone absent de la palette");
 if (!/title="Texte"/.test(html2)) throw new Error("outil texte absent de la palette");
-if (!/title="Attention"/.test(html2)) throw new Error("pictos d'attention absents de la palette");
+// C-16 : les pictos sont regroupés derrière un bouton unique ⚠ dans la palette.
+if (!/title="Indications de l'étape/.test(html2)) throw new Error("bouton pictos (⚠) absent de la palette");
 
 // 3. zone d'étape : plus de bouton "Photo(s)…"
 const photoBtnCount = (html2.match(/Photo\(s\)…/g) || []).length;

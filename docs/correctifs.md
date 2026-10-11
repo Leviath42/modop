@@ -230,3 +230,18 @@ Sur écran étroit, le wrap reste possible mais chaque élément est compact —
 **Fichiers** : `web/src/styles.css`, pages (titres), `server/src/app.ts`, `web/src/theme.ts`, `web/index.html`, `server/test/static-cache.test.ts`
 
 **État** : ✅ livré sur beta — 101/101 tests serveur (dont 1 nouveau : injection thème), tsc + build + tests front.
+
+## C-16 — Pictos regroupés derrière un bouton unique (réalisé)
+
+**Problème** : les 7 pictos d'indication (Attention, Danger, EPI, Risque électrique, Point chaud, Outillage, Information) s'étalaient en permanence dans la palette d'outils — la rangée devenait longue, surtout sur mobile.
+
+**Correctif** :
+- Un seul bouton **⚠** dans la palette (compteur si l'étape active a des indications : « ⚠ (2) », fond accentué).
+- Le clic ouvre un **sous-menu déroulant** listant les pictos avec leur pastille couleur ; les actifs sont cochés (✓, fond teinté) — re-cliquer bascule (mêmes règles qu'avant).
+- Fermeture par clic extérieur ou **Échap** ; le compteur reste visible menu fermé.
+
+**Test** : `header-tools.test.ts` mis à jour (bouton ⚠ présent dans la palette).
+
+**Fichiers** : `web/src/pages/editor.tsx`, `web/src/lib/header-tools.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.

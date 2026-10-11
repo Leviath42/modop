@@ -57,6 +57,7 @@ export default function EditorPage() {
   const [insertColor, setInsertColor] = useState(COLORS[0]);
   const [activeStepId, setActiveStepId] = useState<number | null>(null);
   const [showTools, setShowTools] = useState(false);
+  const [showPictos, setShowPictos] = useState(false);
   const [confirmDeleteStep, setConfirmDeleteStep] = useState<Step | null>(null);
   const [confirmPublish, setConfirmPublish] = useState(false);
   const [reviewDue, setReviewDue] = useState("");
@@ -65,6 +66,17 @@ export default function EditorPage() {
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(false);
   const [confirmDeleteDoc2, setConfirmDeleteDoc2] = useState(false);
   const fileRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  const pictosMenuRef = useRef<HTMLSpanElement | null>(null);
+  useEffect(() => {
+    if (!showPictos) return;
+    const onDown = (e: PointerEvent) => {
+      if (pictosMenuRef.current && !pictosMenuRef.current.contains(e.target as Node)) setShowPictos(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setShowPictos(false); };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("pointerdown", onDown); document.removeEventListener("keydown", onKey); };
+  }, [showPictos]);
 
   const isNew = id === "new";
 
@@ -311,26 +323,50 @@ export default function EditorPage() {
                   <span style={{ width: "1px", height: "20px", background: "var(--border)" }} aria-hidden="true" />
                   <button onClick={addStep} style={iconBtn} title="Ajouter une étape" aria-label="Ajouter une étape"><PlusIcon /><span style={{ fontSize: "0.75rem" }}>étape</span></button>
                   <span style={{ width: "1px", height: "20px", background: "var(--border)" }} aria-hidden="true" />
-                  {PICTO_PRESETS.map((preset) => {
-                    const st = steps.find((x) => x.id === (activeStepId ?? steps[0].id));
-                    const on = st ? st.pictos.some((x) => x.kind === preset.kind) : false;
-                    return (
-                      <button
-                        key={preset.kind}
-                        onClick={() => {
-                          const target = activeStepId ?? steps[0].id;
-                          const stp = steps.find((x) => x.id === target);
-                          if (!stp) return;
-                          if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); }
-                          const idx = stp.pictos.findIndex((x) => x.kind === preset.kind);
-                          void patchStep(stp, { pictos: idx >= 0 ? stp.pictos.filter((_, k) => k !== idx) : [...stp.pictos, { kind: preset.kind, label: preset.label, color: preset.color }] });
-                        }}
-                        style={{ ...iconBtn, fontSize: "0.7rem", padding: "0.2rem 0.45rem", borderColor: on ? preset.color : "var(--border)", background: on ? `${preset.color}22` : "var(--surface)" }}
-                        aria-pressed={on}
-                        title={preset.label}
-                      >{preset.label}</button>
-                    );
-                  })}
+                  <span ref={pictosMenuRef} style={{ position: "relative" }}>
+                    {(() => {
+                      const st = steps.find((x) => x.id === (activeStepId ?? steps[0].id));
+                      const activeCount = st ? st.pictos.length : 0;
+                      return (
+                        <>
+                          <button
+                            onClick={() => setShowPictos((v) => !v)}
+                            aria-expanded={showPictos}
+                            aria-haspopup="menu"
+                            title="Indications de l'étape (attention, danger, EPI…)"
+                            style={{ ...iconBtn, background: showPictos || activeCount > 0 ? "var(--accent-bg)" : "var(--surface)", borderColor: showPictos || activeCount > 0 ? "var(--accent)" : "var(--border)" }}
+                          >⚠{activeCount > 0 ? ` (${activeCount})` : ""}</button>
+                          {showPictos && (
+                            <div role="menu" aria-label="Indications" style={{ position: "absolute", left: 0, top: "calc(100% + 0.35rem)", zIndex: 120, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", boxShadow: "0 6px 24px rgba(0,0,0,0.2)", padding: "0.3rem", display: "grid", gap: "0.15rem", minWidth: "10rem" }}>
+                              {PICTO_PRESETS.map((preset) => {
+                                const on = st ? st.pictos.some((x) => x.kind === preset.kind) : false;
+                                return (
+                                  <button
+                                    key={preset.kind}
+                                    role="menuitemcheckbox"
+                                    aria-checked={on}
+                                    onClick={() => {
+                                      const target = activeStepId ?? steps[0].id;
+                                      const stp = steps.find((x) => x.id === target);
+                                      if (!stp) return;
+                                      if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); }
+                                      const idx = stp.pictos.findIndex((x) => x.kind === preset.kind);
+                                      void patchStep(stp, { pictos: idx >= 0 ? stp.pictos.filter((_, k) => k !== idx) : [...stp.pictos, { kind: preset.kind, label: preset.label, color: preset.color }] });
+                                    }}
+                                    style={{ display: "flex", alignItems: "center", gap: "0.45rem", width: "100%", padding: "0.35rem 0.55rem", borderRadius: "6px", border: "1px solid transparent", background: on ? `${preset.color}22` : "transparent", color: "var(--text)", fontSize: "0.8rem", textAlign: "left", cursor: "pointer" }}
+                                  >
+                                    <span aria-hidden="true" style={{ width: "0.7rem", height: "0.7rem", borderRadius: "50%", background: preset.color, flexShrink: 0 }} />
+                                    {preset.label}
+                                    {on && <span aria-hidden="true" style={{ marginLeft: "auto", color: "var(--ok-text)" }}>✓</span>}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </span>
                   <span style={{ width: "1px", height: "20px", background: "var(--border)" }} aria-hidden="true" />
                   <button
                     onClick={() => {
