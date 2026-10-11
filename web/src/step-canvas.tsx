@@ -317,9 +317,10 @@ export default function StepCanvas({
         return { x: p.x - c.x, y: p.y - c.y };
       });
       setDrag({ kind: "shape", indices: idx, grabs, from: p });
-    } else {
-      // fond : rectangle de sélection — la sélection n'est appliquée qu'au
-      // relâchement, pour ne pas interférer avec un simple clic
+    } else if (e.pointerType === "mouse") {
+      // fond : rectangle de sélection — GESTE SOURIS UNIQUEMENT.
+      // Au doigt, le fond ne démarre aucun drag : touch-action: pan-y
+      // laisse le navigateur scroller la page (C-19/C-21).
       setDrag({ kind: "selrect", from: p });
     }
   }

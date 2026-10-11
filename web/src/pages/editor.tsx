@@ -264,10 +264,25 @@ export default function EditorPage() {
             </button>
           )}
           {!isNew && (
-            <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", flexWrap: "wrap", minWidth: 0, paddingTop: "0.4rem", borderTop: "1px solid var(--border-soft)" }}>
-              <h2 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 600, flex: "1 1 6rem", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, color: "var(--text)" }}>
-                {(() => { const st = steps.find((x) => x.id === (activeStepId ?? steps[0]?.id)); return st ? st.title : (title || "sans titre"); })()}
-              </h2>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", flexWrap: "nowrap", overflow: "hidden", minWidth: 0, paddingTop: "0.4rem", borderTop: "1px solid var(--border-soft)" }}>
+              <select
+                value={activeStepId ?? steps[0]?.id ?? ""}
+                onChange={(e) => {
+                  const stepId = Number(e.target.value);
+                  if (!stepId) return;
+                  setOpenSteps((prev) => new Set([...prev, stepId]));
+                  setActiveStepId(stepId);
+                  setTimeout(() => { document.getElementById(`edit-step-${stepId}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 80);
+                }}
+                aria-label="Étape affichée — choisir pour y aller"
+                title="Étape active — choisir pour y aller"
+                style={{ margin: 0, fontSize: "0.85rem", fontWeight: 600, flex: "1 1 6rem", maxWidth: "100%", minWidth: 0, padding: "0.25rem 0.35rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)" }}
+              >
+                {steps.map((st, si) => {
+                  const isActive = st.id === (activeStepId ?? steps[0]?.id);
+                  return <option key={st.id} value={st.id}>{isActive ? "▶ " : ""}{si + 1}. {st.title}</option>;
+                })}
+              </select>
               <button
                 onClick={() => {
                   if (steps.length === 0) return;
@@ -285,18 +300,7 @@ export default function EditorPage() {
                 title="Outils : photos, flèches, zones, textes, pictogrammes, indications"
                 aria-label="Outils"
               >Outils</button>
-              {steps.length > 1 && (
-                <select value="" onChange={(e) => {
-                  const stepId = Number(e.target.value);
-                  setOpenSteps((prev) => new Set([...prev, stepId]));
-                  setActiveStepId(stepId);
-                  setTimeout(() => { document.getElementById(`edit-step-${stepId}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 80);
-                }} aria-label="Aller à une étape" style={{ padding: "0.2rem 0.45rem", borderRadius: "6px", border: "1px solid var(--border)", maxWidth: "100%", minWidth: 0, fontSize: "0.8rem", background: "var(--surface)", color: "var(--text)" }}
-                >
-                  <option value="">Aller à…</option>
-                  {steps.map((st, si) => <option key={st.id} value={st.id}>{si + 1}. {st.title}</option>)}
-                </select>
-              )}
+
               {showTools && steps.length > 0 && (
                 <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap", alignItems: "center", flexBasis: "100%", minWidth: 0, paddingTop: "0.25rem", borderTop: "1px solid var(--border-soft)" }}>
                   <button

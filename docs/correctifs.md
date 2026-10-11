@@ -293,3 +293,15 @@ Sur écran étroit, le wrap reste possible mais chaque élément est compact —
 **Fichiers** : `web/src/pages/editor.tsx`, `web/src/lib/header-tools.test.ts`
 
 **État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-21 — Rangée outils sur une ligne + rectangle de sélection 100 % souris (réalisé)
+
+**Problème 1** : le bouton « Aller à… » était large et passait sur une 2e ligne du bandeau. **Problème 2** : au doigt sur la zone d'image, le geste créait un **rectangle de sélection** au lieu de scroller.
+
+**Correctifs** :
+1. **Le nom d'étape devient la liste déroulante** : le `<h2>` statique et le bouton « Aller à… » fusionnent en un **unique select** — l'étape active s'affiche dedans (▶), en choisir une autre y va (scroll fluide). La rangée ne contient plus que : sélecteur d'étape · plier/déplier · Outils — en `nowrap` (une ligne garantie).
+2. **Rectangle de sélection réservé à la souris** : le `selrect` ne démarre que si `pointerType === "mouse"`. Au doigt sur le fond du canevas, **plus aucun drag n'est amorcé** — le `touch-action: pan-y` fait scroller la page. (C-19 avait déjà ouvert la voie ; le résidu venait du selrect qui démarrait pour tout pointeur.)
+
+**Fichiers** : `web/src/pages/editor.tsx`, `web/src/step-canvas.tsx`, `web/src/lib/editor-sticky.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.

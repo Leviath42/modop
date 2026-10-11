@@ -53,7 +53,9 @@ const html = dom.window.document.getElementById("root")!.innerHTML;
 if (!html.includes("position: sticky")) throw new Error("bandeau non sticky");
 if (!/(▾|▸)/.test(html)) throw new Error("bouton réduire/développer absent");
 if (!/Tout (ouvrir|replier)/.test(html)) throw new Error("title réduire/développer absent");
-if (!html.includes("Aller à")) throw new Error("Aller à absent");
+// C-21 : le nom d'étape EST la liste déroulante (rôle Aller à intégré).
+if (!/aria-label="Étape affichée/.test(html)) throw new Error("sélecteur d'étape absent");
+if (html.includes(" Aller à")) { /* plus de bouton séparé */ }
 if (!html.includes("Remontage pompe")) throw new Error("titre du document absent du bandeau");
 console.log("BANDEAU ÉDITEUR STICKY OK (titre, tout ouvrir/replier, aller à)");
 process.exit(0);
