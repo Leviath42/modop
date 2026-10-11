@@ -152,6 +152,48 @@ export function workflowRouter(db: Database.Database): Router {
     res.status(201).json(pictosArray(db.prepare("SELECT * FROM steps WHERE id = ?").get(info.lastInsertRowid)));
   });
 
+  // RF-73 — retour terrain : signalement d'un problème sur une étape.
+  r.post("/:id/feedback", requireAuth("reader"), (req, res) => {
+    const wf = db.prepare("SELECT id FROM workflows WHERE id = ?").get(Number(req.params.id)) as { id: number } | undefined;
+    if (!wf) {
+      res.status(404).json({ error: "not_found", message: "mode opératoire introuvable" });
+      return;
+    }
+    const { step_id, message } = req.body ?? {};
+    if (typeof step_id !== "number" || typeof message !== "string" || !message.trim()) {
+      res.status(422).json({ error: "validation", message: "step_id (nombre) et message requis" });
+      return;
+    }
+    const step = db.prepare("SELECT id FROM steps WHERE id = ? AND workflow_id = ?").get(step_id, wf.id);
+    if (!step) {
+      res.status(404).json({ error: "not_found", message: "étape introuvable" });
+      return;
+    }
+    const actor = (req as { user?: { email: string } }).user!;
+    auditLog(db, actor.email, "feedback", `workflow:${wf.id}`, `step:${step_id} ${message.trim().slice(0, 500)}`);
+    res.status(201).json({ ok: true });
+  });
+
+  r.get("/:id/feedback", requireAuth("author"), (req, res) => {
+    const wf = db.prepare("SELECT id FROM workflows WHERE id = ?").get(Number(req.params.id)) as { id: number } | undefined;
+    if (!wf) {
+      res.status(404).json({ error: "not_found", message: "mode opératoire introuvable" });
+      return;
+    }
+    const rows = db
+      .prepare(
+        `SELECT actor_email, detail, at FROM audit_log
+         WHERE action = 'feedback' AND target = ? ORDER BY id DESC LIMIT 200`
+      )
+      .all(`workflow:${wf.id}`) as { actor_email: string; detail: string; at: string }[];
+    res.json(rows.map((r0: { actor_email: string; detail: string; at: string }) => ({
+      by: r0.actor_email,
+      step_id: Number((r0.detail.match(/^step:(\d+)/) ?? [0, "0"])[1]),
+      message: r0.detail.replace(/^step:\d+\s*/, ""),
+      at: r0.at,
+    })));
+  });
+
   r.put("/:id/steps/reorder", requireAuth("author"), (req, res) => {
     const wf = db.prepare("SELECT id FROM workflows WHERE id = ?").get(req.params.id) as { id: number } | undefined;
     if (!wf) {
