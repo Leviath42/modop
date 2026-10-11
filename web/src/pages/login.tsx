@@ -2,6 +2,7 @@ import { type FormEvent, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth-context";
+import { getStoredTheme, toggleTheme, type Theme } from "../theme";
 
 export default function LoginPage() {
   const { user, refresh } = useAuth();
@@ -9,6 +10,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [theme, setTheme] = useState<Theme>(() =>
+    (document.documentElement.dataset.theme as Theme) || getStoredTheme()
+  );
 
   if (user) return <Navigate to="/" replace />;
 
@@ -28,8 +32,27 @@ export default function LoginPage() {
 
   return (
     <main style={{ maxWidth: "360px", margin: "10vh auto", padding: "1rem" }}>
+      <button
+        onClick={() => setTheme(toggleTheme())}
+        aria-label={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
+        title={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
+        style={{
+          position: "fixed",
+          top: "1rem",
+          right: "1rem",
+          padding: "0.3rem 0.6rem",
+          borderRadius: "6px",
+          border: "1px solid var(--border)",
+          background: "var(--surface)",
+          color: "var(--text)",
+          fontSize: "1rem",
+          lineHeight: 1,
+        }}
+      >
+        {theme === "dark" ? "☀️" : "🌙"}
+      </button>
       <h1>Modop</h1>
-      <p style={{ color: "#555" }}>Modes opératoires</p>
+      <p style={{ color: "var(--text-muted)" }}>Modes opératoires</p>
       <form onSubmit={submit} style={{ display: "grid", gap: "0.75rem" }}>
         <label style={{ display: "grid", gap: "0.25rem" }}>
           Email
@@ -54,7 +77,7 @@ export default function LoginPage() {
           />
         </label>
         {error && (
-          <p role="alert" style={{ color: "#b30000", margin: 0 }}>
+          <p role="alert" style={{ color: "var(--error-text)", margin: 0 }}>
             {error}
           </p>
         )}
@@ -69,7 +92,7 @@ export default function LoginPage() {
 const inputStyle: React.CSSProperties = {
   padding: "0.5rem",
   borderRadius: "6px",
-  border: "1px solid #c9ccd3",
+  border: "1px solid var(--border)",
   fontSize: "1rem",
 };
 
@@ -77,7 +100,7 @@ const buttonStyle: React.CSSProperties = {
   padding: "0.6rem",
   borderRadius: "6px",
   border: "none",
-  background: "#1f4e9c",
+  background: "var(--accent)",
   color: "white",
   fontSize: "1rem",
 };
