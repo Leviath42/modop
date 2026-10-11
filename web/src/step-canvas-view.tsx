@@ -6,29 +6,41 @@ import type { Photo } from "./api";
 // côte possibles) + formes dessinées par-dessus, en lecture seule.
 export default function StepCanvasView({ photos, shapes }: { photos: Photo[]; shapes: Shape[] }) {
   const [H, setH] = useState(240);
+  const [ratios, setRatios] = useState<Record<number, number>>({});
   const ref = useRef<HTMLDivElement>(null);
   const sh = parseShapes(shapes);
+
+  useEffect(() => {
+    let alive = true;
+    for (const ph of photos) {
+      if (ratios[ph.id] !== undefined) continue;
+      const img = new Image();
+      img.onload = () => {
+        if (alive && img.naturalWidth > 0) setRatios((r) => ({ ...r, [ph.id]: img.naturalHeight / img.naturalWidth }));
+      };
+      img.src = `/photos/${ph.filename}`;
+    }
+    return () => { alive = false; };
+  }, [photos.map((p) => p.id).join(",")]);
 
   useEffect(() => {
     const measure = () => {
       const el = ref.current;
       if (!el) return;
-      // hauteur = max des images placées (y + hauteur estimée) avec minimum
-      let max = 200;
+      const width = el.getBoundingClientRect().width || el.clientWidth || 800;
+      let max = 240;
       for (const ph of photos) {
         const w = typeof ph.display_w === "number" ? ph.display_w : 0.6;
-        const x = typeof ph.display_x === "number" ? ph.display_x : 0;
-        const y = typeof ph.display_y === "number" ? ph.display_y : 0;
-        const ratio = 0.75;
-        const bottom = (y * 0.6 + w * ratio + 0.05) * 240;
-        if (bottom > max) max = bottom;
+        const y = typeof ph.display_y === "number" ? ph.display_y : 0.05;
+        const hpx = y * 240 + (w * width * (ratios[ph.id] ?? 0.75)) + 12;
+        if (hpx > max) max = hpx;
       }
       setH(Math.round(max));
     };
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, [photos]);
+  }, [photos, ratios]);
 
   const W = ref.current?.clientWidth ?? 800;
 
@@ -37,26 +49,28 @@ export default function StepCanvasView({ photos, shapes }: { photos: Photo[]; sh
       {photos.map((ph) => {
         const w = typeof ph.display_w === "number" ? ph.display_w : ph.display_size === "full" ? 1 : ph.display_size === "large" ? 0.85 : ph.display_size === "small" ? 0.35 : 0.6;
         const x = typeof ph.display_x === "number" ? ph.display_x : 0;
-        const y = typeof ph.display_y === "number" ? ph.display_y * 0.6 : 0.05;
+        const y = typeof ph.display_y === "number" ? ph.display_y : 0.05;
         return (
           <img key={ph.id} src={`/photos/${ph.filename}`} alt={ph.alt || ""} draggable={false}
-            style={{ position: "absolute", left: `${x * 100}%`, top: `${y * H}px`, width: `${w * 100}%`, borderRadius: "8px", display: "block" }} />
+            style={{ position: "absolute", left: `${x * 100}%`, top: `${y * 240}px`, width: `${w * 100}%`, borderRadius: "8px", display: "block" }} />
         );
       })}
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none"
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
         <defs>
-          <marker id="rv-ah" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="userSpaceOnUse">
-            <path d="M0,0 L10,5 L0,10 z" fill="#888" />
-          </marker>
+          {[...new Set(sh.filter((s) => s.type === "arrow").map((s) => s.color))].map((c) => (
+            <marker key={c} id={`rv-ah-${c.replace("#", "")}`} markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+              <path d="M0,0 L10,5 L0,10 z" fill={c} />
+            </marker>
+          ))}
         </defs>
         {sh.map((s, i) => {
           if (s.type === "arrow" && s.x2 !== undefined && s.y2 !== undefined) {
-            return <line key={i} x1={s.x1 * W} y1={s.y1 * H} x2={s.x2 * W} y2={s.y2 * H}
-              stroke={s.color} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinecap="round" markerEnd="url(#rv-ah)" />;
+            return <line key={i} x1={s.x1 * W} y1={s.y1 * 240} x2={s.x2 * W} y2={s.y2 * 240}
+              stroke={s.color} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinecap="round" markerEnd={`url(#rv-ah-${s.color.replace("#", "")})`} />;
           }
           if (s.type === "rect" && s.w !== undefined && s.h !== undefined) {
-            return <rect key={i} x={s.x1 * W} y1={s.y1 * H} width={s.w * W} height={s.h * H}
+            return <rect key={i} x={s.x1 * W} y1={s.y1 * 240} width={s.w * W} height={s.h * 240}
               fill="none" stroke={s.color} strokeWidth="2" vectorEffect="non-scaling-stroke" />;
           }
           return null;
@@ -64,7 +78,7 @@ export default function StepCanvasView({ photos, shapes }: { photos: Photo[]; sh
       </svg>
       {sh.map((s, i) => s.type === "text" && s.text ? (
         <span key={`t${i}`} style={{
-          position: "absolute", left: `${s.x1 * 100}%`, top: `${s.y1 * 100}%`, transform: "translate(-50%, -50%)",
+          position: "absolute", left: `${s.x1 * 100}%`, top: `${s.y1 * 240}px`, transform: "translate(-50%, -50%)",
           background: s.color, color: "white", padding: "0.15rem 0.4rem", borderRadius: "4px",
           fontSize: "0.8rem", fontWeight: 600, pointerEvents: "none", whiteSpace: "nowrap",
         }}>{s.text}</span>

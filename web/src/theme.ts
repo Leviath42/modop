@@ -17,6 +17,8 @@ export function getStoredTheme(): Theme {
 
 export function applyTheme(theme: Theme): void {
   document.documentElement.dataset.theme = theme;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", theme === "dark" ? "#12151a" : "#1f4e9c");
   try {
     localStorage.setItem(STORAGE_KEY, theme);
   } catch {

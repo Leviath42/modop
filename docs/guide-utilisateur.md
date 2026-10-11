@@ -1,4 +1,4 @@
-# Guide utilisateur — Modop
+ Guide utilisateur — Modop
 
 *Comment utiliser Modop au quotidien : consulter, créer, publier, administrer. Le guide d'installation est dans [guide-test-proxmox.md](guide-test-proxmox.md).*
 
@@ -14,7 +14,7 @@
 
 ## Thème clair / sombre
 
-Bouton **Clair / Sombre** dans la barre du haut. Votre choix est mémorisé sur l'appareil.
+Bouton **☀️ / 🌙** dans la barre du haut (et sur la page de connexion). Votre choix est mémorisé sur l'appareil, et la barre du navigateur mobile suit le thème.
 
 ## Consulter les modes opératoires
 
@@ -67,6 +67,7 @@ Boutons préréglés (Attention, Danger, EPI, Risque électrique, Point chaud, O
 - **Glisser sur le fond** : dessine un **rectangle de sélection** (appliqué au relâchement) ; un simple clic sur le fond ne change pas la sélection.
 - **Glisser un objet** : le déplace (le groupe complet si plusieurs sélectionnés) ; relâcher dans la **bande du bas** supprime.
 - **Poignée en bas à droite d'une image** : redimensionne.
+- Les positions sont enregistrées dans un repère fixe : vos objets restent exactement où vous les posez.
 
 ### Publier
 - **« Publier V1 »** exige au moins une étape ; chaque republication crée **V2, V3…** (snapshot immuable).

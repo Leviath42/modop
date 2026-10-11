@@ -62,7 +62,8 @@ canvas.id = "c";
 
 // hauteur attendue : y + h = 0.5 + 0.5*0.5 = 0.75 de la largeur 800 = 600 + marge 12 => >= 600
 const h1 = parseInt(canvas.style.height, 10);
-if (!(h1 >= 600 && h1 <= 640)) throw new Error(`hauteur non adaptée : ${h1}px (attendu ~612)`);
+// y=0.5 (fraction de REF_H=240) + h = w*W*ratio/REF_H = 0.5*800*0.5/240 px => H = (0.5 + 0.8333)*240 + 12 ≈ 332
+if (h1 !== 332) throw new Error(`hauteur non adaptée : ${h1}px (attendu 332)`);
 
 console.log("U-CANVAS HAUTEUR ADAPTATIVE OK");
 
@@ -74,8 +75,8 @@ if (!imgBox) throw new Error("image non rendue");
 function fire(el: Element | EventTarget, type: string, opts: MouseEventInit = {}) {
   el.dispatchEvent(new dom.window.MouseEvent(type, { bubbles: true, cancelable: true, button: 0, ...opts }));
 }
-fire(imgBox, "mousedown", { clientX: 200, clientY: 180 });
-fire(dom.window, "mouseup", { clientX: 200, clientY: 180 });
+fire(imgBox, "mousedown", { clientX: 200, clientY: 200 });
+fire(dom.window, "mouseup", { clientX: 200, clientY: 200 });
 await new Promise((r) => setTimeout(r, 30));
 const canvases3 = Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%");
 const imgBox2 = (canvases3[canvases3.length - 1] as HTMLElement).querySelector("img")?.parentElement as HTMLElement;

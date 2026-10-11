@@ -27,6 +27,10 @@ const TOOLS: { kind: Shape["type"]; label: string }[] = [
   { kind: "text", label: "Texte" },
 ];
 const COLORS = ["#d0021b", "#f5a623", "#1f4e9c", "#108c5e"];
+// Référentiel vertical FIXE : les y sont stockés en fraction de REF_H pixels
+// (et non de la hauteur visible, qui varie) — sans cela, chaque cycle
+// sauvegarde/chargement décale les objets vers le haut.
+const REF_H = 240;
 
 export default function StepCanvas({
   stepId,
@@ -80,10 +84,9 @@ export default function StepCanvas({
     return () => { alive = false; };
   }, [objs.map((o) => o.photo.id).join(",")]);
   const ratioOf = (o: CanvasPhoto) => ratios[o.photo.id] ?? 0.75;
-  const photoH = (o: CanvasPhoto) => Math.max(0.08, o.w * ratioOf(o));
 
   // hauteur du canevas : couvre toutes les images (y + h) avec un minimum
-  // et une marge ; suit la largeur du conteneur (les w sont relatifs).
+  // et une marge ; les y et les hauteurs sont en fraction de REF_H (fixe).
   const [canvasW, setCanvasW] = useState(0);
   useEffect(() => {
     const el = canvasRef.current;
@@ -92,12 +95,14 @@ export default function StepCanvas({
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     measure();
-    window.addEventListener("resize", measure);
+ window.addEventListener("resize", measure);
     return () => { ro.disconnect(); window.removeEventListener("resize", measure); };
   }, []);
+  const W = canvasW || 800;
+  const photoH = (o: CanvasPhoto) => Math.max(0.04, (o.w * W * ratioOf(o)) / REF_H);
   const H = Math.round(Math.max(
-    240,
-    ...objs.map((o) => (o.y + photoH(o)) * canvasW + 12),
+    REF_H,
+    ...objs.map((o) => (o.y + photoH(o)) * REF_H + 12),
   ));
 
   async function saveShapes(next: Shape[]) {
@@ -125,7 +130,7 @@ export default function StepCanvas({
     const r = canvasRef.current!.getBoundingClientRect();
     return {
       x: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)),
-      y: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)),
+      y: Math.min(1, Math.max(0, (e.clientY - r.top) / REF_H)),
     };
   }
 
@@ -137,6 +142,7 @@ export default function StepCanvas({
     }
     return -1;
   }
+
 
   function shapeHit(p: { x: number; y: number }): number {
     for (let i = shapes.length - 1; i >= 0; i--) {
@@ -174,7 +180,7 @@ export default function StepCanvas({
           if (c.x >= R.l && c.x <= R.r && c.y >= R.t && c.y <= R.b) ns.add(i);
         });
         setSelPhotos(np); setSelShapes(ns);
-        setOverTrash(p.y > 0.93);
+        setOverTrash(p.y * REF_H > H - 0.07 * H);
       } else if (drag.kind === "photo") {
         const dx = p.x - drag.from.x, dy = p.y - drag.from.y;
         setObjs((arr) => arr.map((o, i) => {
@@ -182,7 +188,7 @@ export default function StepCanvas({
           const g = drag.grabs[drag.ids.indexOf(i)];
           return { ...o, x: bx(p.x - g.x), y: bx(p.y - g.y) };
         }));
-        setOverTrash(p.y > 0.93);
+        setOverTrash(p.y * REF_H > H - 0.07 * H);
       } else if (drag.kind === "shape") {
         setShapes((arr) => arr.map((s, i) => {
           if (!drag.indices.includes(i)) return s;
@@ -194,7 +200,7 @@ export default function StepCanvas({
           }
           return { ...s, x1: ox, y1: oy };
         }));
-        setOverTrash(p.y > 0.93);
+        setOverTrash(p.y * REF_H > H - 0.07 * H);
       } else if (drag.kind === "resize") {
         const r = canvasRef.current!.getBoundingClientRect();
         const rel = Math.min(1, Math.max(0.1, (e.clientX - r.left) / r.width));
@@ -203,7 +209,7 @@ export default function StepCanvas({
     };
     const up = (e: MouseEvent) => {
       const p = pt(e);
-      const trash = p.y > 0.93;
+      const trash = p.y * REF_H > H - 0.07 * H;
       if (drag.kind === "selrect") {
         setSelRect(null);
         const moved = Math.hypot(p.x - drag.from.x, p.y - drag.from.y) >= 0.01;
@@ -364,7 +370,7 @@ export default function StepCanvas({
         {/* images */}
         {objs.map((o, i) => (
           <div key={o.photo.id} style={{
-            position: "absolute", left: `${o.x * 100}%`, top: `${o.y * H}px`, width: `${o.w * 100}%`,
+            position: "absolute", left: `${o.x * 100}%`, top: `${o.y * REF_H}px`, width: `${o.w * 100}%`,
             outline: selPhotos.has(i) ? "2px solid var(--accent)" : "none", borderRadius: "8px", overflow: "hidden",
           }}>
             <img src={`/photos/${o.photo.filename}`} alt={o.photo.alt || ""} draggable={false}
@@ -378,40 +384,42 @@ export default function StepCanvas({
         ))}
 
         {/* formes SVG en coordonnées canevas */}
-        <svg viewBox={`0 0 ${canvasRef.current?.clientWidth ?? 800} ${H}`} preserveAspectRatio="none"
+        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none"
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
           <defs>
-            <marker id={`cs-ah-${stepId}`} markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="userSpaceOnUse">
-              <path d="M0,0 L10,5 L0,10 z" fill={color} />
-            </marker>
+            {[...new Set(shapes.filter((s) => s.type === "arrow").map((s) => s.color))].concat(pendingStart && tool === "arrow" ? [color] : []).map((c) => (
+              <marker key={c} id={`cs-ah-${stepId}-${c.replace("#", "")}`} markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                <path d="M0,0 L10,5 L0,10 z" fill={c} />
+              </marker>
+            ))}
           </defs>
           {shapes.map((s, i) => {
             const W = canvasRef.current?.clientWidth ?? 800;
             if (s.type === "arrow" && s.x2 !== undefined && s.y2 !== undefined) {
-              return <line key={i} x1={s.x1 * W} y1={s.y1 * H} x2={s.x2 * W} y2={s.y2 * H}
-                stroke={s.color} strokeWidth={sw(i)} vectorEffect="non-scaling-stroke" strokeLinecap="round" markerEnd={`url(#cs-ah-${stepId})`} />;
+              return <line key={i} x1={s.x1 * W} y1={s.y1 * REF_H} x2={s.x2 * W} y2={s.y2 * REF_H}
+                stroke={s.color} strokeWidth={sw(i)} vectorEffect="non-scaling-stroke" strokeLinecap="round" markerEnd={`url(#cs-ah-${stepId}-${s.color.replace("#", "")})`} />;
             }
             if (s.type === "rect" && s.w !== undefined && s.h !== undefined) {
-              return <rect key={i} x={s.x1 * W} y1={s.y1 * H} width={s.w * W} height={s.h * H}
+              return <rect key={i} x={s.x1 * W} y1={s.y1 * REF_H} width={s.w * W} height={s.h * REF_H}
                 fill="none" stroke={s.color} strokeWidth={sw(i)} vectorEffect="non-scaling-stroke" />;
             }
             return null;
           })}
           {pendingStart && preview && tool === "arrow" && (() => {
             const W = canvasRef.current?.clientWidth ?? 800;
-            return <line x1={pendingStart.x * W} y1={pendingStart.y * H} x2={preview.x * W} y2={preview.y * H}
-              stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinecap="round" markerEnd={`url(#cs-ah-${stepId})`} />;
+            return <line x1={pendingStart.x * W} y1={pendingStart.y * REF_H} x2={preview.x * W} y2={preview.y * REF_H}
+              stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinecap="round" markerEnd={`url(#cs-ah-${stepId}-${color.replace("#", "")})`} />;
           })()}
           {pendingStart && preview && tool === "rect" && (() => {
             const W = canvasRef.current?.clientWidth ?? 800;
-            return <rect x={Math.min(pendingStart.x, preview.x) * W} y={Math.min(pendingStart.y, preview.y) * H}
-              width={Math.abs(pendingStart.x - preview.x) * W} height={Math.abs(pendingStart.y - preview.y) * H}
+            return <rect x={Math.min(pendingStart.x, preview.x) * W} y={Math.min(pendingStart.y, preview.y) * REF_H}
+              width={Math.abs(pendingStart.x - preview.x) * W} height={Math.abs(pendingStart.y - preview.y) * REF_H}
               fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" />;
           })()}
           {selRect && (() => {
             const W = canvasRef.current?.clientWidth ?? 800;
-            return <rect x={Math.min(selRect.x1, selRect.x2) * W} y={Math.min(selRect.y1, selRect.y2) * H}
-              width={Math.abs(selRect.x2 - selRect.x1) * W} height={Math.abs(selRect.y2 - selRect.y1) * H}
+            return <rect x={Math.min(selRect.x1, selRect.x2) * W} y={Math.min(selRect.y1, selRect.y2) * REF_H}
+              width={Math.abs(selRect.x2 - selRect.x1) * W} height={Math.abs(selRect.y2 - selRect.y1) * REF_H}
               fill="rgba(31,78,156,0.08)" stroke="var(--accent)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeDasharray="4 3" />;
           })()}
         </svg>
@@ -419,7 +427,7 @@ export default function StepCanvas({
         {/* textes */}
         {shapes.map((s, i) => s.type === "text" && s.text ? (
           <span key={`t${i}`} style={{
-            position: "absolute", left: `${s.x1 * 100}%`, top: `calc(${s.y1 * 100}% )`, transform: "translate(-50%, -50%)",
+            position: "absolute", left: `${s.x1 * 100}%`, top: `${s.y1 * REF_H}px`, transform: "translate(-50%, -50%)",
             background: s.color, color: "white", padding: "0.15rem 0.4rem", borderRadius: "4px",
             fontSize: "0.8rem", fontWeight: 600, pointerEvents: "none", whiteSpace: "nowrap",
             outline: selShapes.has(i) ? "2px solid #333" : "none",
@@ -427,7 +435,7 @@ export default function StepCanvas({
         ) : null)}
         {textDraft && (
           <span style={{
-            position: "absolute", left: `${textDraft.x * 100}%`, top: `${textDraft.y * 100}%`, transform: "translate(-50%, -50%)",
+            position: "absolute", left: `${textDraft.x * 100}%`, top: `${textDraft.y * REF_H}px`, transform: "translate(-50%, -50%)",
             background: color, color: "white", padding: "0.15rem 0.4rem", borderRadius: "4px",
             fontSize: "0.8rem", fontWeight: 600, pointerEvents: "none",
           }}>{textDraft.value || "…"}</span>

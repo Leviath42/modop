@@ -44,7 +44,7 @@ export default function NavBar() {
         title={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
         style={themeBtn}
       >
-        {theme === "dark" ? "Clair" : "Sombre"}
+        {theme === "dark" ? "☀️" : "🌙"}
       </button>
       <button
         onClick={async () => {

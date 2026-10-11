@@ -45,6 +45,12 @@ Un mode opératoire se compose de :
 - **RF-54 — Suppression de mode opératoire** : confirmation explicite, suppression en cascade (étapes, photos, versions).
 - **RF-55 — Pictogrammes enrichis** : par étape, pictos avec **couleur** (sélecteur) et **texte libre** ; présents en édition, lecture (bandeau coloré) et export DOCX (texte coloré).
 - **RF-56 — Classement famille/type** : chaque mode opératoire porte une *famille* (ex. Mécanique, Électrique) et un *type* (ex. Maintenance) ; filtre par famille dans la liste, badges en lecture.
+- **RF-62 — Arborescence documentaire paramétrable** : types de documents paramétrables et regroupement sur **plusieurs niveaux** (ex. Famille > Sous-famille > Type) ; l'arborescence structure la navigation et remplace/complète les filtres famille/type actuels. Détails à spécifier (modèle de données, admin des regroupements).
+- **RF-63 — Page de menu** : accueil organisé par arborescence (navigation par regroupements plutôt que liste plate) ; à spécifier (tuiles, recherche, profondeur affichée).
+- **RF-64 — Insertion d'image par glisser-déposer ou presse-papiers** : nouvelle image ajoutée à une étape par **drag & drop** d'un fichier sur le canevas ou **collage** d'une capture (Ctrl+V / presse-papiers) ; compression côté client conservée.
+- **RF-65 — Gestion des versions enrichie** : en plus du numéro/auteur/date, chaque publication porte une **description des modifications apportées** (saisie à la publication, visible dans l'historique).
+- **RF-66 — Documents parents** : un mode opératoire peut être rattaché à un **document parent** (ex. notice machine > modes opératoires associés) ; navigation parent/enfants dans les deux sens.
+- **RF-67 — Gestion de statut** : statut éditorial paramétrable sur le document (ex. *brouillon / en relecture / validé / obsolète*), distinct de l'état de publication ; filtrage et badge visible en liste et lecture. À spécifier (valeurs, transitions, permissions).
 
 ### 1.4 Hors périmètre (V1)
 

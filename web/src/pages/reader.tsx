@@ -1,5 +1,4 @@
 import StepCanvasView from "../step-canvas-view";
-import AnnotatedPhoto, { parseShapes } from "../annotated-photo";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, ApiError, type WorkflowDetail } from "../api";

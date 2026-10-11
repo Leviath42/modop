@@ -29,11 +29,14 @@ Application web de création, publication et consultation de **modes opératoire
 | — | Thème sombre/clair (communauté, PR #4) | ✅ | Intégré |
 | — | Taille/position des photos (S/M/L/Plein + alignement), bandeaux sticky, clic-clic annotation | ✅ | À valider en campagne |
 
-### Correctifs récents (canevas d'étape)
+### Correctifs récents (canevas d'étape, thème, flèches)
 
-- **Hauteur adaptative** : la hauteur du canevas d'édition s'adapte désormais à la position et à la taille **réelles** des images (ratio mesuré au chargement, plus d'approximation 4:3) ; les images placées en bas ne sont plus rognées.
-- **Sélection au rectangle** : le rectangle de sélection ne s'applique plus qu'au **relâchement avec déplacement** — un simple clic sur le fond ne vide plus la sélection d'objet ; le clic unique sur un objet redevient fiable (hit-test basé sur le ratio réel de chaque image).
-- **Bonus** : correction d'un appel erroné à l'API de suppression de photo lors du glisser-vers-corbeille.
+- **Référentiel vertical FIXE (240 px)** : les positions y (photos et formes) sont désormais stockées en fraction d'une hauteur de référence constante — auparavant elles étaient Relatives à la hauteur visible du canevas et l'éditeur ré-appliquait un facteur `y × 0,6` à chaque chargement : les zones rectangulaires et les photos **remontaient vers le haut à chaque cycle sauvegarde/rechargement**. Le lecteur et l'éditeur partagent le même référentiel.
+- **Hauteur adaptative** : la hauteur du canevas s'adapte à la position et à la taille **réelles** des images (ratio mesuré au chargement) ; les images placées en bas ne sont plus rognées.
+- **Sélection au rectangle** : appliquée au **relâchement avec déplacement** — un clic sur le fond ne vide plus la sélection ; le clic objet unique redevient fiable.
+- **Pointe des flèches** : un marqueur SVG par couleur de forme — la pointe prend enfin la couleur de la flèche (éditeur et lecteur).
+- **Thème sombre/clair** : icône ☀️/🌙 homogène partout (fini le bouton texte « Clair/Sombre » de la nav), `meta theme-color` mobile mis à jour au changement, cache service worker passé en v2 pour éviter qu'un vieux front servi hors-ligne fasse régresser le réglage.
+- **Lecteur** : plus de nom d'étape en légende sous les photos (l'ancien rendu affichait `alt = titre de l'étape` sous chaque image ; le composant `AnnotatedPhoto` et son import mort sont retirés du lecteur).
 
 ### Constats des campagnes de tests
 - Annotation : le drag natif navigateur entre en conflit avec les cartes d'étapes → **clic-clic** retenu (départ/arrivée), plus le déplacement des formes posées.
@@ -57,6 +60,21 @@ Application web de création, publication et consultation de **modes opératoire
 | 4 | **SSO réel** | brancher l'IdP de l'entreprise (OIDC prêt — variables d'env) |
 | 5 | **Annotations sur le DOCX** | dessiner les shapes sur les images exportées |
 | 6 | **PWA : cache amélioré** | pré-cache des MO publiés pour lecture hors-ligne complète |
+
+## 🚧 Vague 7 — Gestion documentaire avancée (proposition, à spécifier)
+
+Demandes du propriétaire à intégrer au cahier des charges :
+
+| # | Fonctionnalité | Pistes |
+|---|---------------|-------|
+| 1 | **Arborescence documentaire paramétrable** | Types de documents paramétrables + regroupements multi-niveaux (ex. Famille > Sous-famille > Type) ; remplace/complète les filtres famille/type actuels |
+| 2 | **Page de menu** | Accueil/navigation par arborescence (au lieu de la liste plate actuelle) ; à définir : entrée par famille, recherche, tuiles ? |
+| 3 | **Nouvelle image : drag & drop / presse-papiers** | Coller une capture d'écran (Ctrl+V) dans l'étape + glisser-déposer un fichier sur le canevas ; compression existante conservée |
+| 4 | **Gestion des versions enrichie** | Historique par version avec **description des modifications apportées** (changelog saisi à la publication), affichage côte à côte avec la liste actuelle (auteur, date) et la restauration |
+| 5 | **Documents parents** | Un MO peut être rattaché à un document parent (ex. notice machine > modes opératoires associés) ; navigation parent/enfants |
+| 6 | **Gestion de statut** | Statut éditorial paramétrable sur le document (ex. brouillon / en relecture / validé / obsolète), distinct de l'état publication actuel ; filtrage et badges |
+
+À décider avant dév : modèle de données (tables types/regroupements, colonnes parent_id, status), permissions par statut, migration des données existantes.
 
 ## 🗺️ Vision long terme
 

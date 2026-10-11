@@ -372,7 +372,7 @@ export default function EditorPage() {
                         return {
                           photo: ph,
                           x: typeof ph.display_x === "number" ? ph.display_x : 0,
-                          y: typeof ph.display_y === "number" ? ph.display_y * 0.6 : 0.05,
+                          y: typeof ph.display_y === "number" ? ph.display_y : 0.05,
                           w,
                         };
                       })}
