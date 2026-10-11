@@ -1,15 +1,22 @@
+/* Base — inspirée des règles UI/UX de meal_plan :
+   - tout contenu long se replie (jamais de coupe horizontale)
+   - les enfants de flex/grid rétrécissent sous leur contenu (min-width: 0)
+   - style global unique, pas de classes qui écrasent l'inline */
 :root { font-family: system-ui, sans-serif; }
 * { box-sizing: border-box; }
 body { margin: 0; background: #f5f6f8; color: #1a1c20; }
 button { cursor: pointer; }
 
-/* Anti-débordement : les contenus longs (journal, URLs, chemins) se
-   REPLIENT au lieu de sortir du cadre. Jamais de coupe horizontale. */
-pre, code, .modop-log {
+/* Anti-débordement global : contenus longs repliés */
+pre, code {
   overflow-wrap: anywhere;
   word-break: break-word;
   max-width: 100%;
-  white-space: pre-wrap;
 }
-pre { margin: 0; box-sizing: border-box; }
-main, section { min-width: 0; }
+main, section, article, figure {
+  min-width: 0;
+}
+figure { margin: 0; }
+
+/* Champs de saisie cohérents partout */
+input, select, textarea, button { font: inherit; }

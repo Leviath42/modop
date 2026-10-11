@@ -179,9 +179,9 @@ export default function DeployPage() {
               {status.logTail && (
                 <div style={{ borderTop: "1px solid #eee", paddingTop: "0.8rem" }}>
                   <h2 style={{ margin: "0 0 0.4rem", fontSize: "0.95rem" }}>Journal</h2>
-                  <div className="modop-log" style={{ background: "#f2f3f5", borderRadius: "8px", padding: "0.8rem", fontSize: "0.75rem", height: "260px", overflowY: "auto", fontFamily: "monospace", width: "100%", boxSizing: "border-box" }}>
+                  <pre style={{ margin: 0, background: "#f2f3f5", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "0.8rem", fontSize: "0.75rem", lineHeight: 1.5, maxHeight: "260px", height: "auto", width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box", overflowY: "scroll", overflowX: "hidden", whiteSpace: "pre-wrap", wordBreak: "break-all", overflowWrap: "anywhere", display: "block", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
                     {status.logTail}
-                  </div>
+                  </pre>
                 </div>
               )}
             </>
