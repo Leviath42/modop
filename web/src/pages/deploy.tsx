@@ -88,24 +88,24 @@ export default function DeployPage() {
     <>
       <NavBar />
       <main style={{ maxWidth: "720px", minWidth: 0, width: "100%", margin: "0 auto", padding: "1rem", boxSizing: "border-box" }}>
-        <section style={{ background: "white", borderRadius: "10px", padding: "1.2rem", boxShadow: "0 1px 4px rgba(0,0,0,0.1)", display: "grid", gap: "1rem", minWidth: 0 }}>
+        <section style={{ background: "var(--surface)", borderRadius: "10px", padding: "1.2rem", boxShadow: "0 1px 4px rgba(0,0,0,0.1)", display: "grid", gap: "1rem", minWidth: 0 }}>
           <h1 style={{ margin: 0 }}>Déploiement</h1>
 
           {!status ? (
-            <p style={{ color: "#666" }}>Chargement de l'état…</p>
+            <p style={{ color: "var(--text-muted)" }}>Chargement de l'état…</p>
           ) : (
             <>
               <div>
                 <p style={{ margin: "0.2rem 0" }}>
-                  Version chargée : <code style={{ background: "#eef0f4", padding: "0.1rem 0.4rem", borderRadius: "4px", overflowWrap: "anywhere" }}>{status.currentCommit ?? "inconnu"}</code>
-                  {status.commitAuthor && <span style={{ color: "#666" }}> — {status.commitAuthor}</span>}
+                  Version chargée : <code style={{ background: "var(--surface-2)", padding: "0.1rem 0.4rem", borderRadius: "4px", overflowWrap: "anywhere" }}>{status.currentCommit ?? "inconnu"}</code>
+                  {status.commitAuthor && <span style={{ color: "var(--text-muted)" }}> — {status.commitAuthor}</span>}
                 </p>
                 {status.commitSubject && <p style={{ margin: "0.2rem 0", fontWeight: 600 }}>{status.commitSubject}</p>}
-                {status.commitDate && <p style={{ margin: 0, color: "#888", fontSize: "0.85rem" }}>Daté du {formatDateTime(status.commitDate)}</p>}
+                {status.commitDate && <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.85rem" }}>Daté du {formatDateTime(status.commitDate)}</p>}
               </div>
 
               {isAdmin ? (
-                <div style={{ borderTop: "1px solid #eee", paddingTop: "0.8rem", display: "grid", gap: "0.6rem" }}>
+                <div style={{ borderTop: "1px solid var(--border-soft)", paddingTop: "0.8rem", display: "grid", gap: "0.6rem" }}>
                   <h2 style={{ margin: 0, fontSize: "1rem" }}>Actions</h2>
                   {!confirming && (
                     <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
@@ -118,7 +118,7 @@ export default function DeployPage() {
                     </div>
                   )}
                   {confirming && (
-                    <div style={{ border: "1px solid #c9ccd3", borderRadius: "8px", padding: "0.8rem", display: "grid", gap: "0.6rem" }}>
+                    <div style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "0.8rem", display: "grid", gap: "0.6rem" }}>
                       <p style={{ margin: 0, fontSize: "0.9rem" }}>
                         {confirming === "update"
                           ? "Mettre à jour l'application depuis GitHub (branche configurée sur ce serveur : beta) ? Une sauvegarde de la base est faite avant ; le serveur redémarre pendant l'opération."
@@ -131,28 +131,28 @@ export default function DeployPage() {
                     </div>
                   )}
                   {feedback && (
-                    <p style={{ margin: 0, color: feedback.success ? "#1d6b2e" : "#b30000", fontSize: "0.9rem" }}>
+                    <p style={{ margin: 0, color: feedback.success ? "var(--ok-text)" : "var(--error-text)", fontSize: "0.9rem" }}>
                       {feedback.message}
                     </p>
                   )}
                 </div>
               ) : (
-                <p style={{ borderTop: "1px solid #eee", paddingTop: "0.8rem", color: "#888", fontSize: "0.85rem", margin: 0 }}>
+                <p style={{ borderTop: "1px solid var(--border-soft)", paddingTop: "0.8rem", color: "var(--text-muted)", fontSize: "0.85rem", margin: 0 }}>
                   Seul un administrateur peut déclencher une mise à jour ou un retour arrière.
                 </p>
               )}
 
               {status.recentCommits.length > 0 && (
-                <div style={{ borderTop: "1px solid #eee", paddingTop: "0.8rem" }}>
+                <div style={{ borderTop: "1px solid var(--border-soft)", paddingTop: "0.8rem" }}>
                   <h2 style={{ margin: "0 0 0.4rem", fontSize: "0.95rem" }}>Historique récent</h2>
                   <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: "0.2rem" }}>
                     {status.recentCommits.map((c) => {
                       const isCurrent = status.currentCommit !== null && c.hash.startsWith(status.currentCommit);
                       return (
-                        <li key={c.hash} style={{ fontSize: "0.82rem", display: "flex", gap: "0.5rem", flexWrap: "wrap", color: isCurrent ? "#1a1c20" : "#777", fontWeight: isCurrent ? 600 : 400 }}>
+                        <li key={c.hash} style={{ fontSize: "0.82rem", display: "flex", gap: "0.5rem", flexWrap: "wrap", color: isCurrent ? "var(--text)" : "var(--text-muted)", fontWeight: isCurrent ? 600 : 400 }}>
                           <code style={{ overflowWrap: "anywhere" }}>{c.hash}</code>
                           <span style={{ flex: 1, minWidth: "120px", overflowWrap: "anywhere" }}>{c.subject}</span>
-                          {isCurrent && <span style={{ color: "#1d6b2e", fontSize: "0.75rem" }}>(chargé)</span>}
+                          {isCurrent && <span style={{ color: "var(--ok-text)", fontSize: "0.75rem" }}>(chargé)</span>}
                         </li>
                       );
                     })}
@@ -160,7 +160,7 @@ export default function DeployPage() {
                 </div>
               )}
 
-              <div style={{ borderTop: "1px solid #eee", paddingTop: "0.8rem", fontSize: "0.85rem", color: "#666" }}>
+              <div style={{ borderTop: "1px solid var(--border-soft)", paddingTop: "0.8rem", fontSize: "0.85rem", color: "var(--text-muted)" }}>
                 <strong>Dernier déploiement :</strong> {lastRunLabel} démarré le {formatDateTime(status.startedAt)}
                 {status && !status.running && status.exitCode !== null
                   ? status.exitCode === 0
@@ -170,16 +170,16 @@ export default function DeployPage() {
                     ? " — en cours"
                     : ""}
                 {connectionLost && (
-                  <p style={{ color: "#b8860b", margin: "0.3rem 0 0" }}>
+                  <p style={{ color: "var(--warn-text)", margin: "0.3rem 0 0" }}>
                     Serveur momentanément injoignable (redémarrage en cours ?), nouvelle tentative…
                   </p>
                 )}
               </div>
 
               {status.logTail && (
-                <div style={{ borderTop: "1px solid #eee", paddingTop: "0.8rem" }}>
+                <div style={{ borderTop: "1px solid var(--border-soft)", paddingTop: "0.8rem" }}>
                   <h2 style={{ margin: "0 0 0.4rem", fontSize: "0.95rem" }}>Journal</h2>
-                  <pre style={{ margin: 0, background: "#f2f3f5", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "0.8rem", fontSize: "0.75rem", lineHeight: 1.5, maxHeight: "260px", height: "auto", width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box", overflowY: "scroll", overflowX: "hidden", whiteSpace: "pre-wrap", wordBreak: "break-all", overflowWrap: "anywhere", display: "block", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
+                  <pre style={{ margin: 0, background: "var(--log-bg)", border: "1px solid var(--border-soft)", borderRadius: "8px", padding: "0.8rem", fontSize: "0.75rem", lineHeight: 1.5, maxHeight: "260px", height: "auto", width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box", overflowY: "scroll", overflowX: "hidden", whiteSpace: "pre-wrap", wordBreak: "break-all", overflowWrap: "anywhere", display: "block", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
                     {status.logTail}
                   </pre>
                 </div>
@@ -187,11 +187,11 @@ export default function DeployPage() {
             </>
           )}
         </section>
-        {user && <p style={{ textAlign: "center", fontSize: "0.8rem", color: "#999" }}>Connecté en tant que {user.email} ({user.role})</p>}
+        {user && <p style={{ textAlign: "center", fontSize: "0.8rem", color: "var(--text-muted)" }}>Connecté en tant que {user.email} ({user.role})</p>}
       </main>
     </>
   );
 }
 
-const primaryBtn: React.CSSProperties = { padding: "0.6rem 1rem", borderRadius: "6px", border: "none", background: "#1f4e9c", color: "white", fontSize: "0.95rem" };
-const secondaryBtn: React.CSSProperties = { padding: "0.6rem 1rem", borderRadius: "6px", border: "1px solid #c9ccd3", background: "white", fontSize: "0.95rem" };
+const primaryBtn: React.CSSProperties = { padding: "0.6rem 1rem", borderRadius: "6px", border: "none", background: "var(--accent)", color: "white", fontSize: "0.95rem" };
+const secondaryBtn: React.CSSProperties = { padding: "0.6rem 1rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.95rem" };

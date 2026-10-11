@@ -1,9 +1,14 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "./auth-context";
+import { getStoredTheme, toggleTheme, type Theme } from "./theme";
 
 export default function NavBar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [theme, setTheme] = useState<Theme>(() =>
+    (document.documentElement.dataset.theme as Theme) || getStoredTheme()
+  );
   if (!user) return null;
 
   return (
@@ -13,7 +18,7 @@ export default function NavBar() {
         alignItems: "center",
         gap: "1rem",
         padding: "0.6rem 1rem",
-        background: "#1f4e9c",
+        background: "var(--accent)",
         color: "white",
         flexWrap: "wrap",
       }}
@@ -34,6 +39,14 @@ export default function NavBar() {
         </>
       )}
       <button
+        onClick={() => setTheme(toggleTheme())}
+        aria-label={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
+        title={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
+        style={themeBtn}
+      >
+        {theme === "dark" ? "☀️" : "🌙"}
+      </button>
+      <button
         onClick={async () => {
           await logout();
           navigate("/login");
@@ -45,6 +58,16 @@ export default function NavBar() {
     </nav>
   );
 }
+
+const themeBtn: React.CSSProperties = {
+  padding: "0.25rem 0.55rem",
+  borderRadius: "6px",
+  border: "1px solid rgba(255,255,255,0.5)",
+  background: "transparent",
+  color: "white",
+  fontSize: "0.95rem",
+  lineHeight: 1,
+};
 
 const logoutStyle: React.CSSProperties = {
   padding: "0.35rem 0.8rem",
