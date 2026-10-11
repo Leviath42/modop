@@ -187,8 +187,11 @@ export function workflowRouter(db: Database.Database): Router {
       return;
     }
     const actor = (req as { user?: { email: string } }).user!;
+    const info = db
+      .prepare("INSERT INTO feedback (workflow_id, step_id, by_email, message) VALUES (?, ?, ?, ?)")
+      .run(wf.id, step_id, actor.email, message.trim().slice(0, 500));
     auditLog(db, actor.email, "feedback", `workflow:${wf.id}`, `step:${step_id} ${message.trim().slice(0, 500)}`);
-    res.status(201).json({ ok: true });
+    res.status(201).json({ ok: true, id: Number(info.lastInsertRowid) });
   });
 
   r.get("/:id/feedback", requireAuth("author"), (req, res) => {
@@ -199,16 +202,42 @@ export function workflowRouter(db: Database.Database): Router {
     }
     const rows = db
       .prepare(
-        `SELECT actor_email, detail, at FROM audit_log
-         WHERE action = 'feedback' AND target = ? ORDER BY id DESC LIMIT 200`
+        `SELECT id, step_id, by_email, message, status, resolved_by, resolved_at, created_at
+         FROM feedback WHERE workflow_id = ?
+         ORDER BY CASE status WHEN 'open' THEN 0 ELSE 1 END, id DESC LIMIT 200`
       )
-      .all(`workflow:${wf.id}`) as { actor_email: string; detail: string; at: string }[];
-    res.json(rows.map((r0: { actor_email: string; detail: string; at: string }) => ({
-      by: r0.actor_email,
-      step_id: Number((r0.detail.match(/^step:(\d+)/) ?? [0, "0"])[1]),
-      message: r0.detail.replace(/^step:\d+\s*/, ""),
-      at: r0.at,
+      .all(wf.id) as {
+        id: number; step_id: number; by_email: string; message: string;
+        status: string; resolved_by: string; resolved_at: string | null; created_at: string;
+      }[];
+    res.json(rows.map((r0) => ({
+      id: r0.id,
+      step_id: r0.step_id,
+      by: r0.by_email,
+      message: r0.message,
+      status: r0.status,
+      resolved_by: r0.resolved_by || null,
+      resolved_at: r0.resolved_at,
+      at: r0.created_at,
     })));
+  });
+
+  // Résoudre un signalement (author+) : après correction du contenu, l'auteur
+  // clôt la fiche — elle reste visible (historique) avec qui l'a résolue.
+  r.put("/:id/feedback/:feedbackId/resolve", requireAuth("author"), (req, res) => {
+    const fb = db
+      .prepare("SELECT id, workflow_id FROM feedback WHERE id = ? AND workflow_id = ?")
+      .get(Number(req.params.feedbackId), Number(req.params.id)) as { id: number; workflow_id: number } | undefined;
+    if (!fb) {
+      res.status(404).json({ error: "not_found", message: "signalement introuvable" });
+      return;
+    }
+    const actor = (req as { user?: { email: string } }).user!;
+    db.prepare(
+      "UPDATE feedback SET status = 'resolved', resolved_by = ?, resolved_at = datetime('now') WHERE id = ?"
+    ).run(actor.email, fb.id);
+    auditLog(db, actor.email, "feedback_resolved", `workflow:${fb.workflow_id}`, `feedback:${fb.id}`);
+    res.json({ ok: true });
   });
 
   r.put("/:id/steps/reorder", requireAuth("author"), (req, res) => {

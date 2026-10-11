@@ -225,8 +225,13 @@ export const api = {
       })
     );
   },
-  async listFeedback(workflowId: number): Promise<{ by: string; step_id: number; message: string; at: string }[]> {
+  async listFeedback(workflowId: number): Promise<{ id: number; by: string; step_id: number; message: string; status: "open" | "resolved"; resolved_by: string | null; resolved_at: string | null; at: string }[]> {
     return handle(await fetch(`/api/workflows/${workflowId}/feedback`));
+  },
+  async resolveFeedback(workflowId: number, feedbackId: number): Promise<void> {
+    await handle<unknown>(
+      await fetch(`/api/workflows/${workflowId}/feedback/${feedbackId}/resolve`, { method: "PUT" })
+    );
   },
   exportUrl(id: number, version?: number): string {
     return `/api/workflows/${id}/export${version ? `?version=${version}` : ""}`;

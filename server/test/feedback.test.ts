@@ -44,5 +44,27 @@ test("RF-73 : lecteur signale un problème d'étape, l'auteur consulte", async (
   assert.equal((await call("GET", `/api/workflows/${wf.json.id}/feedback`, undefined, reader)).status, 403);
 });
 
+
+test("RF-73 suite : résolution d'un signalement par l'auteur", async () => {
+  const wf = await call("POST", "/api/workflows", { title: "FB2", reference: "MO-FB2" }, author);
+  const step = await call("POST", `/api/workflows/${wf.json.id}/steps`, { title: "S" }, author);
+  const fb = await call("POST", `/api/workflows/${wf.json.id}/feedback`, { step_id: step.json.id, message: "Photo à refaire" }, reader);
+  assert.equal(fb.status, 201);
+  const fbId = (fb.json as { id: number }).id;
+  // résolution par l'auteur
+  const res = await call("PUT", `/api/workflows/${wf.json.id}/feedback/${fbId}/resolve`, {}, author);
+  assert.equal(res.status, 200);
+  // la liste montre le signalement résolu, avec le résolveur
+  const list = await call("GET", `/api/workflows/${wf.json.id}/feedback`, undefined, author);
+  assert.equal(list.json[0].status, "resolved");
+  assert.equal(list.json[0].resolved_by, "a@modop.local");
+  // un lecteur ne peut pas résoudre
+  const fb2 = await call("POST", `/api/workflows/${wf.json.id}/feedback`, { step_id: step.json.id, message: "Autre souci" }, reader);
+  const nope = await call("PUT", `/api/workflows/${wf.json.id}/feedback/${(fb2.json as { id: number }).id}/resolve`, {}, reader);
+  assert.equal(nope.status, 403);
+  // id inconnu -> 404
+  assert.equal((await call("PUT", `/api/workflows/${wf.json.id}/feedback/999/resolve`, {}, author)).status, 404);
+});
+
 process.on("exit", () => { server.close(); fs.rmSync("data", { recursive: true, force: true }); });
 server.unref();

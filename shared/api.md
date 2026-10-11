@@ -88,3 +88,8 @@ Le JSON des colonnes `versions.snapshot` inclut désormais, par étape : `canvas
 ## Ordre des workers
 W-GED (migration + API) → W-FEEDBACK → W-STATS → W-QR / W-GUIDED / W-TEMPLATE (front, parallèles entre eux).
 Fusion séquentielle delta ← une branche à la fois, portes : tsc + 96 tests runtime attendus + build web.
+
+## Contrat v5.1 — résolution des signalements (complément vague v1.4)
+- Table `feedback` dédiée : `id, workflow_id, step_id, by_email, message, status ('open'|'resolved'), resolved_by, resolved_at, created_at` (migration idempotente, anciens signalements de l'audit log ne sont pas migrés)
+- `GET /api/workflows/:id/feedback` (author+) → `{ id, step_id, by, message, status, resolved_by, resolved_at, at }[]` — ouverts d'abord
+- `PUT /api/workflows/:id/feedback/:feedbackId/resolve` (author+) → `{ ok: true }` ; trace `feedback_resolved` dans l'audit

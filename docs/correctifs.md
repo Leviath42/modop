@@ -158,3 +158,16 @@ systemctl restart cloudflared
 
 ## C-11 — (titre à définir)
 -->
+
+## C-11 — Cycle de vie des signalements : résolution (réalisé)
+
+**Problème** : les signalements terrain s'accumulaient sans moyen de les traiter — aucun statut, aucune clôture.
+
+**Correctif** :
+- Table **`feedback`** dédiée (statut `open`/`resolved`, résolveur, date) — les signalements ne sont plus seulement des lignes d'audit.
+- **`PUT .../feedback/:id/resolve`** (auteur) : clôture tracée (`feedback_resolved` dans l'audit).
+- **Panneau du lecteur** (auteur) : compteur « N à traiter », badge rouge « à traiter » / vert « résolu par X », lien **« Corriger l'étape »** (vers l'éditeur) + bouton **« ✓ Résoudre »** ; les résolus restent visibles en atténué (historique).
+
+**Fichiers** : `server/src/db/schema.ts`, `server/src/routes/workflows.ts`, `web/src/api.ts`, `web/src/pages/reader.tsx`, `server/test/feedback.test.ts`
+
+**État** : ✅ livré sur beta — 100/100 tests serveur (dont cycle complet signaler → lister → résoudre → permissions lecteur/auteur), tsc + build verts.

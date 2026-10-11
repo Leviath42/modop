@@ -17,7 +17,7 @@ export default function ReaderPage() {
   const [feedbackOpenStep, setFeedbackOpenStep] = useState<number | null>(null);
   const [feedbackMsg, setFeedbackMsg] = useState("");
   const [feedbackNotice, setFeedbackNotice] = useState<string | null>(null);
-  const [feedbacks, setFeedbacks] = useState<{ by: string; step_id: number; message: string; at: string }[]>([]);
+  const [feedbacks, setFeedbacks] = useState<{ id: number; by: string; step_id: number; message: string; status: "open" | "resolved"; resolved_by: string | null; resolved_at: string | null; at: string }[]>([]);
 
   useEffect(() => {
     const load = versionParam
@@ -102,10 +102,42 @@ export default function ReaderPage() {
         )}
         {feedbacks.length > 0 && (
           <section style={{ background: "var(--warn-bg)", border: "1px solid var(--warn-text)", borderRadius: "8px", padding: "0.8rem", marginBottom: "1rem" }} aria-label="Signalements terrain">
-            <h2 style={{ margin: "0 0 0.4rem", fontSize: "0.95rem" }}>Signalements terrain ({feedbacks.length})</h2>
-            <ul style={{ margin: 0, paddingLeft: "1.2rem", display: "grid", gap: "0.3rem", fontSize: "0.9rem" }}>
-              {feedbacks.map((f, i) => (
-                <li key={i}>Étape {wf.steps.findIndex((s) => s.id === f.step_id) + 1 || "?"} — « {f.message} » <span style={{ color: "var(--text-muted)" }}>({f.by}, {f.at})</span></li>
+            <h2 style={{ margin: "0 0 0.4rem", fontSize: "0.95rem" }}>
+              Signalements terrain — {feedbacks.filter((f) => f.status === "open").length} à traiter
+            </h2>
+            <ul style={{ margin: 0, paddingLeft: "0", listStyle: "none", display: "grid", gap: "0.5rem", fontSize: "0.9rem" }}>
+              {feedbacks.map((f) => (
+                <li key={f.id} style={{ display: "grid", gap: "0.2rem", opacity: f.status === "resolved" ? 0.6 : 1 }}>
+                  <div>
+                    <strong>Étape {wf.steps.findIndex((s) => s.id === f.step_id) + 1 || "?"}</strong>
+                    {f.status === "open"
+                      ? <span style={{ background: "var(--error-text)", color: "white", fontSize: "0.7rem", padding: "0.05rem 0.4rem", borderRadius: "99px", marginLeft: "0.4rem" }}>à traiter</span>
+                      : <span style={{ background: "var(--ok-bg)", color: "var(--ok-text)", fontSize: "0.7rem", padding: "0.05rem 0.4rem", borderRadius: "99px", marginLeft: "0.4rem" }}>résolu{f.resolved_by ? ` par ${f.resolved_by}` : ""}</span>}
+                  </div>
+                  <div>« {f.message} »</div>
+                  <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+                    <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>{f.by}, {f.at}</span>
+                    {f.status === "open" && (
+                      <>
+                        <Link to={`/workflow/${wf.id}/edit`} style={{ fontSize: "0.8rem", color: "var(--accent)" }}>Corriger l'étape</Link>
+                        <button
+                          onClick={async () => {
+                            try {
+                              await api.resolveFeedback(wf.id, f.id);
+                              setFeedbacks((arr) => arr.map((x) => (x.id === f.id ? { ...x, status: "resolved" as const, resolved_by: user?.email ?? null, resolved_at: new Date().toISOString() } : x)));
+                              setFeedbackNotice("Signalement marqué résolu");
+                              setTimeout(() => setFeedbackNotice(null), 2500);
+                            } catch (e) {
+                              setFeedbackNotice(e instanceof ApiError ? e.message : "Résolution impossible");
+                              setTimeout(() => setFeedbackNotice(null), 2500);
+                            }
+                          }}
+                          style={{ fontSize: "0.8rem", padding: "0.15rem 0.6rem", borderRadius: "6px", border: "1px solid var(--ok-text)", background: "var(--surface)", color: "var(--ok-text)", cursor: "pointer" }}
+                        >✓ Résoudre</button>
+                      </>
+                    )}
+                  </div>
+                </li>
               ))}
             </ul>
           </section>
