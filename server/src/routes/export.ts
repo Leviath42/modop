@@ -1,6 +1,25 @@
 import { Router } from "express";
 import fs from "node:fs";
 import path from "node:path";
+
+// Dimensions d'un PNG/JPEG sans dépendance : lecture d'en-tête minimale.
+function imageSize(buf: Buffer, mime: string): { width: number; height: number } | null {
+  if (mime === "image/png" && buf.length > 24 && buf.toString("ascii", 12, 16) === "IHDR") {
+    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+  }
+  if (mime === "image/jpeg") {
+    let off = 2;
+    while (off + 9 < buf.length) {
+      if (buf[off] !== 0xff) { off++; continue; }
+      const marker = buf[off + 1];
+      if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+        return { height: buf.readUInt16BE(off + 5), width: buf.readUInt16BE(off + 7) };
+      }
+      off += 2 + buf.readUInt16BE(off + 2);
+    }
+  }
+  return null;
+}
 import type Database from "better-sqlite3";
 import {
   Document, Packer, Paragraph, TextRun, HeadingLevel, ImageRun, AlignmentType,
@@ -91,10 +110,16 @@ export function exportRouter(db: Database.Database): Router {
       for (const photo of step.photos) {
         const file = path.join(photosDir(), photo.filename);
         if (fs.existsSync(file)) {
+          const data = fs.readFileSync(file);
+          const mime = file.endsWith(".jpg") ? "image/jpeg" : "image/png";
+          const dim = imageSize(data, mime);
+          // Ratio d'aspect préservé : largeur 400, hauteur proportionnelle
+          const w = 400;
+          const h = dim && dim.width > 0 ? Math.round((dim.height / dim.width) * w) : 300;
           children.push(
             new Paragraph({
               alignment: AlignmentType.CENTER,
-              children: [new ImageRun({ type: "png", data: fs.readFileSync(file), transformation: { width: 400, height: 300 } })],
+              children: [new ImageRun({ type: mime === "image/jpeg" ? "jpg" : "png", data, transformation: { width: w, height: h } })],
             })
           );
           if (photo.alt) children.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: photo.alt, italics: true, size: 18 })] }));

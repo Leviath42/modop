@@ -43,6 +43,7 @@ export default function EditorPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [openSteps, setOpenSteps] = useState<Set<number>>(new Set());
   const fileRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const isNew = id === "new";
@@ -198,15 +199,37 @@ export default function EditorPage() {
 
         {!isNew && (
           <section style={{ display: "grid", gap: "0.6rem" }}>
-            <h2 style={{ margin: 0 }}>Étapes</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+              <h2 style={{ margin: 0, marginRight: "auto" }}>Étapes</h2>
+              {steps.length > 1 && (
+                <>
+                  <button onClick={() => setOpenSteps(new Set(steps.map((st) => st.id)))} style={secondaryBtn}>Tout ouvrir</button>
+                  <button onClick={() => setOpenSteps(new Set())} style={secondaryBtn}>Tout replier</button>
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      const id = Number(e.target.value);
+                      setOpenSteps((prev) => new Set([...prev, id]));
+                      document.getElementById(`edit-step-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    aria-label="Aller à une étape"
+                    style={{ padding: "0.45rem", borderRadius: "6px", border: "1px solid #c9ccd3" }}
+                  >
+                    <option value="">Aller à…</option>
+                    {steps.map((st, si) => <option key={st.id} value={st.id}>{si + 1}. {st.title}</option>)}
+                  </select>
+                </>
+              )}
+            </div>
             {steps.length === 0 && <p style={{ color: "#666" }}>Aucune étape. Ajoutez la première.</p>}
             <ol style={{ listStyle: "none", padding: 0, display: "grid", gap: "0.6rem" }}>
               {steps.map((step, i) => (
                 <li
                   key={step.id}
+                  id={`edit-step-${step.id}`}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => { if (dragIndex !== null && dragIndex !== i) void moveStep(dragIndex, i); setDragIndex(null); }}
-                  style={{ background: "white", borderRadius: "10px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "grid", gap: "0.5rem", outline: dragIndex === i ? "2px dashed #1f4e9c" : "none" }}
+                  style={{ background: "white", borderRadius: "10px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "grid", gap: "0.5rem", outline: dragIndex === i ? "2px dashed #1f4e9c" : "none", scrollMarginTop: "4rem" }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                     <span
@@ -240,9 +263,20 @@ export default function EditorPage() {
                       onBlur={() => patchStep(step, { title: step.title })}
                       style={{ ...input, fontWeight: 600, flex: 1 }}
                       aria-label={`Titre étape ${i + 1}`}
+                      onFocus={() => setOpenSteps((prev) => new Set([...prev, step.id]))}
                     />
+                    <button
+                      onClick={() => setOpenSteps((prev) => { const n = new Set(prev); if (n.has(step.id)) n.delete(step.id); else n.add(step.id); return n; })}
+                      aria-expanded={openSteps.has(step.id)}
+                      aria-label={openSteps.has(step.id) ? `Replier l'étape ${i + 1}` : `Ouvrir l'étape ${i + 1}`}
+                      style={{ border: "none", background: "#eef0f4", borderRadius: "6px", padding: "0.25rem 0.6rem", fontSize: "0.85rem" }}
+                    >
+                      {openSteps.has(step.id) ? "▾" : "▸"}
+                    </button>
                     <button onClick={() => removeStep(step)} style={dangerBtn} aria-label={`Supprimer étape ${i + 1}`}>🗑</button>
                   </div>
+                  {openSteps.has(step.id) && (
+                  <>
                   <textarea
                     value={step.body}
                     rows={2}
@@ -342,6 +376,8 @@ export default function EditorPage() {
                       <button onClick={() => fileRefs.current[step.id]?.click()} style={secondaryBtn}>📷 Photo…</button>
                     </div>
                   </div>
+                  </>
+                  )}
                 </li>
               ))}
             </ol>

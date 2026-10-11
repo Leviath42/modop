@@ -39,12 +39,11 @@ const doc = dom.window.document;
 function getBox(): HTMLElement {
   return dom.window.document.querySelector('div[style*="position: relative"]') as HTMLElement;
 }
-function mouse(type: string, x: number, y: number) {
-  if (type === "mousedown") {
-    getBox().dispatchEvent(new dom.window.MouseEvent(type, { bubbles: true, clientX: x, clientY: y }));
-  } else {
-    dom.window.dispatchEvent(new dom.window.MouseEvent(type, { bubbles: true, clientX: x, clientY: y }));
-  }
+function click(x: number, y: number) {
+  const box = getBox();
+  box.dispatchEvent(new dom.window.MouseEvent("mousedown", { bubbles: true, clientX: x, clientY: y }));
+  box.dispatchEvent(new dom.window.MouseEvent("mouseup", { bubbles: true, clientX: x, clientY: y }));
+  box.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true, clientX: x, clientY: y }));
 }
 
 // 1. activer l'outil Flèche
@@ -53,12 +52,10 @@ const arrowBtn = btns.find((b) => b.textContent === "Flèche")!;
 arrowBtn.click();
 await new Promise((r) => setTimeout(r, 60));
 
-// 2. glisser : (50,60) -> (250,200)
-mouse("mousedown", 50, 60);
-await new Promise((r) => setTimeout(r, 100));
-mouse("mousemove", 250, 200);
-await new Promise((r) => setTimeout(r, 50));
-mouse("mouseup", 250, 200);
+// 2. clic-clic : premier clic = départ, second clic = arrivée
+click(50, 60);
+await new Promise((r) => setTimeout(r, 80));
+click(250, 200);
 await new Promise((r) => setTimeout(r, 200));
 
 // 3. la forme doit être SAUVEGARDÉE
@@ -79,10 +76,10 @@ console.log("✓ flèche affichée après relâcher (persistante)");
 const rectBtn = btns.find((b) => b.textContent === "Zone")!;
 rectBtn.click();
 await new Promise((r) => setTimeout(r, 60));
-mouse("mousedown", 60, 60);
-mouse("mousemove", 200, 180);
-mouse("mouseup", 200, 180);
-await new Promise((r) => setTimeout(r, 150));
+click(60, 60);
+await new Promise((r) => setTimeout(r, 80));
+click(200, 180);
+await new Promise((r) => setTimeout(r, 200));
 if (!svg.querySelector("rect")) throw new Error("zone non affichée");
 console.log("✓ zone affichée et persistante");
 
@@ -90,8 +87,7 @@ console.log("✓ zone affichée et persistante");
 const textBtn = btns.find((b) => b.textContent === "Texte")!;
 textBtn.click();
 await new Promise((r) => setTimeout(r, 60));
-mouse("mousedown", 200, 150);
-mouse("mouseup", 200, 150);
+click(200, 150);
 await new Promise((r) => setTimeout(r, 100));
 const input = dom.window.document.querySelector("input[placeholder*='Texte']") as HTMLInputElement;
 if (!input) throw new Error("la saisie de texte ne s'ouvre pas au clic");

@@ -9,7 +9,6 @@ export default function ReaderPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const [wf, setWf] = useState<WorkflowDetail | null>(null);
-  const [index, setIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -21,48 +20,38 @@ export default function ReaderPage() {
   if (error) return (<><NavBar /><main style={{ padding: "2rem" }}><p role="alert" style={{ color: "#b30000" }}>{error}</p><Link to="/">Retour</Link></main></>);
   if (!wf) return (<><NavBar /><main style={{ padding: "2rem" }}>Chargement…</main></>);
 
-  const step = wf.steps[index];
   const isMobile = window.innerWidth < 700;
-  const prev = () => setIndex((i) => Math.max(0, i - 1));
-  const next = () => setIndex((i) => Math.min(wf.steps.length - 1, i + 1));
 
   return (
     <>
       <NavBar />
       <main style={{ maxWidth: isMobile ? "100%" : "800px", margin: "0 auto", padding: "1rem" }}>
-        {!isMobile && (
-          <header style={{ marginBottom: "1rem" }}>
-            <h1>{wf.title} <code style={{ fontSize: "0.8em", background: "#eef0f4", padding: "0.1rem 0.4rem", borderRadius: "4px" }}>{wf.reference}</code></h1>
-            <p style={{ color: "#666" }}>
-              {wf.state === "published" ? `Version V${wf.current_version}` : "Brouillon"}{wf.category ? ` — ${wf.category}` : ""}
-            </p>
-            <nav aria-label="Sommaire" style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "1rem" }}>
-              {wf.steps.map((s, i) => (
-                <button
-                  key={s.id}
-                  onClick={() => setIndex(i)}
-                  style={{
-                    padding: "0.25rem 0.6rem", borderRadius: "99px", fontSize: "0.85rem",
-                    border: i === index ? "2px solid #1f4e9c" : "1px solid #c9ccd3",
-                    background: i === index ? "#eaf1fb" : "white",
-                  }}
-                >
-                  {i + 1}. {s.title}
-                </button>
-              ))}
-            </nav>
-          </header>
+
+        <header style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.6rem", flexWrap: "wrap" }}>
+          <Link to="/" aria-label="Retour à la liste" style={{ fontSize: "1.3rem", textDecoration: "none" }}>←</Link>
+          <h1 style={{ fontSize: isMobile ? "1.05rem" : "1.3rem", margin: 0, flex: 1, minWidth: "120px" }}>
+            {wf.title} <code style={{ fontSize: "0.75em", background: "#eef0f4", padding: "0.1rem 0.4rem", borderRadius: "4px" }}>{wf.reference}</code>
+          </h1>
+          <select
+            value=""
+            onChange={(e) => { const el = document.getElementById(`etape-${e.target.value}`); el?.scrollIntoView({ behavior: "smooth" }); }}
+            aria-label="Aller à une étape"
+            style={{ padding: "0.45rem", borderRadius: "6px", border: "1px solid #c9ccd3", background: "white", fontSize: "0.9rem" }}
+          >
+            <option value="">Aller à l'étape…</option>
+            {wf.steps.map((s, i) => (
+              <option key={s.id} value={i}>{i + 1}. {s.title}</option>
+            ))}
+          </select>
+        </header>
+        {wf.state === "published" && (
+          <p style={{ margin: "0 0 0.8rem", color: "#666", fontSize: "0.85rem" }}>
+            Version V{wf.current_version}{wf.category ? ` — ${wf.family || ""} ${wf.category}` : ""}
+          </p>
         )}
-        {isMobile && (
-          <header style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-            <Link to="/" aria-label="Retour à la liste" style={{ fontSize: "1.3rem", textDecoration: "none" }}>←</Link>
-            <h1 style={{ fontSize: "1.05rem", margin: 0, flex: 1 }}>{wf.title}</h1>
-            <span style={{ fontSize: "0.8rem", color: "#666" }}>{index + 1}/{wf.steps.length}</span>
-          </header>
-        )}
-        {step && (
-          <article style={{ background: "white", borderRadius: "10px", padding: "1.2rem", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }}>
-            <h2>{index + 1}. {step.title}</h2>
+        {wf.steps.map((step, i) => (
+          <article key={step.id} id={`etape-${i}`} style={{ background: "white", borderRadius: "10px", padding: "1.2rem", boxShadow: "0 1px 4px rgba(0,0,0,0.1)", marginBottom: "0.8rem", scrollMarginTop: "1rem" }}>
+            <h2 style={{ marginTop: 0 }}>{i + 1}. {step.title}</h2>
             {step.body && <p style={{ whiteSpace: "pre-wrap" }}>{step.body}</p>}
             {step.pictos.length > 0 && (
               <p style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap" }}>
@@ -88,11 +77,10 @@ export default function ReaderPage() {
               </div>
             )}
           </article>
-        )}
-        <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem", justifyContent: "space-between" }}>
-          <button onClick={prev} disabled={index === 0} style={navBtn}>← Précédent</button>
-          <button onClick={next} disabled={!step || index === wf.steps.length - 1} style={navBtn}>Suivant →</button>
-        </div>
+        ))}
+        <p style={{ textAlign: "center", margin: "1.2rem 0" }}>
+          <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} style={navBtn}>↑ Retour au début</button>
+        </p>
         {user && user.role !== "reader" && wf.state === "published" && (
           <p style={{ marginTop: "1rem", textAlign: "center" }}>
             <a href={api.exportUrl(wf.id)} style={{ color: "#1f4e9c" }}>⬇ Exporter en .docx</a>
