@@ -41,10 +41,10 @@ export default function NavBar() {
       <span style={{ opacity: 0.7, fontSize: "0.8rem" }}>({user.role})</span>
       {user.role === "admin" && (
         <>
-          <Link to="/admin" style={{ color: "white", fontSize: "0.85rem", opacity: 0.9, textDecoration: "none", border: "1px solid rgba(255,255,255,0.5)", padding: "0.2rem 0.6rem", borderRadius: "6px" }}>
+          <Link to="/admin" style={{ color: "white", fontSize: "0.78rem", opacity: 0.9, textDecoration: "none", border: "1px solid rgba(255,255,255,0.5)", padding: "0.15rem 0.45rem", borderRadius: "6px" }}>
             Comptes
           </Link>
-          <Link to="/deploy" style={{ color: "white", fontSize: "0.85rem", opacity: 0.9, textDecoration: "none", border: "1px solid rgba(255,255,255,0.5)", padding: "0.2rem 0.6rem", borderRadius: "6px" }}>
+          <Link to="/deploy" style={{ color: "white", fontSize: "0.78rem", opacity: 0.9, textDecoration: "none", border: "1px solid rgba(255,255,255,0.5)", padding: "0.15rem 0.45rem", borderRadius: "6px" }}>
             Déploiement
           </Link>
         </>
@@ -71,19 +71,19 @@ export default function NavBar() {
 }
 
 const themeBtn: React.CSSProperties = {
-  padding: "0.25rem 0.7rem",
+  padding: "0.2rem 0.45rem",
   borderRadius: "6px",
   border: "1px solid rgba(255,255,255,0.5)",
   background: "transparent",
   color: "white",
-  fontSize: "0.95rem",
   lineHeight: 1,
 };
 
 const logoutStyle: React.CSSProperties = {
-  padding: "0.35rem 0.8rem",
+  padding: "0.25rem 0.6rem",
   borderRadius: "6px",
   border: "1px solid white",
   background: "transparent",
   color: "white",
+  fontSize: "0.85rem",
 };

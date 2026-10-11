@@ -1,4 +1,5 @@
-import StepCanvas from "../step-canvas";
+import StepCanvas, { TOOLS, COLORS } from "../step-canvas";
+import type { Shape } from "../annotated-photo";
 import PhotoAnnotator from "../photo-annotator";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -46,6 +47,9 @@ export default function EditorPage() {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [openSteps, setOpenSteps] = useState<Set<number>>(new Set());
   const [showMeta, setShowMeta] = useState(false);
+  const [insertTool, setInsertTool] = useState<Shape["type"] | null>(null);
+  const [insertColor, setInsertColor] = useState(COLORS[0]);
+  const [activeStepId, setActiveStepId] = useState<number | null>(null);
   const fileRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const isNew = id === "new";
@@ -298,10 +302,10 @@ export default function EditorPage() {
                       onBlur={() => patchStep(step, { title: step.title })}
                       style={{ ...input, fontWeight: 600, flex: "1 1 8rem" }}
                       aria-label={`Titre étape ${i + 1}`}
-                      onClick={() => { if (!openSteps.has(step.id)) setOpenSteps((prev) => new Set([...prev, step.id])); }}
+                      onClick={() => { if (!openSteps.has(step.id)) setOpenSteps((prev) => new Set([...prev, step.id])); setActiveStepId(step.id); }}
                     />
                     <button
-                      onClick={() => setOpenSteps((prev) => { const n = new Set(prev); if (n.has(step.id)) n.delete(step.id); else n.add(step.id); return n; })}
+                      onClick={() => setOpenSteps((prev) => { const n = new Set(prev); if (n.has(step.id)) n.delete(step.id); else { n.add(step.id); setActiveStepId(step.id); } return n; })}
                       aria-expanded={openSteps.has(step.id)}
                       aria-label={openSteps.has(step.id) ? `Replier l'étape ${i + 1}` : `Ouvrir l'étape ${i + 1}`}
                       style={{ border: "1px solid var(--border)", background: openSteps.has(step.id) ? "var(--accent-bg)" : "var(--surface-2)", color: "var(--text)", borderRadius: "6px", padding: "0.35rem 0.8rem", fontSize: "0.95rem", minWidth: "2.2rem" }}
@@ -385,6 +389,9 @@ export default function EditorPage() {
                   <div style={{ display: "grid", gap: "0.4rem" }}>
                     <StepCanvas
                       stepId={step.id}
+                      tool={activeStepId === step.id ? insertTool : null}
+                      color={insertColor}
+                      onToolDone={() => setInsertTool(null)}
                       photos={(step.photos ?? []).map((ph) => {
                         const w = typeof ph.display_w === "number" ? ph.display_w : ph.display_size === "full" ? 1 : ph.display_size === "large" ? 0.85 : ph.display_size === "small" ? 0.35 : 0.6;
                         return {
@@ -438,6 +445,7 @@ export default function EditorPage() {
 // débordement des flex/grid).
 const label: React.CSSProperties = { display: "grid", gap: "0.25rem", fontSize: "0.9rem", color: "var(--text-muted)", minWidth: 0 };
 const input: React.CSSProperties = { padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border)", fontSize: "1rem", fontFamily: "inherit", width: "100%", minWidth: 0, boxSizing: "border-box", maxWidth: "100%" };
-const primaryBtn: React.CSSProperties = { padding: "0.6rem 1rem", borderRadius: "6px", border: "none", background: "var(--accent)", color: "white", fontSize: "1rem" };
-const secondaryBtn: React.CSSProperties = { padding: "0.5rem 0.9rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.95rem" };
+const primaryBtn: React.CSSProperties = { padding: "0.35rem 0.7rem", borderRadius: "6px", border: "none", background: "var(--accent)", color: "white", fontSize: "0.85rem" };
+const secondaryBtn: React.CSSProperties = { padding: "0.35rem 0.7rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.85rem" };
+const toolBtn: React.CSSProperties = { padding: "0.25rem 0.55rem", borderRadius: "5px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.85rem", lineHeight: 1.2, minWidth: 0 };
 const dangerBtn: React.CSSProperties = { padding: "0.3rem 0.5rem", borderRadius: "6px", border: "1px solid var(--danger-border)", background: "var(--danger-bg)", color: "var(--text)", fontSize: "0.9rem" };

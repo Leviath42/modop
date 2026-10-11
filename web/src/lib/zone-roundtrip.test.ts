@@ -33,26 +33,22 @@ g.Image = FakeImage;
 const photo = { id: 1, filename: "a.png", alt: "", display_size: "full" as const, display_x: 0, display_y: 0.05, display_w: 1 };
 const root = createRoot(dom.window.document.getElementById("root")!);
 
-function mount(shapes: unknown[]) {
+function mount(shapes: unknown[], tool: "rect" | null = null) {
   root.render(
     React.createElement(StepCanvas, {
       stepId: 1,
       photos: [{ photo, x: 0, y: 0.05, w: 1 }],
       canvasShapes: shapes as never[],
+      tool,
+      color: "#d0021b",
+      onToolDone: () => {},
     })
   );
 }
 
-mount([]);
+mount([], "rect");
 await new Promise((r) => setTimeout(r, 120));
 const doc = dom.window.document;
-const cv = (Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%") as HTMLElement[]).pop()!;
-cv.id = "cv";
-
-// activer l'outil Zone
-const zoneBtn = Array.from(doc.querySelectorAll("button")).find((b) => b.textContent === "Zone") as HTMLElement;
-zoneBtn.click();
-await new Promise((r) => setTimeout(r, 30));
 
 function fire(el: Element | EventTarget, type: string, opts: PointerEventInit = {}) {
   (el as Element).dispatchEvent(new dom.window.PointerEvent(type, { bubbles: true, cancelable: true, button: 0, pointerId: 1, pointerType: "touch", ...opts }));
@@ -73,7 +69,7 @@ if (rect.type !== "rect") throw new Error(`type inattendu : ${rect.type}`);
 if (Math.abs(rect.y1 - 400 / 240) > 0.01) throw new Error(`y1 sauvegardé = ${rect.y1}, attendu ~1.667 (la zone est écrasée vers le haut !)`);
 
 // --- rechargement : remonter le composant avec les formes issues de l'API ---
-mount(savedShapes);
+mount(savedShapes, null);
 await new Promise((r) => setTimeout(r, 120));
 const svg = (Array.from(dom.window.document.querySelectorAll("svg")) as unknown as { getAttribute: (a: string) => string | null }[]).find((s) => s.getAttribute("viewBox")?.startsWith("0 0"))!;
 const allRects = Array.from(dom.window.document.querySelectorAll("svg rect")) as unknown as { getAttribute: (a: string) => string }[];

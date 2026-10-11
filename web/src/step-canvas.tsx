@@ -21,12 +21,12 @@ export interface CanvasShape extends Shape {
   y1: number;
 }
 
-const TOOLS: { kind: Shape["type"]; label: string }[] = [
+export const TOOLS: { kind: Shape["type"]; label: string }[] = [
   { kind: "arrow", label: "Flèche" },
   { kind: "rect", label: "Zone" },
   { kind: "text", label: "Texte" },
 ];
-const COLORS = ["#d0021b", "#f5a623", "#1f4e9c", "#108c5e"];
+export const COLORS = ["#d0021b", "#f5a623", "#1f4e9c", "#108c5e"];
 // Référentiel vertical FIXE : les y sont stockés en fraction de REF_H pixels
 // (et non de la hauteur visible, qui varie) — sans cela, chaque cycle
 // sauvegarde/chargement décale les objets vers le haut.
@@ -37,16 +37,24 @@ export default function StepCanvas({
   photos,
   canvasShapes,
   onPhotosChanged,
+  tool: toolProp,
+  color: colorProp,
+  onToolDone,
 }: {
   stepId: number;
   photos: CanvasPhoto[];
   canvasShapes: Shape[];
   onPhotosChanged?: () => void;
+  tool?: Shape["type"] | null;
+  color?: string;
+  onToolDone?: () => void;
 }) {
   const [objs, setObjs] = useState<CanvasPhoto[]>(photos);
   const [shapes, setShapes] = useState<Shape[]>(parseShapes(canvasShapes));
-  const [tool, setTool] = useState<Shape["type"] | null>(null);
-  const [color, setColor] = useState(COLORS[0]);
+  const [tool, setTool] = useState<Shape["type"] | null>(toolProp ?? null);
+  const [color, setColor] = useState(colorProp ?? COLORS[0]);
+  useEffect(() => { setTool(toolProp ?? null); setPendingStart(null); setTextDraft(null); }, [toolProp]);
+  useEffect(() => { if (colorProp) setColor(colorProp); }, [colorProp]);
   const [pendingStart, setPendingStart] = useState<{ x: number; y: number } | null>(null);
   const [preview, setPreview] = useState<{ x: number; y: number } | null>(null);
   const [textDraft, setTextDraft] = useState<{ x: number; y: number; value: string } | null>(null);
@@ -350,20 +358,10 @@ export default function StepCanvas({
 
   return (
     <div style={{ display: "grid", gap: "0.4rem" }}>
-      {/* palette d'outils compacte */}
-      <div style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap", alignItems: "center" }}>
-        {TOOLS.map((t) => (
-          <button key={t.kind} onClick={() => { setTool(tool === t.kind ? null : t.kind); setPendingStart(null); setTextDraft(null); }}
-            style={{ padding: "0.2rem 0.55rem", fontSize: "0.78rem", borderRadius: "4px", border: tool === t.kind ? "2px solid var(--accent)" : "1px solid var(--border)", background: tool === t.kind ? "var(--accent-bg)" : "var(--surface)" }}
-            aria-pressed={tool === t.kind}>{t.label}</button>
-        ))}
-        {COLORS.map((c) => (
-          <button key={c} onClick={() => setColor(c)} aria-label={`Couleur ${c}`}
-            style={{ width: "32px", height: "32px", borderRadius: "50%", cursor: "pointer", background: c, border: color === c ? "3px solid #333" : "1px solid #ccc" }} />
-        ))}
-        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginLeft: "auto", flexBasis: "100%" }}>
-          {tool ? (tool === "text" ? "Cliquez pour poser le texte" : pendingStart ? "Cliquez l'arrivée" : "Cliquez le départ")
-            : "Glissez le fond : sélection au rectangle · Maj-clic : ajouter · relâchez sur la colonne droite pour supprimer"}
+      <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", alignItems: "center" }}>
+        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
+          {tool ? (tool === "text" ? "Touchez pour poser le texte" : pendingStart ? "Touchez l'arrivée" : "Touchez le départ")
+            : "Glissez le fond : sélection · relâchez à droite pour supprimer"}
         </span>
         {(selPhotos.size > 0 || selShapes.size > 0) && (
           <button onClick={deleteSelection} style={{ fontSize: "0.78rem", color: "var(--error-text)" }}>
@@ -484,6 +482,7 @@ export default function StepCanvas({
           <button onClick={() => {
             if (textDraft.value.trim()) void saveShapes([...shapes, { type: "text", x1: textDraft.x, y1: textDraft.y, text: textDraft.value.trim(), color }]);
             setTextDraft(null); setTool(null);
+            onToolDone?.();
           }} style={{ padding: "0.4rem 1rem", borderRadius: "6px", border: "none", background: "var(--accent)", color: "#fff", fontWeight: 600 }}>OK</button>
         </div>
       )}
