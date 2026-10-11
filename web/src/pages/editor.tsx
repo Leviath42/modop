@@ -310,6 +310,17 @@ export default function EditorPage() {
                       >{preset.label}</button>
                     );
                   })}
+                  <span style={{ width: "1px", height: "20px", background: "var(--border)" }} aria-hidden="true" />
+                  <button
+                    onClick={() => {
+                      const target = activeStepId ?? steps[0].id;
+                      const stp = steps.find((x) => x.id === target);
+                      if (stp) setConfirmDeleteStep(stp);
+                    }}
+                    style={{ ...iconBtn, borderColor: "var(--danger-border)", background: "var(--danger-bg)", color: "var(--error-text)" }}
+                    title="Supprimer l'étape affichée (confirmation demandée)"
+                    aria-label="Supprimer l'étape affichée"
+                  >Supprimer l'étape</button>
                 </div>
               )}
             </div>
@@ -335,20 +346,7 @@ export default function EditorPage() {
                     >
                       ⠿
                     </span>
-                    <span style={{ display: "inline-flex", flexDirection: "column", lineHeight: 1 }}>
-                      <button
-                        onClick={() => { if (i > 0) void moveStep(i, i - 1); }}
-                        disabled={i === 0}
-                        aria-label={`Monter l'étape ${i + 1}`}
-                        style={{ border: "none", background: "none", fontSize: "0.75rem", color: "var(--text-muted)", padding: "0.05rem 0.2rem", cursor: i === 0 ? "default" : "pointer" }}
-                      >▲</button>
-                      <button
-                        onClick={() => { if (i < steps.length - 1) void moveStep(i, i + 1); }}
-                        disabled={i === steps.length - 1}
-                        aria-label={`Descendre l'étape ${i + 1}`}
-                        style={{ border: "none", background: "none", fontSize: "0.75rem", color: "var(--text-muted)", padding: "0.05rem 0.2rem", cursor: i === steps.length - 1 ? "default" : "pointer" }}
-                      >▼</button>
-                    </span>
+                    
                     <input
                       value={step.title}
                       onChange={(e) => setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, title: e.target.value } : s)))}
@@ -365,7 +363,7 @@ export default function EditorPage() {
                     >
                       {openSteps.has(step.id) ? "▾" : "▸"}
                     </button>
-                    <button onClick={() => setConfirmDeleteStep(step)} style={dangerBtn} aria-label={`Supprimer étape ${i + 1}`}>🗑</button>
+                    
                   </div>
                   {openSteps.has(step.id) && (
                   <>

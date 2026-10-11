@@ -108,6 +108,10 @@ Les identifiants (S/F/U/I) font référence au rapport d'audit.
 | I4 | **Modale de suppression : focus trap + fermeture Échap** | `role="dialog"` sans gestion du focus |
 | I3 | **Recalculer le `scroll-margin` sous le bandeau sticky déplié** | La palette sur 2 lignes dépasse la marge actuelle (5.5rem) |
 
+### 🔁 Correctifs UI/UX post-vague 6
+
+La série de petits correctifs UI/UX suivie après la vague 6 est journalisée dans **[docs/correctifs.md](correctifs.md)** — chaque entrée y remplace un point de roadmap. Démarrée avec C-01 (étapes repliées compactes : flèches ▲▼ et corbeille retirées, suppression dans la palette).
+
 ### ✅ Déjà résolus par le commit `20018c1` (header v2)
 
 - SW network-first sur les navigations + synchro multi-onglets (une partie de F8/thème) ; icônes SVG partagées via `icons.tsx` (début de réponse à I1) ; bouton thème unifié (U4).
