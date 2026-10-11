@@ -164,10 +164,10 @@ export default function EditorPage() {
     <>
       <NavBar />
       <main style={{ maxWidth: "820px", margin: "0 auto", padding: "1rem", display: "grid", gap: "1rem" }}>
-        {error && <p role="alert" style={{ color: "#b30000", background: "#fdeaea", padding: "0.5rem 0.8rem", borderRadius: "6px" }}>{error}</p>}
-        {notice && <p style={{ color: "#1d6b2e", background: "#e2f2e5", padding: "0.5rem 0.8rem", borderRadius: "6px" }}>{notice}</p>}
+        {error && <p role="alert" style={{ color: "var(--error-text)", background: "var(--error-bg)", padding: "0.5rem 0.8rem", borderRadius: "6px" }}>{error}</p>}
+        {notice && <p style={{ color: "var(--ok-text)", background: "var(--ok-bg)", padding: "0.5rem 0.8rem", borderRadius: "6px" }}>{notice}</p>}
 
-        <section style={{ background: "white", borderRadius: "10px", padding: "1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "grid", gap: "0.6rem" }}>
+        <section style={{ background: "var(--surface)", borderRadius: "10px", padding: "1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "grid", gap: "0.6rem" }}>
           <h1 style={{ margin: 0, fontSize: "1.2rem" }}>{isNew ? "Nouveau mode opératoire" : "Modifier"}</h1>
           <div style={{ display: "grid", gap: "0.5rem" }}>
             <label style={label}>Titre
@@ -178,7 +178,7 @@ export default function EditorPage() {
                 <input value={reference} onChange={(e) => setReference(e.target.value)} style={input} placeholder="MO-001" />
               </label>
             ) : (
-              <p style={{ margin: 0, color: "#666" }}><code>{wf?.reference}</code> — {wf?.state === "published" ? `publié (V${wf.current_version})` : "brouillon"}</p>
+              <p style={{ margin: 0, color: "var(--text-muted)" }}><code>{wf?.reference}</code> — {wf?.state === "published" ? `publié (V${wf.current_version})` : "brouillon"}</p>
             )}
             <label style={label}>Famille
               <input value={family} onChange={(e) => setFamily(e.target.value)} style={input} placeholder="Mécanique / Électrique / Qualité…" />
@@ -208,12 +208,18 @@ export default function EditorPage() {
                   <select
                     value=""
                     onChange={(e) => {
-                      const id = Number(e.target.value);
-                      setOpenSteps((prev) => new Set([...prev, id]));
-                      document.getElementById(`edit-step-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      const stepId = Number(e.target.value);
+                      // On ouvre d'abord l'étape (son contenu change la hauteur
+                      // de page), puis on ne déclenche le défilement qu'une fois
+                      // la mise en page stabilisée : sinon la cible glisse sous
+                      // le pli pendant le scroll et apparaît en bas (issue #3).
+                      setOpenSteps((prev) => new Set([...prev, stepId]));
+                      setTimeout(() => {
+                        document.getElementById(`edit-step-${stepId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }, 80);
                     }}
                     aria-label="Aller à une étape"
-                    style={{ padding: "0.45rem", borderRadius: "6px", border: "1px solid #c9ccd3" }}
+                    style={{ padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border)" }}
                   >
                     <option value="">Aller à…</option>
                     {steps.map((st, si) => <option key={st.id} value={st.id}>{si + 1}. {st.title}</option>)}
@@ -221,7 +227,7 @@ export default function EditorPage() {
                 </>
               )}
             </div>
-            {steps.length === 0 && <p style={{ color: "#666" }}>Aucune étape. Ajoutez la première.</p>}
+            {steps.length === 0 && <p style={{ color: "var(--text-muted)" }}>Aucune étape. Ajoutez la première.</p>}
             <ol style={{ listStyle: "none", padding: 0, display: "grid", gap: "0.6rem" }}>
               {steps.map((step, i) => (
                 <li
@@ -229,7 +235,7 @@ export default function EditorPage() {
                   id={`edit-step-${step.id}`}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => { if (dragIndex !== null && dragIndex !== i) void moveStep(dragIndex, i); setDragIndex(null); }}
-                  style={{ background: "white", borderRadius: "10px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "grid", gap: "0.5rem", outline: dragIndex === i ? "2px dashed #1f4e9c" : "none", scrollMarginTop: "4rem" }}
+                  style={{ background: "var(--surface)", borderRadius: "10px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "grid", gap: "0.5rem", outline: dragIndex === i ? "2px dashed var(--accent)" : "none", scrollMarginTop: "4rem" }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                     <span
@@ -239,7 +245,7 @@ export default function EditorPage() {
                       title="Glisser pour réordonner"
                       role="button"
                       aria-label={`Réordonner l'étape ${i + 1} (glisser)`}
-                      style={{ cursor: "grab", color: "#999", padding: "0.2rem 0.3rem", touchAction: "none" }}
+                      style={{ cursor: "grab", color: "var(--text-muted)", padding: "0.2rem 0.3rem", touchAction: "none" }}
                     >
                       ⠿
                     </span>
@@ -248,13 +254,13 @@ export default function EditorPage() {
                         onClick={() => { if (i > 0) void moveStep(i, i - 1); }}
                         disabled={i === 0}
                         aria-label={`Monter l'étape ${i + 1}`}
-                        style={{ border: "none", background: "none", fontSize: "0.75rem", color: "#555", padding: "0.05rem 0.2rem", cursor: i === 0 ? "default" : "pointer" }}
+                        style={{ border: "none", background: "none", fontSize: "0.75rem", color: "var(--text-muted)", padding: "0.05rem 0.2rem", cursor: i === 0 ? "default" : "pointer" }}
                       >▲</button>
                       <button
                         onClick={() => { if (i < steps.length - 1) void moveStep(i, i + 1); }}
                         disabled={i === steps.length - 1}
                         aria-label={`Descendre l'étape ${i + 1}`}
-                        style={{ border: "none", background: "none", fontSize: "0.75rem", color: "#555", padding: "0.05rem 0.2rem", cursor: i === steps.length - 1 ? "default" : "pointer" }}
+                        style={{ border: "none", background: "none", fontSize: "0.75rem", color: "var(--text-muted)", padding: "0.05rem 0.2rem", cursor: i === steps.length - 1 ? "default" : "pointer" }}
                       >▼</button>
                     </span>
                     <input
@@ -269,7 +275,7 @@ export default function EditorPage() {
                       onClick={() => setOpenSteps((prev) => { const n = new Set(prev); if (n.has(step.id)) n.delete(step.id); else n.add(step.id); return n; })}
                       aria-expanded={openSteps.has(step.id)}
                       aria-label={openSteps.has(step.id) ? `Replier l'étape ${i + 1}` : `Ouvrir l'étape ${i + 1}`}
-                      style={{ border: "none", background: "#eef0f4", borderRadius: "6px", padding: "0.25rem 0.6rem", fontSize: "0.85rem" }}
+                      style={{ border: "none", background: "var(--surface-2)", color: "var(--text)", borderRadius: "6px", padding: "0.25rem 0.6rem", fontSize: "0.85rem" }}
                     >
                       {openSteps.has(step.id) ? "▾" : "▸"}
                     </button>
@@ -303,8 +309,9 @@ export default function EditorPage() {
                             }
                             style={{
                               padding: "0.2rem 0.55rem", borderRadius: "4px", fontSize: "0.8rem",
-                              border: on ? `2px solid ${preset.color}` : "1px solid #c9ccd3",
-                              background: on ? `${preset.color}22` : "white",
+                              border: on ? `2px solid ${preset.color}` : "1px solid var(--border)",
+                              background: on ? `${preset.color}22` : "var(--surface)",
+                              color: "var(--text)",
                             }}
                             aria-pressed={on}
                           >
@@ -333,7 +340,7 @@ export default function EditorPage() {
                           }}
                           onBlur={() => patchStep(step, { pictos: step.pictos })}
                           placeholder="Texte de l'avertissement"
-                          style={{ flex: 1, minWidth: "160px", padding: "0.3rem 0.5rem", borderRadius: "4px", border: "1px solid #c9ccd3" }}
+                          style={{ flex: 1, minWidth: "160px", padding: "0.3rem 0.5rem", borderRadius: "4px", border: "1px solid var(--border)" }}
                           aria-label={`Texte du pictogramme ${pi + 1}`}
                         />
                         <button
@@ -348,9 +355,9 @@ export default function EditorPage() {
                   </div>
                   <div style={{ display: "grid", gap: "0.4rem" }}>
                     {step.photos.map((ph) => (
-                      <div key={ph.id} style={{ display: "grid", gap: "0.4rem", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "0.6rem" }}>
+                      <div key={ph.id} style={{ display: "grid", gap: "0.4rem", border: "1px solid var(--border-soft)", borderRadius: "8px", padding: "0.6rem" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                          <span style={{ flex: 1, fontSize: "0.85rem", color: "#555" }}>{ph.alt}</span>
+                          <span style={{ flex: 1, fontSize: "0.85rem", color: "var(--text-muted)" }}>{ph.alt}</span>
                           <button onClick={() => removePhoto(step, ph.id)} style={dangerBtn} aria-label="Supprimer la photo">🗑</button>
                         </div>
                         <div
@@ -396,8 +403,8 @@ export default function EditorPage() {
   );
 }
 
-const label: React.CSSProperties = { display: "grid", gap: "0.25rem", fontSize: "0.9rem", color: "#444" };
-const input: React.CSSProperties = { padding: "0.5rem", borderRadius: "6px", border: "1px solid #c9ccd3", fontSize: "1rem", fontFamily: "inherit" };
-const primaryBtn: React.CSSProperties = { padding: "0.6rem 1rem", borderRadius: "6px", border: "none", background: "#1f4e9c", color: "white", fontSize: "1rem" };
-const secondaryBtn: React.CSSProperties = { padding: "0.5rem 0.9rem", borderRadius: "6px", border: "1px solid #c9ccd3", background: "white", fontSize: "0.95rem" };
-const dangerBtn: React.CSSProperties = { padding: "0.3rem 0.5rem", borderRadius: "6px", border: "1px solid #e0b4b4", background: "#fff5f5", fontSize: "0.9rem" };
+const label: React.CSSProperties = { display: "grid", gap: "0.25rem", fontSize: "0.9rem", color: "var(--text-muted)" };
+const input: React.CSSProperties = { padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border)", fontSize: "1rem", fontFamily: "inherit" };
+const primaryBtn: React.CSSProperties = { padding: "0.6rem 1rem", borderRadius: "6px", border: "none", background: "var(--accent)", color: "white", fontSize: "1rem" };
+const secondaryBtn: React.CSSProperties = { padding: "0.5rem 0.9rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.95rem" };
+const dangerBtn: React.CSSProperties = { padding: "0.3rem 0.5rem", borderRadius: "6px", border: "1px solid var(--danger-border)", background: "var(--danger-bg)", color: "var(--text)", fontSize: "0.9rem" };
