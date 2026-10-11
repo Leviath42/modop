@@ -25,12 +25,26 @@ const BarsIcon = () => (
 export default function NavBar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const navRef = useRef<HTMLElement | null>(null);
   const [theme, setTheme] = useState<Theme>(() =>
     (document.documentElement.dataset.theme as Theme) || getStoredTheme()
   );
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => watchTheme(setTheme), []);
+  // Publier la hauteur réelle du bandeau : les headers sticky des pages
+  // s'y raccrochent (var --nav-h) — plus de décalage quelle que soit la
+  // hauteur réelle (mobile, redimensionnement).
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const publish = () => document.documentElement.style.setProperty("--nav-h", `${nav.offsetHeight}px`);
+    publish();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(publish);
+    ro.observe(nav);
+    return () => ro.disconnect();
+  }, [user]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -61,7 +75,7 @@ export default function NavBar() {
   };
 
   return (
-    <nav style={{ position: "sticky", top: 0, zIndex: 300, display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.5rem 0.8rem", background: "var(--accent)", color: "white" }}>
+    <nav ref={navRef} style={{ position: "sticky", top: 0, zIndex: 300, display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.5rem 0.8rem", background: "var(--accent)", color: "white" }}>
       <Link to="/" style={{ color: "white", fontWeight: 700, textDecoration: "none", fontSize: "1.05rem", flexShrink: 0 }}>
         Modop
       </Link>

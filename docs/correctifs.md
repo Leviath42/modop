@@ -245,3 +245,13 @@ Sur écran étroit, le wrap reste possible mais chaque élément est compact —
 **Fichiers** : `web/src/pages/editor.tsx`, `web/src/lib/header-tools.test.ts`
 
 **État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-17 — Header et bandeau nav solidaire au scroll (réalisé)
+
+**Problème** : le header sticky de l'éditeur (et du lecteur) restait en haut mais **se déplaçait par rapport au bandeau de navigation** en scrollant — le `top: 2.9rem` était une estimation fixe de la hauteur du nav, qui varie selon l'écran.
+
+**Correctif** : le nav **mesure lui-même sa hauteur** et la publie dans la variable CSS `--nav-h` (ResizeObserver + publication au montage) ; les headers sticky des pages s'accrochent à `top: var(--nav-h, 2.9rem)`. Les deux bandeaux restent désormais collés l'un sous l'autre, quel que soit le viewport ou les redimensionnements. Garde pour les environnements sans ResizeObserver (tests jsdom).
+
+**Fichiers** : `web/src/nav.tsx`, `web/src/pages/editor.tsx`, `web/src/pages/reader.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.
