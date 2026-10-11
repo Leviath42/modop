@@ -171,3 +171,19 @@ systemctl restart cloudflared
 **Fichiers** : `server/src/db/schema.ts`, `server/src/routes/workflows.ts`, `web/src/api.ts`, `web/src/pages/reader.tsx`, `server/test/feedback.test.ts`
 
 **État** : ✅ livré sur beta — 100/100 tests serveur (dont cycle complet signaler → lister → résoudre → permissions lecteur/auteur), tsc + build verts.
+
+## C-12 — Bandeau de navigation épuré : menu hamburger (réalisé)
+
+**Problème** : la barre du haut accumulait les boutons (email, rôle, Comptes, Statistiques, Déploiement, thème, Déconnexion) — encombrée, surtout sur mobile.
+
+**Correctif** :
+- Le bandeau ne garde que **« Modop »** et le **bouton menu (trois barres)**, à droite.
+- Le menu déroulant regroupe : identité (email + rôle), **Modes opératoires** (accueil), **Comptes / Statistiques / Déploiement** (admin seulement), séparateur, bascule de thème, **Déconnexion** (en rouge).
+- Fermeture par clic extérieur, touche Échap, ou après navigation ; aria-expanded/haspop pour l'accessibilité.
+- Le bandeau est **sticky** ; les headers sticky de l'éditeur et du lecteur s'accrochent désormais **sous** lui (top 2.9rem) au lieu de se superposer.
+
+**Test** : `nav-menu.test.tsx` — bandeau épuré (liens absents menu fermé), ouverture, entrées par rôle, fermeture Échap.
+
+**Fichiers** : `web/src/nav.tsx`, `web/src/pages/editor.tsx`, `web/src/pages/reader.tsx`, `web/src/lib/nav-menu.test.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front + 100/100 serveur.

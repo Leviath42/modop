@@ -184,7 +184,7 @@ export default function EditorPage() {
         {error && <p role="alert" style={{ color: "var(--error-text)", background: "var(--error-bg)", padding: "0.5rem 0.8rem", borderRadius: "6px" }}>{error}</p>}
         {notice && <p style={{ color: "var(--ok-text)", background: "var(--ok-bg)", padding: "0.5rem 0.8rem", borderRadius: "6px" }}>{notice}</p>}
 
-        <section style={{ position: "sticky", top: 0, zIndex: 30, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px", padding: "0.6rem 0.8rem", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", display: "grid", gap: "0.5rem", minWidth: 0 }}>
+        <section style={{ position: "sticky", top: "2.9rem", zIndex: 30, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px", padding: "0.6rem 0.8rem", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", display: "grid", gap: "0.5rem", minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
             <h1 style={{ margin: 0, fontSize: "1.1rem", flex: "1 1 8rem", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
               {isNew ? "Nouveau mode opératoire" : (title || "Sans titre")}{" "}
