@@ -18,3 +18,9 @@ pre {
 main, section {
   min-width: 0;
 }
+.modop-log {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: clip !important;
+}

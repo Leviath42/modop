@@ -51,9 +51,14 @@ export default function PhotoAnnotator({
   }
 
   function onPointerDown(e: React.MouseEvent) {
-    if (!tool || tool === "text") return;
-    e.preventDefault();
+    if (!tool) return;
     const p = relative(e);
+    if (tool === "text") {
+      // clic sur la photo en mode texte : ouvre la saisie à cet endroit
+      setTextDraft({ x: p.x, y: p.y, value: "" });
+      return;
+    }
+    e.preventDefault();
     setDraft({ x1: p.x, y1: p.y, x2: p.x, y2: p.y });
   }
 
@@ -82,8 +87,6 @@ export default function PhotoAnnotator({
           };
     void persist([...shapes, shape]);
   }
-
-  const showPreview = tool !== null;
 
   return (
     <div style={{ display: "grid", gap: "0.4rem" }}>
@@ -115,8 +118,7 @@ export default function PhotoAnnotator({
           preserveAspectRatio="none"
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
         >
-          {!showPreview &&
-            shapes.map((s, i) => {
+          {shapes.map((s, i) => {
               if (s.type === "arrow" && s.x2 !== undefined && s.y2 !== undefined) {
                 return (
                   <g key={i}>
@@ -149,8 +151,7 @@ export default function PhotoAnnotator({
           )}
         </svg>
         {/* textes enregistrés (hors SVG pour un rendu net) */}
-        {!showPreview &&
-          shapes
+        {shapes
             .filter((s) => s.type === "text" && s.text)
             .map((s, i) => (
               <span
