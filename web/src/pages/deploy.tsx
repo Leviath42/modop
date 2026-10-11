@@ -88,7 +88,7 @@ export default function DeployPage() {
     <>
       <NavBar />
       <main style={{ maxWidth: "720px", minWidth: 0, width: "100%", margin: "0 auto", padding: "1rem", boxSizing: "border-box" }}>
-        <section style={{ background: "white", borderRadius: "10px", padding: "1.2rem", boxShadow: "0 1px 4px rgba(0,0,0,0.1)", display: "grid", gap: "1rem", minWidth: 0, overflow: "hidden" }}>
+        <section style={{ background: "white", borderRadius: "10px", padding: "1.2rem", boxShadow: "0 1px 4px rgba(0,0,0,0.1)", display: "grid", gap: "1rem", minWidth: 0 }}>
           <h1 style={{ margin: 0 }}>Déploiement</h1>
 
           {!status ? (
@@ -179,7 +179,7 @@ export default function DeployPage() {
               {status.logTail && (
                 <div style={{ borderTop: "1px solid #eee", paddingTop: "0.8rem" }}>
                   <h2 style={{ margin: "0 0 0.4rem", fontSize: "0.95rem" }}>Journal</h2>
-                  <div className="modop-log" style={{ background: "#f2f3f5", borderRadius: "8px", padding: "0.8rem", fontSize: "0.75rem", maxHeight: "260px", overflowY: "auto", fontFamily: "monospace", whiteSpace: "pre-wrap", overflowWrap: "anywhere", width: "100%", boxSizing: "border-box" }}>
+                  <div className="modop-log" style={{ background: "#f2f3f5", borderRadius: "8px", padding: "0.8rem", fontSize: "0.75rem", height: "260px", overflowY: "auto", fontFamily: "monospace", width: "100%", boxSizing: "border-box" }}>
                     {status.logTail}
                   </div>
                 </div>

@@ -3,24 +3,13 @@
 body { margin: 0; background: #f5f6f8; color: #1a1c20; }
 button { cursor: pointer; }
 
-/* Anti-débordement global : les contenus longs (journal de déploiement,
-   URLs git, chemins npm) se coupent proprement au lieu de sortir du cadre. */
+/* Anti-débordement : les contenus longs (journal, URLs, chemins) se
+   REPLIENT au lieu de sortir du cadre. Jamais de coupe horizontale. */
 pre, code, .modop-log {
   overflow-wrap: anywhere;
   word-break: break-word;
   max-width: 100%;
-}
-pre {
   white-space: pre-wrap;
-  margin: 0;
-  box-sizing: border-box;
 }
-main, section {
-  min-width: 0;
-}
-.modop-log {
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  overflow-x: clip !important;
-}
+pre { margin: 0; box-sizing: border-box; }
+main, section { min-width: 0; }
