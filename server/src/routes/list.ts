@@ -10,6 +10,7 @@ export function listRouter(db: Database.Database): Router {
     const category = typeof req.query.category === "string" && req.query.category ? req.query.category : null;
     const state = req.query.state === "draft" || req.query.state === "published" ? req.query.state : null;
     const family = typeof req.query.family === "string" && req.query.family ? req.query.family : null;
+    const review = req.query.review === "overdue" ? "overdue" : null;
     const clauses: string[] = [];
     const params: unknown[] = [];
     const textClauses: string[] = [];
@@ -21,6 +22,7 @@ export function listRouter(db: Database.Database): Router {
     if (category) { clauses.push("category = ?"); params.push(category); }
     if (family) { clauses.push("family = ?"); params.push(family); }
     if (state) { clauses.push("state = ?"); params.push(state); }
+    if (review === "overdue") { clauses.push("review_due IS NOT NULL AND review_due < date('now')"); }
     const SORTS: Record<string, string> = {
       title: "title COLLATE NOCASE ASC",
       reference: "reference ASC",
@@ -31,7 +33,7 @@ export function listRouter(db: Database.Database): Router {
     const orderBy = sortCol ?? "updated_at DESC";
     const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
     const rows = db
-      .prepare(`SELECT id, title, reference, category, family, state, current_version, updated_at FROM workflows ${where} ORDER BY ${orderBy}`)
+      .prepare(`SELECT id, title, reference, category, family, state, current_version, review_due, owner_email, updated_at FROM workflows ${where} ORDER BY ${orderBy}`)
       .all(...params);
     res.json(rows);
   });

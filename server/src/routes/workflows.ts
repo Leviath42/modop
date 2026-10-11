@@ -84,9 +84,15 @@ export function workflowRouter(db: Database.Database): Router {
       res.status(404).json({ error: "not_found", message: "mode opératoire introuvable" });
       return;
     }
-    const { title, description, category, family } = req.body ?? {};
+    const { title, description, category, family, review_due, owner_email } = req.body ?? {};
     if (title !== undefined && (typeof title !== "string" || !title.trim())) {
       res.status(422).json({ error: "validation", message: "title invalide" });
+      return;
+    }
+    const dateOk = (v: unknown): boolean =>
+      v === undefined || v === null || v === "" || (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v));
+    if (!dateOk(review_due)) {
+      res.status(422).json({ error: "validation", message: "review_due : date YYYY-MM-DD, vide ou null" });
       return;
     }
     db.prepare(
@@ -95,9 +101,19 @@ export function workflowRouter(db: Database.Database): Router {
          description = COALESCE(?, description),
          category = COALESCE(?, category),
          family = COALESCE(?, family),
+         review_due = ?,
+         owner_email = COALESCE(?, owner_email),
          updated_at = datetime('now')
        WHERE id = ?`
-    ).run(title?.trim() ?? null, description ?? null, category ?? null, family ?? null, wf.id);
+    ).run(
+      title?.trim() ?? null,
+      description ?? null,
+      category ?? null,
+      family ?? null,
+      review_due === "" ? null : (typeof review_due === "string" ? review_due : null),
+      typeof owner_email === "string" ? owner_email.trim() : null,
+      wf.id
+    );
     res.json(db.prepare("SELECT * FROM workflows WHERE id = ?").get(wf.id));
   });
 

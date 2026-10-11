@@ -44,11 +44,14 @@ export function publishRouter(db: Database.Database): Router {
         photos: db.prepare("SELECT id, filename, alt, display_size, display_align, display_x, display_y, display_w FROM photos WHERE step_id = ?").all(s.id),
       })) as SnapshotStep[],
     };
+    const changelog = typeof (req.body as { changelog?: unknown })?.changelog === "string"
+      ? ((req.body as { changelog: string }).changelog).slice(0, 2000)
+      : "";
     const number = wf.current_version + 1;
     const tx = db.transaction(() => {
       db.prepare(
-        "INSERT INTO versions (workflow_id, number, snapshot, author_email) VALUES (?, ?, ?, ?)"
-      ).run(wf.id, number, JSON.stringify(snapshot), user.email);
+        "INSERT INTO versions (workflow_id, number, snapshot, changelog, author_email) VALUES (?, ?, ?, ?, ?)"
+      ).run(wf.id, number, JSON.stringify(snapshot), changelog, user.email);
       db.prepare(
         "UPDATE workflows SET state = 'published', current_version = ?, updated_at = datetime('now') WHERE id = ?"
       ).run(number, wf.id);
@@ -109,7 +112,7 @@ export function publishRouter(db: Database.Database): Router {
     }
     const rows = db
       .prepare(
-        "SELECT id, workflow_id, number, author_email, published_at FROM versions WHERE workflow_id = ? ORDER BY number DESC"
+        "SELECT id, workflow_id, number, changelog, author_email, published_at FROM versions WHERE workflow_id = ? ORDER BY number DESC"
       )
       .all(wf.id);
     res.json(rows);

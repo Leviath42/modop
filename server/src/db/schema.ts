@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS workflows (
   family TEXT NOT NULL DEFAULT '',
   state TEXT NOT NULL DEFAULT 'draft' CHECK (state IN ('draft','published')),
   current_version INTEGER NOT NULL DEFAULT 0,
+  review_due TEXT,
+  owner_email TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -49,6 +51,7 @@ CREATE TABLE IF NOT EXISTS versions (
   workflow_id INTEGER NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
   number INTEGER NOT NULL,
   snapshot TEXT NOT NULL,
+  changelog TEXT NOT NULL DEFAULT '',
   author_email TEXT NOT NULL,
   published_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE (workflow_id, number)
@@ -89,6 +92,9 @@ const COLUMN_MIGRATIONS: { table: string; column: string; ddl: string }[] = [
   { table: "photos", column: "display_y", ddl: "REAL" },
   { table: "photos", column: "display_w", ddl: "REAL" },
   { table: "steps", column: "canvas", ddl: "TEXT NOT NULL DEFAULT '[]'" },
+  { table: "workflows", column: "review_due", ddl: "TEXT" },
+  { table: "workflows", column: "owner_email", ddl: "TEXT NOT NULL DEFAULT ''" },
+  { table: "versions", column: "changelog", ddl: "TEXT NOT NULL DEFAULT ''" },
 ];
 
 // Réparation des pictos corrompus par le bug de l’ancien éditeur : la réponse
