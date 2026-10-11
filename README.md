@@ -6,10 +6,11 @@ Pensée atelier : une étape, une photo, un pictogramme — consultable au PC co
 ## Fonctionnalités
 
 - **Éditeur** : étapes réordonnables (glisser-déposer), descriptions, pictogrammes d'indication (attention, EPI, outillage…), photos compressées côté client avant envoi.
-- **Publication versionnée** : « Publier V1, V2… » crée un snapshot immuable de chaque version ; les modifications continuent sur le brouillon.
-- **Lecteur** : PC avec sommaire cliquable, mobile avec une étape par écran ; zoom sur les photos.
+- **Publication versionnée** : « Publier V1, V2… » crée un snapshot immuable de chaque version (canevas et mise en page des photos inclus, conservés aussi par la restauration et la duplication) ; les modifications continuent sur le brouillon. Confirmation demandée avant publication et avant suppression d'une étape.
+- **Lecteur** : PC avec sommaire cliquable, mobile avec une étape par écran ; zoom sur les photos ; consultation de n'importe quelle version publiée (sélecteur Vn) — le snapshot reste immuable.
 - **Export `.docx`** d'une version publiée, ouvrable dans Word/LibreOffice.
-- **Comptes et rôles** : reader / author / admin, SSO OIDC optionnel (off par défaut), sessions expirantes, journal d'audit.
+- **Comptes et rôles** : reader / author / admin, SSO OIDC optionnel (off par défaut, bouton dédié sur la page de connexion quand actif), sessions expirantes, journal d'audit.
+- **Sécurité renforcée** : vérification d'origine anti-CSRF sur toutes les requêtes mutantes, photos accessibles uniquement aux utilisateurs connectés, contrôle du contenu réel des images uploadées (magic numbers), en-têtes COOP/CORP.
 - **Gestion des comptes (admin)** : création, changement de rôle, désactivation (sessions révoquées immédiatement), réinitialisation de mot de passe (temporaire affiché une seule fois).
 - **Suppression de mode opératoire** : confirmation explicite, cascade (étapes, photos, versions).
 - **Pictogrammes enrichis** : par étape, pictos avec **couleur** (sélecteur) et **texte libre** — rendus en édition, lecture et export.

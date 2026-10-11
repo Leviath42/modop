@@ -1,6 +1,6 @@
 # Modop — Roadmap
 
-*Dernière mise à jour : 2026-10-11 — inclut la vague de correctifs issue de l'audit beta (S/F/U/I) — basé sur [docs/cahier-des-charges.md](cahier-des-charges.md)*
+*Dernière mise à jour : 2026-10-11 — vague 6 (correctifs audit) déployée sur beta : 10 workers fusionnés séquentiellement, 91 tests runtime — basé sur [docs/cahier-des-charges.md](cahier-des-charges.md)*
 
 ## 📋 Résumé
 
@@ -65,7 +65,7 @@ Application web de création, publication et consultation de **modes opératoire
 - **Tests** : `node:test` (79 backend) + smoke tests jsdom (UI)
 - **Déploiement** : conteneur LXC Proxmox, pm2, `update.sh` (sauvegarde base + git reset + build + healthcheck), tunnel Cloudflare
 
-## 🚨 Vague 6 — Correctifs audit beta (prioritaire)
+## 🚨 Vague 6 — Correctifs audit beta — ✅ LIVRÉE SUR BETA (fusion séquentielle, 91 tests runtime + tsc + build à chaque porte)
 
 Issue de l'audit complet de la branche beta (sécurité, fonctions, UX, UI) — commit de référence `20018c1`.
 Les identifiants (S/F/U/I) font référence au rapport d'audit.
