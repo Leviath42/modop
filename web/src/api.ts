@@ -148,6 +148,9 @@ export const api = {
   async versions(id: number): Promise<{ id: number; number: number; author_email: string; published_at: string }[]> {
     return handle(await fetch(`/api/workflows/${id}/versions`));
   },
+  async getVersion(id: number | string, number: number): Promise<WorkflowDetail> {
+    return handle<WorkflowDetail>(await fetch(`/api/workflows/${id}/versions/${number}`));
+  },
   async addStep(workflowId: number, data: { title: string; body?: string }): Promise<Step> {
     return handle<Step>(
       await fetch(`/api/workflows/${workflowId}/steps`, {
