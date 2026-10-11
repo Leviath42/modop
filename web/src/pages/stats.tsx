@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ApiError } from "../api";
+import { api, ApiError } from "../api";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
 
@@ -10,10 +10,10 @@ interface Stats {
   exports: number;
   logins: number;
   views: number;
-  topViewed: { target: string; n: number }[];
-  topExported: { target: string; n: number }[];
+  topViewed: { target: string; n: number; label?: string | null }[];
+  topExported: { target: string; n: number; label?: string | null }[];
   topPublishers: { actor_email: string; n: number }[];
-  recentActivity: { actor_email: string; action: string; target: string; at: string }[];
+  recentActivity: { actor_email: string; action: string; target: string; at: string; label?: string | null }[];
 }
 
 // RF-77 — page statistiques admin : usage global et par document,
@@ -24,8 +24,10 @@ export default function StatsPage() {
   const [error, setError] = useState<string | null>(null);
   const isAdmin = user?.role === "admin";
 
+  const [audit, setAudit] = useState<{ id: number; actor_email: string; action: string; target: string; detail: string; at: string }[] | null>(null);
   useEffect(() => {
     if (!isAdmin) return;
+    api.adminListAudit().then(setAudit).catch(() => { /* journal optionnel */ });
     fetch("/api/stats")
       .then((r) => (r.ok ? r.json() : Promise.reject(new ApiError(r.status, "forbidden", "Accès refusé"))))
       .then(setStats)
@@ -63,14 +65,14 @@ export default function StatsPage() {
             <h2 style={{ margin: "0 0 0.4rem", fontSize: "0.95rem" }}>Les plus consultés</h2>
             <ol style={{ margin: 0, paddingLeft: "1.2rem", fontSize: "0.9rem", display: "grid", gap: "0.2rem" }}>
               {stats.topViewed.length === 0 && <li style={{ color: "var(--text-muted)" }}>Aucune consultation</li>}
-              {stats.topViewed.map((t) => <li key={t.target}>{t.target.replace("workflow:", "MO #")} — {t.n} vues</li>)}
+              {stats.topViewed.map((t) => <li key={t.target}>{t.label || t.target.replace("workflow:", "MO #")} — {t.n} vues</li>)}
             </ol>
           </div>
           <div style={{ background: "var(--surface)", borderRadius: "10px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
             <h2 style={{ margin: "0 0 0.4rem", fontSize: "0.95rem" }}>Les plus exportés</h2>
             <ol style={{ margin: 0, paddingLeft: "1.2rem", fontSize: "0.9rem", display: "grid", gap: "0.2rem" }}>
               {stats.topExported.length === 0 && <li style={{ color: "var(--text-muted)" }}>Aucun export</li>}
-              {stats.topExported.map((t) => <li key={t.target}>{t.target.replace("workflow:", "MO #")} — {t.n}</li>)}
+              {stats.topExported.map((t) => <li key={t.target}>{t.label || t.target.replace("workflow:", "MO #")} — {t.n}</li>)}
             </ol>
           </div>
           <div style={{ background: "var(--surface)", borderRadius: "10px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
@@ -88,11 +90,25 @@ export default function StatsPage() {
               <li key={i} style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                 <span style={{ color: "var(--text-muted)" }}>{a.at}</span>
                 <strong>{a.actor_email}</strong>
-                <span>{a.action}{a.target ? ` → ${a.target}` : ""}</span>
+                <span>{a.action}{a.target ? ` → ${a.label || a.target}` : ""}</span>
               </li>
             ))}
           </ul>
         </section>
+        {audit && audit.length > 0 && (
+          <section style={{ background: "var(--surface)", borderRadius: "10px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }} aria-label="Journal d'audit">
+            <h2 style={{ margin: "0 0 0.4rem", fontSize: "0.95rem" }}>Journal d'audit (200 dernières actions)</h2>
+            <ul style={{ margin: 0, paddingLeft: "0", listStyle: "none", fontSize: "0.85rem", display: "grid", gap: "0.25rem", maxHeight: "26rem", overflowY: "auto" }}>
+              {audit.map((a) => (
+                <li key={a.id} style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                  <span style={{ color: "var(--text-muted)", flexShrink: 0 }}>{a.at}</span>
+                  <strong style={{ flexShrink: 0 }}>{a.actor_email}</strong>
+                  <span>{a.action}{a.target ? ` → ${a.target}` : ""}{a.detail ? ` (${a.detail})` : ""}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </main>
     </>
   );

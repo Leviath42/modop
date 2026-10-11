@@ -257,6 +257,9 @@ export const api = {
       })
     );
   },
+  async adminListAudit(): Promise<{ id: number; actor_email: string; action: string; target: string; detail: string; at: string }[]> {
+    return handle(await fetch("/api/admin/audit"));
+  },
   async adminResetPassword(id: number): Promise<{ temporaryPassword: string }> {
     return handle<{ temporaryPassword: string }>(
       await fetch(`/api/admin/users/${id}/reset-password`, { method: "POST" })

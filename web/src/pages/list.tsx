@@ -122,7 +122,7 @@ export default function ListPage() {
             {workflows.map((wf) => (
               <li key={wf.id} style={{ background: "var(--surface)", borderRadius: "8px", padding: "0.45rem 0.7rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <Link to={`/workflow/${wf.id}/read`} style={{ fontWeight: 600, color: "var(--accent)", textDecoration: "none", fontSize: "0.95rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
+                  <Link to={`/workflow/${wf.id}/read`} title={wf.title} style={{ fontWeight: 600, color: "var(--accent)", textDecoration: "none", fontSize: "0.95rem", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", flex: 1, minWidth: 0 }}>
                     {wf.title}
                   </Link>
                   <code style={{ background: "var(--surface-2)", padding: "0.05rem 0.35rem", borderRadius: "4px", fontSize: "0.75rem", flexShrink: 0 }}>{wf.reference}</code>
