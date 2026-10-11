@@ -83,10 +83,21 @@ export function createApp(db: Database.Database, webDist?: string): express.Expr
       }
       next();
     });
-    app.use(express.static(webDist));
-    app.get(/^(?!\/api|\/photos).*/, (_req, res) => {
+    app.use(express.static(webDist, { index: false }));
+    // Thème persistant côté SERVEUR : le cookie modop-theme (posé par le front
+    // à chaque bascule) est injecté dans le <html> du document — le premier
+    // rendu part déjà avec le bon thème, quoi que fassent les caches (CDN,
+    // proxy, HTTP). Le script inline reste en repli (localStorage) pour la
+    // toute première visite.
+    const indexHtml = fs.readFileSync(path.join(webDist, "index.html"), "utf8");
+    app.get(/^(?!\/api|\/photos).*/, (req, res) => {
       res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-      res.sendFile(path.join(webDist, "index.html"));
+      const cookieTheme = /(?:^|;\s*)modop-theme=(dark|light)(?:;|$)/.exec(req.headers.cookie ?? "");
+      if (cookieTheme) {
+        res.send(indexHtml.replace("<html lang=\"fr\">", `<html lang="fr" data-theme="${cookieTheme[1]}">`));
+      } else {
+        res.send(indexHtml);
+      }
     });
   }
   return app;

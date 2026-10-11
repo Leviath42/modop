@@ -89,7 +89,7 @@ export default function DeployPage() {
       <NavBar />
       <main style={{ maxWidth: "720px", minWidth: 0, width: "100%", margin: "0 auto", padding: "1rem", boxSizing: "border-box" }}>
         <section style={{ background: "var(--surface)", borderRadius: "10px", padding: "1.2rem", boxShadow: "0 1px 4px rgba(0,0,0,0.1)", display: "grid", gap: "1rem", minWidth: 0 }}>
-          <h1 style={{ margin: 0 }}>Déploiement</h1>
+          <h1 style={{ margin: 0, fontSize: "1.05rem" }}>Déploiement</h1>
 
           {!status ? (
             <p style={{ color: "var(--text-muted)" }}>Chargement de l'état…</p>

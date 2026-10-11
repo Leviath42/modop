@@ -35,3 +35,18 @@ test("assets empreintés servis en 200 (jamais de 500 middleware)", { skip: !has
 
 process.on("exit", () => { server.close(); fs.rmSync("data", { recursive: true, force: true }); });
 server.unref();
+
+// C-15 : le thème est injecté côté serveur depuis le cookie modop-theme —
+// le HTML part avec le bon data-theme, insensible aux caches.
+test("thème injecté depuis le cookie modop-theme", { skip: !hasDist }, async () => {
+  const dark = await fetch(base + "/", { headers: { cookie: "modop-theme=dark" } });
+  assert.equal(dark.status, 200);
+  const html = await dark.text();
+  assert.ok(html.includes('<html lang="fr" data-theme="dark">'), "data-theme=dark attendu dans le HTML");
+  const light = await fetch(base + "/", { headers: { cookie: "modop-theme=light" } });
+  const htmlLight = await light.text();
+  assert.ok(htmlLight.includes('<html lang="fr" data-theme="light">'), "data-theme=light attendu");
+  const anon = await fetch(base + "/");
+  const htmlAnon = await anon.text();
+  assert.ok(!htmlAnon.includes('data-theme="dark"'), "sans cookie : pas d'injection, script inline de repli");
+});

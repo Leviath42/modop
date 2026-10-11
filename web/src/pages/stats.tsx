@@ -49,7 +49,7 @@ export default function StatsPage() {
     <>
       <NavBar />
       <main style={{ maxWidth: "820px", margin: "0 auto", padding: "1rem", display: "grid", gap: "1rem" }}>
-        <h1 style={{ margin: 0 }}>Statistiques</h1>
+        <h1 style={{ margin: 0, fontSize: "1.05rem" }}>Statistiques</h1>
         <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(8rem, 1fr))", gap: "0.6rem" }} aria-label="Chiffres clés">
           {cards.map((c) => (
             <div key={c.label} style={{ background: "var(--surface)", borderRadius: "10px", padding: "0.8rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "grid", gap: "0.2rem" }}>

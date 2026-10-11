@@ -77,7 +77,7 @@ export default function AdminPage() {
     <>
       <NavBar />
       <main style={{ maxWidth: "820px", margin: "0 auto", padding: "1rem", display: "grid", gap: "1rem" }}>
-        <h1 style={{ margin: 0 }}>Comptes utilisateurs</h1>
+        <h1 style={{ margin: 0, fontSize: "1.05rem" }}>Comptes utilisateurs</h1>
         {error && <p role="alert" style={{ color: "var(--error-text)", background: "var(--error-bg)", padding: "0.5rem 0.8rem", borderRadius: "6px", margin: 0 }}>{error}</p>}
         {notice && <p style={{ color: "var(--ok-text)", background: "var(--ok-bg)", padding: "0.5rem 0.8rem", borderRadius: "6px", margin: 0 }}>{notice}</p>}
         {tempPassword && (

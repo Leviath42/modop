@@ -217,3 +217,16 @@ Sur écran étroit, le wrap reste possible mais chaque élément est compact —
 **Fichiers** : `web/src/pages/list.tsx`, `web/src/pages/editor.tsx`
 
 **État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-15 — Titres de page réduits + thème persistant injecté côté serveur (réalisé)
+
+**Problème 1** : les titres de page (h1) prenaient trop de place.
+**Problème 2** : le thème sombre sautait encore au rafraîchissement malgré C-09 (cache HTTP corrigé) — un maillon restait dépendant du navigateur.
+
+**Correctifs** :
+1. **Titres** : règle globale `h1` à 1.05rem dans styles.css ; h1 inline réduits (comptes/déploiement/stats 1.05rem, lecteur 0.95–1.05rem, éditeur 1rem, login 1.3rem).
+2. **Thème — nouvelle approche, côté serveur** : le front pose un **cookie `modop-theme`** à chaque bascule ; le serveur **injecte `data-theme` directement dans le `<html>` servi**. Le premier rendu part avec le bon thème, **quoi que fassent les caches HTTP, le CDN Cloudflare ou le service worker** — plus aucun flash possible. Détail technique : `express.static` ne sert plus la racine (`index: false`) pour que la route d'injection prenne toutes les navigations ; le script inline (cookie → localStorage) reste en repli pour la toute première visite. Prouvé par test runtime : cookie `dark` → HTML contient `data-theme="dark"`.
+
+**Fichiers** : `web/src/styles.css`, pages (titres), `server/src/app.ts`, `web/src/theme.ts`, `web/index.html`, `server/test/static-cache.test.ts`
+
+**État** : ✅ livré sur beta — 101/101 tests serveur (dont 1 nouveau : injection thème), tsc + build + tests front.

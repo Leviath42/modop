@@ -200,7 +200,7 @@ export default function EditorPage() {
 
         <section style={{ position: "sticky", top: "2.9rem", zIndex: 30, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px", padding: "0.6rem 0.8rem", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", display: "grid", gap: "0.5rem", minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-            <h1 style={{ margin: 0, fontSize: "1.1rem", flex: "1 1 8rem", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
+            <h1 style={{ margin: 0, fontSize: "1rem", flex: "1 1 8rem", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
               {isNew ? "Nouveau mode opératoire" : (title || "Sans titre")}{" "}
               <code style={{ fontSize: "0.8em", background: "var(--surface-2)", padding: "0.1rem 0.4rem", borderRadius: "4px" }}>{reference || wf?.reference}</code>
             </h1>

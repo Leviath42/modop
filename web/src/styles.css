@@ -127,3 +127,8 @@ li { list-style: none; }
   nav { display: none !important; }
   .qr-sheet { box-shadow: none !important; border: 1px solid #ccc; }
 }
+
+/* Titres de page compacts : les h1 inline restent prioritaires où
+   explicitement stylés ; ce réglage borne les h1 "nus". */
+h1 { font-size: 1.05rem; margin: 0.4rem 0 0.6rem; }
+h2 { font-size: 0.95rem; }

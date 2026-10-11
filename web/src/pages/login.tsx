@@ -70,7 +70,7 @@ export default function LoginPage() {
       >
         {theme === "dark" ? <SunIcon /> : <MoonIcon />}
       </button>
-      <h1>Modop</h1>
+      <h1 style={{ fontSize: "1.3rem", margin: "0 0 0.2rem" }}>Modop</h1>
       <p style={{ color: "var(--text-muted)" }}>Modes opératoires</p>
       <form onSubmit={submit} style={{ display: "grid", gap: "0.75rem" }}>
         <label style={{ display: "grid", gap: "0.25rem" }}>

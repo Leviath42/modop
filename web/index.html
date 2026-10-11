@@ -10,7 +10,8 @@
       // Applique le thème avant le premier rendu pour éviter tout flash (issue #2).
       (function () {
         try {
-          var t = localStorage.getItem("modop-theme");
+          var m = /(?:^|;\s*)modop-theme=(dark|light)(?:;|$)/.exec(document.cookie);
+          var t = m ? m[1] : localStorage.getItem("modop-theme");
           if (t !== "light" && t !== "dark") {
             t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
           }

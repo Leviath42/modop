@@ -22,6 +22,11 @@ export function applyTheme(theme: Theme): void {
   try {
     localStorage.setItem(STORAGE_KEY, theme);
   } catch { /* localStorage indisponible */ }
+  // Persistance serveur : le cookie permet au serveur d'injecter le bon
+  // data-theme directement dans le HTML — insensible aux caches HTTP/CDN.
+  try {
+    document.cookie = `${STORAGE_KEY}=${theme}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+  } catch { /* cookies indisponibles */ }
 }
 
 export function toggleTheme(): Theme {
