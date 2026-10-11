@@ -95,3 +95,41 @@ process.on("exit", () => {
   fs.rmSync("data", { recursive: true, force: true });
 });
 server.unref();
+
+test("anti-CSRF : POST cross-site refusé, same-origin accepté", async () => {
+  const login = await call("POST", "/api/auth/login", { email: "user@modop.local", password: "motdepasse1" });
+  assert.equal(login.status, 200);
+  const host = new URL(base).host;
+  // Origin d'un autre site -> 403
+  const csrf = await fetch(base + "/api/auth/logout", {
+    method: "POST",
+    headers: { origin: "https://attaquant.example", cookie: login.cookie! },
+  });
+  assert.equal(csrf.status, 403);
+  // Sec-Fetch-Site cross-site -> 403
+  const csrf2 = await fetch(base + "/api/auth/logout", {
+    method: "POST",
+    headers: { "sec-fetch-site": "cross-site", cookie: login.cookie! },
+  });
+  assert.equal(csrf2.status, 403);
+  // Same-origin accepté
+  const ok = await fetch(base + "/api/auth/logout", {
+    method: "POST",
+    headers: { origin: base, cookie: login.cookie! },
+  });
+  assert.equal(ok.status, 200);
+  // Sans en-têtes d'origine (curl, tests) accepté
+  const ok2 = await fetch(base + "/api/auth/login", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: "user@modop.local", password: "motdepasse1" }),
+  });
+  assert.equal(ok2.status, 200);
+  assert.equal(new URL(base).host, host);
+});
+
+test("en-têtes COOP/CORP présents", async () => {
+  const r = await fetch(base + "/api/health");
+  assert.equal(r.headers.get("cross-origin-opener-policy"), "same-origin");
+  assert.equal(r.headers.get("cross-origin-resource-policy"), "same-origin");
+});

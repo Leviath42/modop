@@ -5,6 +5,7 @@ import fs from "node:fs";
 import type Database from "better-sqlite3";
 import { attachAuth } from "./auth/middleware.js";
 import { securityHeaders, loginRateLimiter } from "./auth/security.js";
+import { assertSameOrigin } from "./auth/origin.js";
 import { purgeExpiredSessions } from "./auth/sessions.js";
 import { purgeAudit } from "./auth/audit.js";
 import { authRouter } from "./routes/auth.js";
@@ -38,6 +39,7 @@ export function createApp(db: Database.Database, webDist?: string): express.Expr
   app.use(express.json());
   app.use(cookieParser());
   app.use(attachAuth(db));
+  app.use(assertSameOrigin());
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
   app.use("/api/auth/login", loginRateLimiter() as never);
   app.use("/api/auth", authRouter(db));

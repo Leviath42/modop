@@ -7,6 +7,8 @@ export function securityHeaders(): (req: Request, res: Response, next: NextFunct
     res.setHeader("X-Frame-Options", "DENY");
     res.setHeader("Referrer-Policy", "no-referrer");
     res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
+    res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+    res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
     res.setHeader("Permissions-Policy", "camera=(self), microphone=(), geolocation=()");
     // HSTS uniquement si TLS actif (sinon le dev local http:// serait bloqué).
     if (req.secure || req.headers["x-forwarded-proto"] === "https") {
