@@ -5,7 +5,7 @@ import { api } from "./api";
 // Éditeur d'annotations, deux modes :
 //  - OUTIL ACTIF : placement par CLIC-CLIC (clic = départ, second clic = arrivée)
 //    plus fiable que le glisser, qui reste dépendant du navigateur.
-//  - AUCUN OUTIL : les formes posées sont sélectionnables et DÉPLAÇABLES
+//  - AUCUN OUTIL : les formes posées sont sélectionnables et DÉPLACÉS
 //    (glisser une forme la repositionne, sauvegarde au relâcher).
 const TOOLS: { kind: Shape["type"]; label: string }[] = [
   { kind: "arrow", label: "Flèche" },
@@ -181,7 +181,7 @@ export default function PhotoAnnotator({
             <line x1={pendingStart.x * 100} y1={pendingStart.y * 100} x2={preview.x * 100} y2={preview.y * 100} stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinecap="round" />
           )}
           {pendingStart && preview && tool === "rect" && (
-            <rect x={Math.min(pendingStart.x, preview.x) * 100} y={Math.min(pendingStart.y, preview.y) * 100} width={Math.abs(preview.x - pendingStart.x) * 100} height={Math.abs(preview.y - pendingStart.y) * 100} fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" />
+            <rect x={Math.min(pendingStart.x, preview.x) * 100} y={Math.min(pendingStart.y, preview.y) * 100} width={Math.abs(pendingStart.x - preview.x) * 100} height={Math.abs(pendingStart.y - preview.y) * 100} fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" />
           )}
         </svg>
         {shapes
@@ -211,8 +211,9 @@ export default function PhotoAnnotator({
             disabled={busy}
             style={{
               padding: "0.25rem 0.6rem", fontSize: "0.8rem", borderRadius: "4px",
-              border: tool === t.kind ? "2px solid #1f4e9c" : "1px solid #c9ccd3",
-              background: tool === t.kind ? "#eaf1fb" : "white",
+              border: tool === t.kind ? "2px solid var(--accent)" : "1px solid var(--border)",
+              background: tool === t.kind ? "var(--accent-bg)" : "var(--surface)",
+              color: "var(--text)",
             }} aria-pressed={tool === t.kind}>
             {t.label}
           </button>
@@ -223,18 +224,18 @@ export default function PhotoAnnotator({
               <button key={c} onClick={() => setColor(c)} aria-label={`Couleur ${c}`}
                 style={{ width: "22px", height: "22px", borderRadius: "50%", cursor: "pointer", background: c, border: color === c ? "3px solid #333" : "1px solid #ccc" }} />
             ))}
-            <span style={{ fontSize: "0.75rem", color: "#888" }}>
+            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
               {tool === "text" ? "Cliquez sur la photo, tapez, Entrée" : pendingStart ? "Cliquez pour fixer l'arrivée" : "Cliquez pour placer le départ"}
             </span>
           </>
         )}
-        {!tool && <span style={{ fontSize: "0.75rem", color: "#888" }}>Cliquez une forme pour la sélectionner — glissez pour la déplacer</span>}
+        {!tool && <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Cliquez une forme pour la sélectionner — glissez pour la déplacer</span>}
         {selected !== null && (
-          <button onClick={deleteSelected} style={{ fontSize: "0.8rem", marginLeft: "auto", color: "#b30000" }} disabled={busy}>
+          <button onClick={deleteSelected} style={{ fontSize: "0.8rem", marginLeft: "auto", color: "var(--error-text)" }} disabled={busy}>
             🗑 Supprimer la forme
           </button>
         )}
-        {busy && <span style={{ fontSize: "0.75rem", color: "#888" }}>Enregistrement…</span>}
+        {busy && <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Enregistrement…</span>}
       </div>
 
       {textDraft && (
@@ -242,7 +243,7 @@ export default function PhotoAnnotator({
           <input autoFocus value={textDraft.value}
             onChange={(e) => setTextDraft({ ...textDraft, value: e.target.value })}
             placeholder="Texte à afficher sur la photo"
-            style={{ flex: 1, padding: "0.4rem", borderRadius: "4px", border: "1px solid #c9ccd3" }}
+            style={{ flex: 1, padding: "0.4rem", borderRadius: "4px", border: "1px solid var(--border)" }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && textDraft.value.trim()) {
                 void persist([...shapes, { type: "text", x1: textDraft.x, y1: textDraft.y, text: textDraft.value.trim(), color }]);
