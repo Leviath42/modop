@@ -29,6 +29,18 @@ export interface Photo {
   display_w?: number | null;
 }
 
+export interface Shape {
+  type: "arrow" | "rect" | "text";
+  x1: number;
+  y1: number;
+  x2?: number;
+  y2?: number;
+  w?: number;
+  h?: number;
+  text?: string;
+  color: string;
+}
+
 export interface Picto {
   kind: string;
   label: string;
@@ -43,6 +55,7 @@ export interface Step {
   body: string;
   pictos: Picto[];
   photos: Photo[];
+  canvas?: Shape[];
 }
 
 export interface AdminUser {

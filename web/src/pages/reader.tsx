@@ -1,3 +1,4 @@
+import StepCanvasView from "../step-canvas-view";
 import AnnotatedPhoto, { parseShapes } from "../annotated-photo";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -64,23 +65,7 @@ export default function ReaderPage() {
             )}
             {step.photos.length > 0 && (
               <div style={{ display: "grid", gap: "0.6rem" }}>
-                {step.photos.map((ph) => {
-                  const SIZES: Record<string, string> = { small: "35%", medium: "60%", large: "85%", full: "100%" };
-                  const freeW = typeof ph.display_w === "number" ? `${ph.display_w * 100}%` : (SIZES[ph.display_size ?? "medium"] ?? "60%");
-                  return (
-                    <div key={ph.id} style={{ display: "flex", justifyContent: ph.display_align ?? "center", width: "100%" }}>
-                      <div style={{ width: freeW, marginLeft: typeof ph.display_x === "number" ? `${ph.display_x * 100}%` : undefined, maxWidth: "100%" }}>
-                        <AnnotatedPhoto
-                          filename={ph.filename}
-                          alt={ph.alt || step.title}
-                          shapes={parseShapes(ph.annotations)}
-                          maxWidth="100%"
-                          zoomable
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
+                <StepCanvasView photos={step.photos ?? []} shapes={step.canvas ?? []} />
               </div>
             )}
           </article>

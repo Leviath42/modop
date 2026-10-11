@@ -1,3 +1,4 @@
+import StepCanvas from "../step-canvas";
 import PhotoAnnotator from "../photo-annotator";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -364,20 +365,20 @@ export default function EditorPage() {
                     ))}
                   </div>
                   <div style={{ display: "grid", gap: "0.4rem" }}>
-                    {step.photos.map((ph) => (
-                      <div key={ph.id} style={{ display: "grid", gap: "0.4rem", border: "1px solid var(--border-soft)", borderRadius: "8px", padding: "0.6rem" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                          <span style={{ flex: 1, fontSize: "0.85rem", color: "var(--text-muted)" }}>{ph.alt}</span>
-                          <button onClick={() => removePhoto(step, ph.id)} style={dangerBtn} aria-label="Supprimer la photo">🗑</button>
-                        </div>
-                        <div
-                          onDragStart={(e) => e.preventDefault()}
-                          onDragEnter={(e) => e.stopPropagation()}
-                        >
-                          <PhotoAnnotator photoId={ph.id} filename={ph.filename} alt={ph.alt} initialAnnotations={ph.annotations} initialLayout={{ x: ph.display_x ?? null, y: ph.display_y ?? null, w: ph.display_w ?? (ph.display_size === "full" ? 1 : ph.display_size === "large" ? 0.85 : ph.display_size === "small" ? 0.35 : 0.65) }} />
-                        </div>
-                      </div>
-                    ))}
+                    <StepCanvas
+                      stepId={step.id}
+                      photos={(step.photos ?? []).map((ph) => {
+                        const w = typeof ph.display_w === "number" ? ph.display_w : ph.display_size === "full" ? 1 : ph.display_size === "large" ? 0.85 : ph.display_size === "small" ? 0.35 : 0.6;
+                        return {
+                          photo: ph,
+                          x: typeof ph.display_x === "number" ? ph.display_x : 0,
+                          y: typeof ph.display_y === "number" ? ph.display_y * 0.6 : 0.05,
+                          w,
+                        };
+                      })}
+                      canvasShapes={step.canvas ?? []}
+                      onPhotosChanged={async () => { const w = await api.getWorkflow(id!); setSteps(w.steps); }}
+                    />
                     <div>
                       <input
                         type="file"

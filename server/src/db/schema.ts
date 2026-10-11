@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS steps (
   title TEXT NOT NULL,
   body TEXT NOT NULL DEFAULT '',
   pictos TEXT NOT NULL DEFAULT '[]',
+  canvas TEXT NOT NULL DEFAULT '[]',
   UNIQUE (workflow_id, position)
 );
 CREATE TABLE IF NOT EXISTS photos (
@@ -87,6 +88,7 @@ const COLUMN_MIGRATIONS: { table: string; column: string; ddl: string }[] = [
   { table: "photos", column: "display_x", ddl: "REAL" },
   { table: "photos", column: "display_y", ddl: "REAL" },
   { table: "photos", column: "display_w", ddl: "REAL" },
+  { table: "steps", column: "canvas", ddl: "TEXT NOT NULL DEFAULT '[]'" },
 ];
 
 // Réparation des pictos corrompus par le bug de l’ancien éditeur : la réponse
@@ -156,6 +158,35 @@ function migrate(db: Database.Database): void {
   db.exec(
     "UPDATE sessions SET expires_at = datetime('now', '+24 hours') WHERE expires_at IS NULL"
   );
+
+  // Conversion unique : les annotations attachees aux photos (coordonnees
+  // relatives a la photo) deviennent des objets du canevas de l'etape.
+  const photos = db
+    .prepare("SELECT p.id, p.step_id, p.annotations, p.display_x, p.display_w, p.display_align FROM photos p WHERE p.annotations != '[]'")
+    .all() as { id: number; step_id: number; annotations: string; display_x: number | null; display_w: number | null; display_align: string | null }[];
+  for (const ph of photos) {
+    try {
+      const shapes = JSON.parse(ph.annotations) as Record<string, unknown>[];
+      const w = ph.display_w ?? 0.6;
+      const x0 = ph.display_x ?? (ph.display_align === "left" ? 0 : ph.display_align === "right" ? 1 - w : (1 - w) / 2);
+      const step = db.prepare("SELECT canvas FROM steps WHERE id = ?").get(ph.step_id) as { canvas: string };
+      const canvas = JSON.parse(step.canvas || "[]") as Record<string, unknown>[];
+      for (const sh of shapes) {
+        canvas.push({
+          ...sh,
+          x1: x0 + Number(sh.x1 ?? 0) * w,
+          y1: Number(sh.y1 ?? 0) * 0.8,
+          x2: sh.x2 !== undefined ? x0 + Number(sh.x2) * w : undefined,
+          y2: sh.y2 !== undefined ? Number(sh.y2) * 0.8 : undefined,
+        });
+      }
+      db.prepare("UPDATE steps SET canvas = ? WHERE id = ?").run(JSON.stringify(canvas), ph.step_id);
+      db.prepare("UPDATE photos SET annotations = '[]' WHERE id = ?").run(ph.id);
+    } catch {
+      // forme illisible : on passe (les donnees d'origine restent sur la photo)
+    }
+  }
+
   // Index dépendant des colonnes migrées (après ALTER TABLE).
   db.exec("CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at)");
   repairCorruptedPictos(db);

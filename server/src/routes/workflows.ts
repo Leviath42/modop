@@ -10,6 +10,7 @@ export interface StepRow {
   title: string;
   body: string;
   pictos: string;
+  canvas: string;
 }
 
 // Contrat de l’API : pictos est un tableau (comme GET /api/workflows/:id),
@@ -68,7 +69,12 @@ export function workflowRouter(db: Database.Database): Router {
     }
     res.json({
       ...wf,
-      steps: steps.map((s) => ({ ...s, pictos: JSON.parse(s.pictos), photos: photosByStep.get(s.id) })),
+      steps: steps.map((s) => ({
+        ...s,
+        pictos: JSON.parse(s.pictos),
+        canvas: JSON.parse(s.canvas ?? "[]"),
+        photos: photosByStep.get(s.id),
+      })),
     });
   });
 
@@ -93,6 +99,25 @@ export function workflowRouter(db: Database.Database): Router {
        WHERE id = ?`
     ).run(title?.trim() ?? null, description ?? null, category ?? null, family ?? null, wf.id);
     res.json(db.prepare("SELECT * FROM workflows WHERE id = ?").get(wf.id));
+  });
+
+
+  // Canevas de l'etape : formes en coordonnees etape (0-1), persistees en JSON.
+  r.put("/:id/canvas", requireAuth("author"), (req, res) => {
+    const step = db.prepare("SELECT id FROM steps WHERE id = ?").get(Number(req.params.id)) as
+      | { id: number }
+      | undefined;
+    if (!step) {
+      res.status(404).json({ error: "not_found", message: "étape introuvable" });
+      return;
+    }
+    const { shapes } = req.body ?? {};
+    if (!Array.isArray(shapes)) {
+      res.status(422).json({ error: "validation", message: "shapes doit être un tableau" });
+      return;
+    }
+    db.prepare("UPDATE steps SET canvas = ? WHERE id = ?").run(JSON.stringify(shapes), step.id);
+    res.json({ ok: true, count: shapes.length });
   });
 
   r.delete("/:id", requireAuth("author"), (req, res) => {
@@ -194,6 +219,25 @@ export function stepRouter(db: Database.Database): Router {
       step.id
     );
     res.json(pictosArray(db.prepare("SELECT * FROM steps WHERE id = ?").get(step.id)));
+  });
+
+
+  // Canevas de l'etape : formes en coordonnees etape (0-1), persistees en JSON.
+  r.put("/:id/canvas", requireAuth("author"), (req, res) => {
+    const step = db.prepare("SELECT id FROM steps WHERE id = ?").get(Number(req.params.id)) as
+      | { id: number }
+      | undefined;
+    if (!step) {
+      res.status(404).json({ error: "not_found", message: "étape introuvable" });
+      return;
+    }
+    const { shapes } = req.body ?? {};
+    if (!Array.isArray(shapes)) {
+      res.status(422).json({ error: "validation", message: "shapes doit être un tableau" });
+      return;
+    }
+    db.prepare("UPDATE steps SET canvas = ? WHERE id = ?").run(JSON.stringify(shapes), step.id);
+    res.json({ ok: true, count: shapes.length });
   });
 
   r.delete("/:id", requireAuth("author"), (req, res) => {
