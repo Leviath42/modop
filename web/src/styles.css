@@ -111,3 +111,12 @@ main, section, article, figure, nav, ul, li {
 figure { margin: 0; }
 ul { padding: 0; margin: 0; }
 li { list-style: none; }
+
+/* I2 : focus visible pour la navigation clavier (sans doubler le look au clic). */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* I3 : le bandeau éditeur déplié (palette 2 lignes) dépasse le scroll-margin
+   de 5.5rem — marge portée à 8rem pour ne jamais masquer le haut d'une étape. */

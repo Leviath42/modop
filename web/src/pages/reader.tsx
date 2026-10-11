@@ -51,7 +51,7 @@ export default function ReaderPage() {
           </p>
         )}
         {wf.steps.map((step, i) => (
-          <article key={step.id} id={`etape-${i}`} style={{ background: "var(--surface)", borderRadius: "10px", padding: "1.2rem", boxShadow: "0 1px 4px rgba(0,0,0,0.1)", marginBottom: "0.8rem", scrollMarginTop: "5.5rem" }}>
+          <article key={step.id} id={`etape-${i}`} style={{ background: "var(--surface)", borderRadius: "10px", padding: "1.2rem", boxShadow: "0 1px 4px rgba(0,0,0,0.1)", marginBottom: "0.8rem", scrollMarginTop: "8rem" }}>
             <h2 style={{ marginTop: 0 }}>{i + 1}. {step.title}</h2>
             {step.body && <p style={{ whiteSpace: "pre-wrap" }}>{step.body}</p>}
             {step.pictos.length > 0 && (
