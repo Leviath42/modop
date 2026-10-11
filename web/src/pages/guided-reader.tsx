@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, ApiError, type WorkflowDetail } from "../api";
 import NavBar from "../nav";
 import StepCanvasView from "../step-canvas-view";
@@ -8,7 +8,7 @@ import StepCanvasView from "../step-canvas-view";
 // indicateur de progression. Entrée : /workflow/:id/read?guided=1.
 export default function GuidedReaderPage() {
   const { id } = useParams<{ id: string }>();
-  const [, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [wf, setWf] = useState<WorkflowDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [idx, setIdx] = useState(0);
@@ -63,7 +63,7 @@ export default function GuidedReaderPage() {
           >← Précédent</button>
           {last ? (
             <button
-              onClick={() => setSearchParams({})}
+              onClick={() => navigate(`/workflow/${id}/read`)}
               style={{ flex: 1.4, padding: "0.9rem", borderRadius: "10px", border: "none", background: "var(--accent)", color: "white", fontSize: "1rem", fontWeight: 600 }}
             >Terminé ✓</button>
           ) : (
