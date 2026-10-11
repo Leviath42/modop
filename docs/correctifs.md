@@ -285,3 +285,11 @@ Sur écran étroit, le wrap reste possible mais chaque élément est compact —
 **Fichiers** : `web/src/step-canvas.tsx`, `web/src/styles.css`
 
 **État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-20 — Header éditeur : « + » → « Outils », « … » → « Aller à… » (réalisé)
+
+**Correctif** : libellés explicites dans le bandeau de l'éditeur — le bouton de palette devient **« Outils »** (au lieu de l'icône +), le sélecteur de navigation affiche **« Aller à… »** (au lieu de « … »). L'option « … » du menu n'est plus mystérieuse sur mobile.
+
+**Fichiers** : `web/src/pages/editor.tsx`, `web/src/lib/header-tools.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.

@@ -282,18 +282,18 @@ export default function EditorPage() {
                 onClick={() => { setShowTools((v) => !v); const target = activeStepId ?? steps[0]?.id; if (steps.length > 0 && !openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); } }}
                 style={{ ...iconBtn, background: showTools || insertTool ? "var(--accent-bg)" : "var(--surface)", borderColor: showTools || insertTool ? "var(--accent)" : "var(--border)" }}
                 aria-expanded={showTools}
-                title="Insertion : photos, flèches, zones, textes, pictogrammes"
-                aria-label="Insertion"
-              ><PlusIcon /></button>
+                title="Outils : photos, flèches, zones, textes, pictogrammes, indications"
+                aria-label="Outils"
+              >Outils</button>
               {steps.length > 1 && (
                 <select value="" onChange={(e) => {
                   const stepId = Number(e.target.value);
                   setOpenSteps((prev) => new Set([...prev, stepId]));
                   setActiveStepId(stepId);
                   setTimeout(() => { document.getElementById(`edit-step-${stepId}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 80);
-                }} aria-label="Aller à une étape" style={{ padding: "0.2rem 0.3rem", borderRadius: "6px", border: "1px solid var(--border)", maxWidth: "100%", width: "2.6rem", minWidth: 0, fontSize: "0.8rem", background: "var(--surface)", color: "var(--text)" }}
+                }} aria-label="Aller à une étape" style={{ padding: "0.2rem 0.45rem", borderRadius: "6px", border: "1px solid var(--border)", maxWidth: "100%", minWidth: 0, fontSize: "0.8rem", background: "var(--surface)", color: "var(--text)" }}
                 >
-                  <option value="">…</option>
+                  <option value="">Aller à…</option>
                   {steps.map((st, si) => <option key={st.id} value={st.id}>{si + 1}. {st.title}</option>)}
                 </select>
               )}

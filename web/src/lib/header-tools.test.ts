@@ -60,7 +60,7 @@ if (html.includes('aria-label="Photos"')) throw new Error("palette d'outils ouve
 
 // 2. ouverture de la palette par le bouton + : outils présents
 const btns = Array.from(dom.window.document.querySelectorAll("button"));
-const plusBtn = btns.find((b) => b.getAttribute("aria-label") === "Insertion") as HTMLElement;
+const plusBtn = btns.find((b) => b.getAttribute("aria-label") === "Outils") as HTMLElement;
 if (!plusBtn) throw new Error("bouton palette introuvable");
 plusBtn.click();
 await new Promise((r) => setTimeout(r, 60));
