@@ -151,5 +151,39 @@ root.unmount();
   if (!host.querySelector("img")) throw new Error("photo supprimée par frôlement dans la zone corbeille (C-29)");
   console.log("U-CANVAS CORBEILLE = GESTE CONDUIT UNIQUEMENT OK");
 }
+
+// C-30 : clic fond LÉGÈREMENT TREMBLÉ (micro-mouvement sous le seuil du vrai
+// rectangle) désélectionne quand même ; un drag loin de la corbeille avec
+// petit mouvement ne supprime jamais.
+{
+  const r3 = createRoot(host2());
+  r3.render(React.createElement(StepCanvas, {
+    stepId: 3,
+    photos: [{ photo: { ...photo, id: 3 }, x: 0.03, y: 0.04, w: 0.2 }],
+    canvasShapes: [],
+  }));
+  await new Promise((r) => setTimeout(r, 100));
+  const cd = (Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%") as HTMLElement[]).pop()!;
+  const im3 = cd.querySelector("img")?.parentElement as HTMLElement;
+  // sélection double-clic
+  fire(im3, "pointerdown", { clientX: 40, clientY: 30 });
+  fire(dom.window, "pointerup", { clientX: 40, clientY: 30 });
+  fire(im3, "pointerdown", { clientX: 40, clientY: 30 });
+  fire(dom.window, "pointerup", { clientX: 40, clientY: 30 });
+  await new Promise((r) => setTimeout(r, 30));
+  // drag avec petit mouvement LOIN de la corbeille (bas droite du canvas)
+  fire(im3, "pointerdown", { clientX: 40, clientY: 30 });
+  fire(dom.window, "pointermove", { clientX: 55, clientY: 60 });
+  fire(dom.window, "pointerup", { clientX: 55, clientY: 60 });
+  await new Promise((r) => setTimeout(r, 60));
+  if (!cd.querySelector("img")) throw new Error("photo supprimée loin de la corbeille (C-30)");
+  console.log("U-CANVAS PAS DE SUPPRESSION LOIN CORBEILLE OK");
+}
 process.exit(0);
+
+function host2() {
+  const h = dom.window.document.createElement("div");
+  dom.window.document.body.appendChild(h);
+  return h;
+}
 }

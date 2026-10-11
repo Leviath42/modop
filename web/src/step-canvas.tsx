@@ -76,6 +76,7 @@ export default function StepCanvas({
     | null
   >(null);
   const [overTrash, setOverTrash] = useState(false);
+  const overTrashRef = useRef(false);
   const lastPhotoDownRef = useRef<{ idx: number; at: number } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
@@ -184,6 +185,7 @@ export default function StepCanvas({
     if (!drag) return;
     const cx = (v: number) => Math.min(1, Math.max(0, v));
     const cy = (v: number) => Math.max(0, v);
+    overTrashRef.current = false;
     const move = (e: PointerEvent) => {
       const p = pt(e);
       if (drag.kind === "selrect") {
@@ -201,7 +203,9 @@ export default function StepCanvas({
           if (c.x >= R.l && c.x <= R.r && c.y >= R.t && c.y <= R.b) ns.add(i);
         });
         setSelPhotos(np); setSelShapes(ns);
-        setOverTrash(p.x < 0.14 && p.y * 240 < 56 && !(drag.from.x < 0.14 && drag.from.y * 240 < 56));
+        const over = p.x < 0.14 && p.y * 240 < 56 && !(drag.from.x < 0.14 && drag.from.y * 240 < 56);
+        overTrashRef.current = over;
+        setOverTrash(over);
       } else if (drag.kind === "photo") {
         const dx = p.x - drag.from.x, dy = p.y - drag.from.y;
         setObjs((arr) => arr.map((o, i) => {
@@ -209,7 +213,9 @@ export default function StepCanvas({
           const g = drag.grabs[drag.ids.indexOf(i)];
           return { ...o, x: cx(p.x - g.x), y: cy(p.y - g.y) };
         }));
-        setOverTrash(p.x < 0.14 && p.y * 240 < 56 && !(drag.from.x < 0.14 && drag.from.y * 240 < 56));
+        const over = p.x < 0.14 && p.y * 240 < 56 && !(drag.from.x < 0.14 && drag.from.y * 240 < 56);
+        overTrashRef.current = over;
+        setOverTrash(over);
       } else if (drag.kind === "shape") {
         setShapes((arr) => arr.map((s, i) => {
           if (!drag.indices.includes(i)) return s;
@@ -221,7 +227,9 @@ export default function StepCanvas({
           }
           return { ...s, x1: ox, y1: oy };
         }));
-        setOverTrash(p.x < 0.14 && p.y * 240 < 56 && !(drag.from.x < 0.14 && drag.from.y * 240 < 56));
+        const over = p.x < 0.14 && p.y * 240 < 56 && !(drag.from.x < 0.14 && drag.from.y * 240 < 56);
+        overTrashRef.current = over;
+        setOverTrash(over);
       } else if (drag.kind === "resize") {
         const r = canvasRef.current!.getBoundingClientRect();
         const rel = Math.min(1, Math.max(0.1, (e.clientX - r.left) / r.width));
@@ -231,14 +239,21 @@ export default function StepCanvas({
     const up = (e: PointerEvent) => {
       const p = pt(e);
       const inTrash = (q: { x: number; y: number }) => q.x < 0.14 && q.y * 240 < 56;
-      // C-29 : la suppression exige que le doigt ait CONDUIT l'objet jusqu'à
-      // la corbeille — le point de départ ne doit pas déjà y être (sinon un
-      // objet posé près du coin supprime au moindre frôlement).
-      const trash = drag.kind === "photo" || drag.kind === "shape" ? inTrash(p) && !inTrash(drag.from) : false;
+      // C-29/C-30 : suppression UNIQUEMENT si le doigt a réellement survolé
+      // la corbeille pendant le geste (état suivi au move, départ hors zone)
+      // — jamais sur un simple recalcul au relâchement.
+      const trash = drag.kind === "photo" || drag.kind === "shape"
+        ? overTrashRef.current && !inTrash(drag.from)
+        : false;
       if (drag.kind === "selrect") {
         setSelRect(null);
-        const moved = Math.hypot(p.x - drag.from.x, p.y - drag.from.y) >= 0.01;
-        if (!moved && !e.shiftKey) { setSelPhotos(new Set()); setSelShapes(new Set()); }
+        // C-30 : un clic (même légèrement tremblé) sur le fond désélectionne
+        // TOUJOURS — le rectangle ne conserve que s'il a réellement encadré
+        // (surface significative) ; le seuil 0.01 (=2,4 px en y) était trop
+        // bas, un micro-tremblement gardait la sélection.
+        const dx = Math.abs(p.x - drag.from.x), dy = Math.abs(p.y - drag.from.y);
+        const reallyRect = dx >= 0.05 && dy >= 0.05; // ~40px x 12px minimum
+        if (!reallyRect && !e.shiftKey) { setSelPhotos(new Set()); setSelShapes(new Set()); }
       } else if (drag.kind === "photo") {
         if (trash) {
           // suppression des photos sélectionnées (fichiers + lignes)

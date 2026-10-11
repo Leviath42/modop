@@ -385,3 +385,17 @@ Sur écran étroit, le wrap reste possible mais chaque élément est compact —
 **Fichiers** : `web/src/step-canvas.tsx`, `web/src/lib/step-canvas-adaptive.test.ts`
 
 **État** : ✅ livré sur beta — tsc + build + tous tests front + 102/102 serveur.
+
+## C-30 — Désélection impossible + suppressions fantômes corrigées (réalisé)
+
+**Problèmes** : 1) impossible de désélectionner une photo par clic à côté ; 2) des objets **loin de la corbeille** étaient supprimés après un clic avec micro-mouvement.
+
+**Causes (deux bugs réels)** :
+1. Le seuil « geste = clic » du selrect était `≥ 0.01` — soit **2,4 px** en vertical : le micro-tremblement naturel d'un clic souris dépassait le seuil et le clic fond était traité en rectangle (sélection conservée) au lieu de vider. Désormais : un clic fond vide **toujours** ; le rectangle ne conserve que s'il a une vraie surface (~40×12 px minimum).
+2. **Stale closure** : le `up` lisait l'état `overTrash` figé à la création du listener — il pouvait contenir `true` résiduel d'un geste précédent ayant survolé la corbeille → suppression sans contact. Désormais le survol est suivi dans une **ref** (immunisée contre la péremption de closure), remise à zéro à chaque début de drag ; la suppression exige `overTrashRef && départ hors zone`.
+
+**Tests** : « PAS DE SUPPRESSION LOIN CORBEILLE » (drag + micro-mouvement loin de la zone : la photo reste) ajouté aux scénarios existants (double-clic, clic fond désélection, corbeille geste conduit).
+
+**Fichiers** : `web/src/step-canvas.tsx`, `web/src/lib/step-canvas-adaptive.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front + 102/102 serveur.
