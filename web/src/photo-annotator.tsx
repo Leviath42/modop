@@ -59,6 +59,8 @@ export default function PhotoAnnotator({
   const [textDraft, setTextDraft] = useState<{ x: number; y: number; value: string } | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const [imgBox, setImgBox] = useState({ w: 100, h: 100 });
+  const imgRef = useRef<HTMLImageElement>(null);
   const [size, setSize] = useState(initialSize ?? "medium");
   const [align, setAlign] = useState(initialAlign ?? "center");
   const boxRef = useRef<HTMLDivElement>(null);
@@ -77,6 +79,23 @@ export default function PhotoAnnotator({
       setBusy(false);
     }
   }
+
+  useEffect(() => {
+    const measure = () => {
+      const el = imgRef.current;
+      if (el && el.naturalWidth > 0) {
+        setImgBox({ w: el.clientWidth, h: el.clientHeight });
+      }
+    };
+    const img = imgRef.current;
+    img?.addEventListener("load", measure);
+    window.addEventListener("resize", measure);
+    measure();
+    return () => {
+      img?.removeEventListener("load", measure);
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
 
   function point(e: { clientX: number; clientY: number }): { x: number; y: number } {
     const rect = boxRef.current!.getBoundingClientRect();
@@ -97,7 +116,9 @@ export default function PhotoAnnotator({
     setPreview(null);
   }
 
-  // Déplacement d'une forme : listeners globaux pendant le move
+  // Déplacement : offset curseur->forme capturé au départ, puis la forme
+  // suit la position ABSOLUE du curseur moins l'offset. Un delta cumulé à
+  // chaque mousemove faisait dériver les formes de façon exponentielle.
   useEffect(() => {
     if (moving === null) return;
     const move = (e: MouseEvent) => {
@@ -105,10 +126,18 @@ export default function PhotoAnnotator({
       setShapes((arr) =>
         arr.map((s, i) => {
           if (i !== moving.idx) return s;
-          const dx = p.x - moving.grabX;
-          const dy = p.y - moving.grabY;
-          if (s.type === "arrow") return { ...s, x1: s.x1 + dx, y1: s.y1 + dy, x2: (s.x2 ?? 0) + dx, y2: (s.y2 ?? 0) + dy };
-          return { ...s, x1: (s.x1 ?? 0) + dx, y1: (s.y1 ?? 0) + dy };
+          const originX = p.x - moving.grabX;   // nouvelle origine (coin/handle de la forme)
+          const originY = p.y - moving.grabY;
+          const bx = (v: number) => Math.min(1, Math.max(0, v));   // bornage 0-1
+          if (s.type === "arrow") {
+            const lenX = (s.x2 ?? 0) - s.x1;
+            const lenY = (s.y2 ?? 0) - s.y1;
+            return { ...s, x1: bx(originX), y1: bx(originY), x2: bx(originX + lenX), y2: bx(originY + lenY) };
+          }
+          if (s.type === "rect") {
+            return { ...s, x1: bx(originX), y1: bx(originY) };
+          }
+          return { ...s, x1: bx(originX), y1: bx(originY) };
         })
       );
     };
@@ -146,7 +175,9 @@ export default function PhotoAnnotator({
     const idx = hitTest(shapes, p);
     if (idx >= 0) {
       setSelected(idx);
-      setMoving({ idx, grabX: p.x, grabY: p.y });
+      const c = shapeCenter(shapes[idx]);
+      // grab = offset curseur->centre : la forme suit le curseur 1:1
+      setMoving({ idx, grabX: p.x - c.x, grabY: p.y - c.y });
     } else {
       setSelected(null);
     }
@@ -176,9 +207,9 @@ export default function PhotoAnnotator({
         style={{ position: "relative", touchAction: "none", cursor: tool ? "crosshair" : "default", width: SIZES.find((x) => x.v === size)?.width ?? "60%", flex: align === "center" ? "0 0 auto" : "1 1 auto" }}
         onClick={onCanvasClick}
       >
-        <img src={`/photos/${filename}`} alt={alt} draggable={false}
+        <img ref={imgRef} src={`/photos/${filename}`} alt={alt} draggable={false} onLoad={() => { const el = imgRef.current; if (el) setImgBox({ w: el.clientWidth, h: el.clientHeight }); }}
           style={{ width: "100%", display: "block", borderRadius: "8px", userSelect: "none" }} />
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none"
+        <svg viewBox={`0 0 ${imgBox.w} ${imgBox.h}`} preserveAspectRatio="none"
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
           {shapes.map((s, i) => {
             const isSel = selected === i;
@@ -187,7 +218,7 @@ export default function PhotoAnnotator({
               return (
                 <g key={i}>
                   <line x1={s.x1 * 100} y1={s.y1 * 100} x2={s.x2 * 100} y2={s.y2 * 100} stroke={s.color} strokeWidth={sw} vectorEffect="non-scaling-stroke" strokeLinecap="round" />
-                  <circle cx={s.x1 * 100} cy={s.y1 * 100} r={isSel ? 1.4 : 1} fill={s.color} />
+                  <circle cx={s.x1 * 100} cy={s.y1 * 100} r={isSel ? 6 : 4} fill={s.color} />
                 </g>
               );
             }
