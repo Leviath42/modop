@@ -199,7 +199,7 @@ export default function EditorPage() {
 
         {!isNew && (
           <section style={{ display: "grid", gap: "0.6rem" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", position: "sticky", top: 0, background: "var(--bg)", padding: "0.4rem 0", zIndex: 20 }}>
               <h2 style={{ margin: 0, marginRight: "auto" }}>Étapes</h2>
               {steps.length > 1 && (
                 <>
@@ -364,7 +364,7 @@ export default function EditorPage() {
                           onDragStart={(e) => e.preventDefault()}
                           onDragEnter={(e) => e.stopPropagation()}
                         >
-                          <PhotoAnnotator photoId={ph.id} filename={ph.filename} alt={ph.alt} initialAnnotations={ph.annotations} />
+                          <PhotoAnnotator photoId={ph.id} filename={ph.filename} alt={ph.alt} initialAnnotations={ph.annotations} initialSize={ph.display_size} initialAlign={ph.display_align} />
                         </div>
                       </div>
                     ))}

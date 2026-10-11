@@ -55,9 +55,11 @@ export function workflowRouter(db: Database.Database): Router {
     for (const s of steps) {
       photosByStep.set(
         s.id,
-        (db.prepare("SELECT * FROM photos WHERE step_id = ?").all(s.id) as { id: number; filename: string; alt: string; annotations: string }[]).map((ph) => ({
+        (db.prepare("SELECT * FROM photos WHERE step_id = ?").all(s.id) as { id: number; filename: string; alt: string; annotations: string; display_size: string; display_align: string }[]).map((ph) => ({
           ...ph,
           annotations: JSON.parse(ph.annotations ?? "[]"),
+          display_size: ph.display_size ?? "medium",
+          display_align: ph.display_align ?? "center",
         }))
       );
     }

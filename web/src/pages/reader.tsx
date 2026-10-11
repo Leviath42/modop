@@ -27,7 +27,7 @@ export default function ReaderPage() {
       <NavBar />
       <main style={{ maxWidth: isMobile ? "100%" : "800px", margin: "0 auto", padding: "1rem" }}>
 
-        <header style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.6rem", flexWrap: "wrap" }}>
+        <header style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.6rem", flexWrap: "wrap", position: "sticky", top: 0, background: "var(--bg)", padding: "0.5rem 0", zIndex: 20 }}>
           <Link to="/" aria-label="Retour à la liste" style={{ fontSize: "1.3rem", textDecoration: "none" }}>←</Link>
           <h1 style={{ fontSize: isMobile ? "1.05rem" : "1.3rem", margin: 0, flex: 1, minWidth: "120px" }}>
             {wf.title} <code style={{ fontSize: "0.75em", background: "var(--surface-2)", padding: "0.1rem 0.4rem", borderRadius: "4px" }}>{wf.reference}</code>
@@ -64,16 +64,20 @@ export default function ReaderPage() {
             )}
             {step.photos.length > 0 && (
               <div style={{ display: "grid", gap: "0.6rem" }}>
-                {step.photos.map((ph) => (
-                  <AnnotatedPhoto
-                    key={ph.id}
-                    filename={ph.filename}
-                    alt={ph.alt || step.title}
-                    shapes={parseShapes(ph.annotations)}
-                    maxWidth="100%"
-                    zoomable
-                  />
-                ))}
+                {step.photos.map((ph) => {
+                  const SIZES: Record<string, string> = { small: "35%", medium: "60%", large: "85%", full: "100%" };
+                  return (
+                    <div key={ph.id} style={{ display: "flex", justifyContent: ph.display_align ?? "center", width: "100%" }}>
+                      <AnnotatedPhoto
+                        filename={ph.filename}
+                        alt={ph.alt || step.title}
+                        shapes={parseShapes(ph.annotations)}
+                        maxWidth={SIZES[ph.display_size ?? "medium"] ?? "60%"}
+                        zoomable
+                      />
+                    </div>
+                  );
+                })}
               </div>
             )}
           </article>

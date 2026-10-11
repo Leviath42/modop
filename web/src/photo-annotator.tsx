@@ -28,16 +28,27 @@ function hitTest(shapes: Shape[], p: { x: number; y: number }): number {
   return -1;
 }
 
+const SIZES: { v: string; label: string; width: string }[] = [
+  { v: "small", label: "S", width: "35%" },
+  { v: "medium", label: "M", width: "60%" },
+  { v: "large", label: "L", width: "85%" },
+  { v: "full", label: "Plein", width: "100%" },
+];
+
 export default function PhotoAnnotator({
   photoId,
   filename,
   alt,
   initialAnnotations,
+  initialSize,
+  initialAlign,
 }: {
   photoId: number;
   filename: string;
   alt: string;
   initialAnnotations: unknown;
+  initialSize?: string;
+  initialAlign?: string;
 }) {
   const [shapes, setShapes] = useState<Shape[]>(parseShapes(initialAnnotations));
   const [tool, setTool] = useState<Shape["type"] | null>(null);
@@ -48,13 +59,20 @@ export default function PhotoAnnotator({
   const [textDraft, setTextDraft] = useState<{ x: number; y: number; value: string } | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const [size, setSize] = useState(initialSize ?? "medium");
+  const [align, setAlign] = useState(initialAlign ?? "center");
   const boxRef = useRef<HTMLDivElement>(null);
+
+  const [error, setError] = useState<string | null>(null);
 
   async function persist(next: Shape[]) {
     setBusy(true);
+    setError(null);
     try {
       await api.saveAnnotations(photoId, next);
       setShapes(next);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Sauvegarde impossible — réessayez");
     } finally {
       setBusy(false);
     }
@@ -150,11 +168,12 @@ export default function PhotoAnnotator({
 
   return (
     <div style={{ display: "grid", gap: "0.4rem" }}>
+      <div style={{ display: "flex", justifyContent: align, width: "100%" }}>
       <div
         ref={boxRef}
         draggable={false}
         onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
-        style={{ position: "relative", touchAction: "none", cursor: tool ? "crosshair" : "default" }}
+        style={{ position: "relative", touchAction: "none", cursor: tool ? "crosshair" : "default", width: SIZES.find((x) => x.v === size)?.width ?? "60%", flex: align === "center" ? "0 0 auto" : "1 1 auto" }}
         onClick={onCanvasClick}
       >
         <img src={`/photos/${filename}`} alt={alt} draggable={false}
@@ -204,6 +223,8 @@ export default function PhotoAnnotator({
         )}
       </div>
 
+      </div>
+      {error && <p role="alert" style={{ margin: 0, padding: "0.4rem 0.6rem", borderRadius: "6px", background: "var(--error-bg)", color: "var(--error-text)", fontSize: "0.85rem" }}>{error}</p>}
       <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap", alignItems: "center" }}>
         {TOOLS.map((t) => (
           <button key={t.kind}
@@ -256,7 +277,9 @@ export default function PhotoAnnotator({
               void persist([...shapes, { type: "text", x1: textDraft.x, y1: textDraft.y, text: textDraft.value.trim(), color }]);
             }
             setTextDraft(null); setTool(null);
-          }}>OK</button>
+            }}
+            style={{ padding: "0.4rem 1rem", borderRadius: "6px", border: "none", background: "var(--accent)", color: "#fff", fontWeight: 600 }}
+          >OK</button>
         </div>
       )}
     </div>

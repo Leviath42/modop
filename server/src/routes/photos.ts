@@ -93,6 +93,36 @@ export function staticPhotos(): express.RequestHandler {
   };
 }
 
+export function photoLayoutRouter(db: Database.Database): Router {
+  const r = Router();
+
+  r.put("/:id/layout", requireAuth("author"), (req, res) => {
+    const photo = db
+      .prepare("SELECT id FROM photos WHERE id = ?")
+      .get(Number(req.params.id)) as { id: number } | undefined;
+    if (!photo) {
+      res.status(404).json({ error: "not_found", message: "photo introuvable" });
+      return;
+    }
+    const { display_size, display_align } = req.body ?? {};
+    const SIZES = ["small", "medium", "large", "full"];
+    const ALIGNS = ["left", "center", "right"];
+    if (
+      (display_size !== undefined && !SIZES.includes(display_size)) ||
+      (display_align !== undefined && !ALIGNS.includes(display_align))
+    ) {
+      res.status(422).json({ error: "validation", message: "taille (small/medium/large/full) ou alignement (left/center/right) invalide" });
+      return;
+    }
+    db.prepare(
+      "UPDATE photos SET display_size = COALESCE(?, display_size), display_align = COALESCE(?, display_align) WHERE id = ?"
+    ).run(display_size ?? null, display_align ?? null, photo.id);
+    res.json({ ok: true });
+  });
+
+  return r;
+}
+
 export function annotationsRouter(db: Database.Database): Router {
   const r = Router();
 

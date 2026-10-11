@@ -44,7 +44,7 @@ export default function NavBar() {
         title={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
         style={themeBtn}
       >
-        {theme === "dark" ? "☀️" : "🌙"}
+        {theme === "dark" ? "Clair" : "Sombre"}
       </button>
       <button
         onClick={async () => {
@@ -60,7 +60,7 @@ export default function NavBar() {
 }
 
 const themeBtn: React.CSSProperties = {
-  padding: "0.25rem 0.55rem",
+  padding: "0.25rem 0.7rem",
   borderRadius: "6px",
   border: "1px solid rgba(255,255,255,0.5)",
   background: "transparent",

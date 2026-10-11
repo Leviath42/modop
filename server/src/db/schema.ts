@@ -36,7 +36,9 @@ CREATE TABLE IF NOT EXISTS photos (
   step_id INTEGER NOT NULL REFERENCES steps(id) ON DELETE CASCADE,
   filename TEXT NOT NULL,
   alt TEXT NOT NULL DEFAULT '',
-  annotations TEXT NOT NULL DEFAULT '[]'
+  annotations TEXT NOT NULL DEFAULT '[]',
+  display_size TEXT NOT NULL DEFAULT 'medium' CHECK (display_size IN ('small','medium','large','full')),
+  display_align TEXT NOT NULL DEFAULT 'center' CHECK (display_align IN ('left','center','right'))
 );
 CREATE TABLE IF NOT EXISTS versions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
