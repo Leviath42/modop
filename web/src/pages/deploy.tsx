@@ -97,7 +97,7 @@ export default function DeployPage() {
             <>
               <div>
                 <p style={{ margin: "0.2rem 0" }}>
-                  Version chargée : <code style={{ background: "#eef0f4", padding: "0.1rem 0.4rem", borderRadius: "4px" }}>{status.currentCommit ?? "inconnu"}</code>
+                  Version chargée : <code style={{ background: "#eef0f4", padding: "0.1rem 0.4rem", borderRadius: "4px", overflowWrap: "anywhere" }}>{status.currentCommit ?? "inconnu"}</code>
                   {status.commitAuthor && <span style={{ color: "#666" }}> — {status.commitAuthor}</span>}
                 </p>
                 {status.commitSubject && <p style={{ margin: "0.2rem 0", fontWeight: 600 }}>{status.commitSubject}</p>}
@@ -150,8 +150,8 @@ export default function DeployPage() {
                       const isCurrent = status.currentCommit !== null && c.hash.startsWith(status.currentCommit);
                       return (
                         <li key={c.hash} style={{ fontSize: "0.82rem", display: "flex", gap: "0.5rem", flexWrap: "wrap", color: isCurrent ? "#1a1c20" : "#777", fontWeight: isCurrent ? 600 : 400 }}>
-                          <code>{c.hash}</code>
-                          <span style={{ flex: 1, minWidth: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.subject}</span>
+                          <code style={{ overflowWrap: "anywhere" }}>{c.hash}</code>
+                          <span style={{ flex: 1, minWidth: "120px", overflowWrap: "anywhere" }}>{c.subject}</span>
                           {isCurrent && <span style={{ color: "#1d6b2e", fontSize: "0.75rem" }}>(chargé)</span>}
                         </li>
                       );
