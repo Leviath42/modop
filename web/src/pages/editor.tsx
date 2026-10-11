@@ -417,7 +417,12 @@ export default function EditorPage() {
                     style={input}
                     aria-label={`Description étape ${i + 1}`}
                   />
-                  <div style={{ display: "grid", gap: "0.4rem" }}>
+                  {(step.photos ?? []).length === 0 && (
+                      <p role="note" style={{ margin: 0, fontSize: "0.75rem", color: "var(--warn-text)", background: "var(--warn-bg)", padding: "0.15rem 0.45rem", borderRadius: "4px" }}>
+                        Cette étape n'a pas de photo — une photo bien cadrée remplace un paragraphe de texte.
+                      </p>
+                    )}
+           <div style={{ display: "grid", gap: "0.4rem" }}>
                     <StepCanvas
                       stepId={step.id}
                       tool={activeStepId === step.id ? insertTool : null}
