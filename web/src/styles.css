@@ -1,7 +1,51 @@
 /* Base — règles UI/UX de meal_plan appliquées à Modop.
    Principe directeur : la PAGE ne doit JAMAIS scroller horizontalement,
    quel que soit le contenu. Les contenus longs se replient dans leurs cadres. */
-:root { font-family: system-ui, sans-serif; }
+:root {
+  font-family: system-ui, sans-serif;
+
+  /* Palette claire (par défaut) */
+  --bg: #f5f6f8;
+  --text: #1a1c20;
+  --text-muted: #5b6470;
+  --surface: #ffffff;
+  --surface-2: #eef0f4;
+  --accent: #1f4e9c;
+  --accent-bg: #eaf1fb;
+  --border: #c9ccd3;
+  --border-soft: #e5e7eb;
+  --error-text: #b30000;
+  --error-bg: #fdeaea;
+  --ok-text: #1d6b2e;
+  --ok-bg: #e2f2e5;
+  --warn-text: #8a6d1a;
+  --warn-bg: #fdf3d7;
+  --danger-bg: #fff5f5;
+  --danger-border: #e0b4b4;
+  --log-bg: #f2f3f5;
+}
+
+/* Mode sombre (issue #2) — activé via data-theme sur <html>. */
+html[data-theme="dark"] {
+  --bg: #12151a;
+  --text: #e6e8ec;
+  --text-muted: #a2aab6;
+  --surface: #1e232b;
+  --surface-2: #2a303a;
+  --accent: #4d7fd7;
+  --accent-bg: #1d2b45;
+  --border: #3a4150;
+  --border-soft: #333a46;
+  --error-text: #ff9b9b;
+  --error-bg: #3a2020;
+  --ok-text: #7fd08d;
+  --ok-bg: #16301e;
+  --warn-text: #d9bd6a;
+  --warn-bg: #3a3115;
+  --danger-bg: #2a1a1a;
+  --danger-border: #6b3a3a;
+  --log-bg: #171b21;
+}
 
 html, body {
   margin: 0;
@@ -14,8 +58,16 @@ html, body {
   overflow-x: clip;      /* ne transmet jamais de débordement */
 }
 * { box-sizing: border-box; }
-body { background: #f5f6f8; color: #1a1c20; }
-button { cursor: pointer; }
+body { background: var(--bg); color: var(--text); }
+button { cursor: pointer; color: var(--text); }
+a { color: var(--accent); }
+
+/* Saisies cohérentes + thème */
+input, select, textarea {
+  font: inherit;
+  background: var(--surface);
+  color: var(--text);
+}
 
 /* Anti-débordement : tout contenu long se replie, ne coupe jamais la page */
 pre, code {
@@ -29,6 +81,3 @@ main, section, article, figure, nav, ul, li {
 figure { margin: 0; }
 ul { padding: 0; margin: 0; }
 li { list-style: none; }
-
-/* Saisies cohérentes */
-input, select, textarea, button { font: inherit; }
