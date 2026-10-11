@@ -310,8 +310,13 @@ export default function EditorPage() {
                 aria-label="Outils"
               >Outils</button>
 
-              {showTools && steps.length > 0 && (
+              {showTools && (
                 <div ref={toolsRef} style={{ position: "absolute", left: 0, right: 0, top: "calc(100% + 0.25rem)", zIndex: 130, display: "flex", gap: "0.25rem", flexWrap: "wrap", alignItems: "center", minWidth: 0, padding: "0.4rem 0.5rem", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", boxShadow: "0 6px 24px rgba(0,0,0,0.18)" }}>
+                  {steps.length === 0 && (
+                    <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Créez d'abord une étape :</span>
+                  )}
+                  {steps.length > 0 && (
+                  <>
                   <button
                     onClick={() => {
                       const target = activeStepId ?? steps[0].id;
@@ -333,7 +338,6 @@ export default function EditorPage() {
                     <button key={c} onClick={() => setInsertColor(c)} aria-label={`Couleur ${c}`}
                       style={{ width: "18px", height: "18px", borderRadius: "50%", background: c, border: insertColor === c ? "2px solid var(--text)" : "1px solid var(--border)", padding: 0, cursor: "pointer", boxSizing: "border-box" }} />
                   ))}
-                  <span style={{ width: "1px", height: "20px", background: "var(--border)" }} aria-hidden="true" />
                   <button onClick={addStep} style={iconBtn} title="Ajouter une étape" aria-label="Ajouter une étape"><PlusIcon /><span style={{ fontSize: "0.75rem" }}>étape</span></button>
                   <span style={{ width: "1px", height: "20px", background: "var(--border)" }} aria-hidden="true" />
                   <span ref={pictosMenuRef} style={{ position: "relative" }}>
@@ -381,6 +385,7 @@ export default function EditorPage() {
                     })()}
                   </span>
                   <span style={{ width: "1px", height: "20px", background: "var(--border)" }} aria-hidden="true" />
+                  {steps.length > 1 && (
                   <button
                     onClick={() => {
                       const target = activeStepId ?? steps[0].id;
@@ -388,9 +393,11 @@ export default function EditorPage() {
                       if (stp) setConfirmDeleteStep(stp);
                     }}
                     style={{ ...iconBtn, borderColor: "var(--danger-border)", background: "var(--danger-bg)", color: "var(--error-text)" }}
-                    title="Supprimer l'étape affichée (confirmation demandée)"
+                    title={steps.length <= 1 ? "Impossible de supprimer la dernière étape" : "Supprimer l'étape affichée (confirmation demandée)"}
                     aria-label="Supprimer l'étape affichée"
+                    disabled={steps.length <= 1}
                   >Supprimer l'étape</button>
+                  )}
                   {canvasSelection > 0 && (
                     <button
                       onClick={() => canvasDeleteRef.current?.()}
@@ -398,6 +405,8 @@ export default function EditorPage() {
                       title="Supprimer les objets sélectionnés du canevas de l'étape affichée"
                       aria-label="Supprimer les objets sélectionnés"
                     >🗑 Objets ({canvasSelection})</button>
+                  )}
+                  </>
                   )}
                 </div>
               )}

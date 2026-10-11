@@ -315,3 +315,15 @@ Sur écran étroit, le wrap reste possible mais chaque élément est compact —
 **Fichiers** : `web/src/pages/editor.tsx`
 
 **État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-23 — Boîte à outils utilisable sans étape + dernière étape protégée (réalisé)
+
+**Problème** : sans étape, la palette Outils ne s'ouvrait pas — impossible de créer la première étape depuis le bandeau. Par ailleurs supprimer toutes les étapes laissait un MO vide et inéditable.
+
+**Correctif (au plus simple)** :
+- La palette s'ouvre **toujours** ; sans étape, elle affiche « Créez d'abord une étape : » + le bouton **« + étape »** (les outils nécessitant une étape cible — photos, formes, pictos, suppression — sont masqués).
+- Le bouton « Supprimer l'étape » **disparaît quand il ne reste qu'une étape** : un mode opératoire garde toujours au moins une étape.
+
+**Fichiers** : `web/src/pages/editor.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.
