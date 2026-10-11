@@ -65,13 +65,28 @@ export default function StepCanvas({
   const [selPhotos, setSelPhotos] = useState<Set<number>>(new Set());
   const [selShapes, setSelShapes] = useState<Set<number>>(new Set());
   useEffect(() => { onSelectionChange?.(selPhotos.size + selShapes.size); }, [selPhotos, selShapes, onSelectionChange]);
+  // C-31 : un clic/tap HORS du canevas (champs de l'éditeur, fond de page)
+  // désélectionne — avant, seule la zone canevas pouvait vider la sélection.
+  useEffect(() => {
+    const onDocDown = (e: PointerEvent) => {
+      const el = canvasRef.current;
+      if (!el || el.contains(e.target as Node)) return;
+      // boutons qui agissent SUR la sélection (ex. « 🗑 Objets ») : conservés
+      const t = e.target as Element;
+      if (t.closest?.("[data-keep-canvas-selection]")) return;
+      setSelPhotos(new Set());
+      setSelShapes(new Set());
+    };
+    document.addEventListener("pointerdown", onDocDown, true);
+    return () => document.removeEventListener("pointerdown", onDocDown, true);
+  }, []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selRect, setSelRect] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
   const [drag, setDrag] = useState<
     | { kind: "photo"; ids: number[]; grabs: { x: number; y: number }[]; from: { x: number; y: number } }
     | { kind: "shape"; indices: number[]; grabs: { x: number; y: number }[]; from: { x: number; y: number } }
-    | { kind: "selrect"; from: { x: number; y: number } }
+    | { kind: "selrect"; from: { x: number; y: number }; touch?: boolean; prevSel?: { photos: Set<number>; shapes: Set<number> } }
     | { kind: "resize"; photoId: number }
     | null
   >(null);
@@ -190,7 +205,10 @@ export default function StepCanvas({
       const p = pt(e);
       if (drag.kind === "selrect") {
         setSelRect({ x1: drag.from.x, y1: drag.from.y, x2: p.x, y2: p.y });
-        // sélection en direct
+        // sélection en direct — SOURIS uniquement (au tactile, le navigateur
+        // peut encore annuler le geste en scroll : on ne touche pas à la
+        // sélection avant le relâchement)
+        if (!drag.touch) {
         const R = { l: Math.min(drag.from.x, p.x), r: Math.max(drag.from.x, p.x), t: Math.min(drag.from.y, p.y), b: Math.max(drag.from.y, p.y) };
         const np = new Set<number>();
         objs.forEach((o, i) => {
@@ -203,6 +221,7 @@ export default function StepCanvas({
           if (c.x >= R.l && c.x <= R.r && c.y >= R.t && c.y <= R.b) ns.add(i);
         });
         setSelPhotos(np); setSelShapes(ns);
+        }
         const over = p.x < 0.14 && p.y * 240 < 56 && !(drag.from.x < 0.14 && drag.from.y * 240 < 56);
         overTrashRef.current = over;
         setOverTrash(over);
@@ -253,6 +272,9 @@ export default function StepCanvas({
         // bas, un micro-tremblement gardait la sélection.
         const dx = Math.abs(p.x - drag.from.x), dy = Math.abs(p.y - drag.from.y);
         const reallyRect = dx >= 0.05 && dy >= 0.05; // ~40px x 12px minimum
+        // C-31 : le clic fond vide AUSSI les formes (avant, seules les
+        // photos étaient vidées au relâchement, une forme restait
+        // sélectionnée après un clic à côté).
         if (!reallyRect && !e.shiftKey) { setSelPhotos(new Set()); setSelShapes(new Set()); }
       } else if (drag.kind === "photo") {
         if (trash) {
@@ -284,13 +306,20 @@ export default function StepCanvas({
       setOverTrash(false);
       setDrag(null);
     };
+    const cancel = () => {
+      // C-31 : pointercancel = le navigateur prend le relais (scroll tactile
+      // depuis le fond) — on nettoie l'affichage SANS désélectionner.
+      setSelRect(null);
+      setOverTrash(false);
+      setDrag(null);
+    };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
-    window.addEventListener("pointercancel", up);
+    window.addEventListener("pointercancel", cancel);
     return () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
-      window.removeEventListener("pointercancel", up);
+      window.removeEventListener("pointercancel", cancel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drag]);
@@ -308,8 +337,19 @@ export default function StepCanvas({
     // pas — le navigateur gère le scroll de page (touch-action: pan-y).
     // La sélection-rectangle reste un geste SOURIS ; au tactile on tape
     // directement les objets pour les sélectionner.
+    // C-31 : un TAP tactile/pen sur le fond démarre bien une gesture selrect
+    // (sans preventDefault ni capture) — si le navigateur prend le relais en
+    // scroll, pointercancel annule sans désélectionner ; si c'est un vrai
+    // tap, le relâchement passe par la branche C-30 (clic fond = vide).
     const touch = e.pointerType === "touch" || e.pointerType === "pen";
-    if (touch && ph < 0 && sh < 0) return;
+    if (touch && ph < 0 && sh < 0) {
+      // C-31 : un tap sur le fond déselectionne AUSSI au tactile — mais si
+      // le navigateur reprend le geste en scroll (pointercancel), prevSel
+      // restaure la sélection d'avant le geste.
+      if (!e.shiftKey) { setSelPhotos(new Set()); setSelShapes(new Set()); }
+      setDrag({ kind: "selrect", from: p, touch: true, prevSel: { photos: new Set(selPhotos), shapes: new Set(selShapes) } });
+      return;
+    }
     e.preventDefault();
     try { canvasRef.current?.setPointerCapture(e.pointerId); } catch { /* pointeur parti */ }
     if (ph >= 0) {
@@ -356,11 +396,15 @@ export default function StepCanvas({
     } else {
       // C-28 : un clic sur le fond (souris) désélectionne les photos —
       // et démarre le rectangle de sélection (geste souris uniquement).
+      // C-28/C-31 : au pointeur souris, un clic sur le fond vide photos ET
+      // formes immédiatement (le rectangle de sélection ne conserve que
+      // s'il a une vraie surface — branche C-30 du up).
+      // Au doigt/stylet, on ne vide qu'au relâchement (le navigateur peut
+      // encore reprendre le geste en scroll : pointercancel restaure alors
+      // la sélection d'avant le geste via prevSel).
       const isTouch = e.pointerType === "touch" || e.pointerType === "pen";
-      if (selPhotos.size > 0 && !isTouch) setSelPhotos(new Set());
-      // rectangle de sélection : geste SOURIS uniquement — au doigt le fond
-      // ne démarre rien, le navigateur scrolle la page (C-19/C-21).
-      if (!isTouch) setDrag({ kind: "selrect", from: p });
+      if (!isTouch && !e.shiftKey) { setSelPhotos(new Set()); setSelShapes(new Set()); }
+      setDrag({ kind: "selrect", from: p, touch: isTouch || undefined, prevSel: isTouch ? { photos: new Set(selPhotos), shapes: new Set(selShapes) } : undefined });
     }
   }
 

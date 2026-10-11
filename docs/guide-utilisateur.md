@@ -69,7 +69,8 @@ Le header affiche le **nom de l'étape active**, **Publier**, **▸/▾** (tout 
 
 - La zone d'édition **s'adapte automatiquement** à la hauteur et à la position des images : tout reste visible, même une image placée en bas.
 - **Clic sur une image ou une forme** : sélectionne cet objet (Maj-clic pour ajouter à la sélection).
-- **Glisser sur le fond** : dessine un **rectangle de sélection** (appliqué au relâchement) ; un simple clic sur le fond ne change pas la sélection.
+- **Glisser sur le fond** : dessine un **rectangle de sélection** (appliqué au relâchement).
+- **Clic ou tap ailleurs** (fond du canevas, autre zone de l'éditeur) : **désélectionne** l'image ou la forme sélectionnée.
 - **Glisser un objet** : le déplace (le groupe complet si plusieurs sélectionnés) ; relâcher dans la **colonne de droite** supprime.
 - **Poignée en bas à droite d'une image** : redimensionne.
 - Les positions sont enregistrées dans un repère fixe : vos objets restent exactement où vous les posez.
