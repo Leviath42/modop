@@ -41,7 +41,8 @@ L'app écoute ensuite sur `http://<IP-du-conteneur>:3000`. Détails et parcours 
 ```bash
 cd server && npm ci && npm run dev   # API sur :3000 (tsx watch)
 cd web    && npm ci && npm run dev   # front Vite
-cd server && npm test                # suite de tests runtime
+cd server && npm test                # suite de tests runtime (~9 s, parallélisée)
+cd web    && npm test                # tests front (~16 s, 8 workers parallèles)
 ```
 
 Le front de production est servi par l'API (build via `npm run build` dans `web/`, voir `update.sh`).

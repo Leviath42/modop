@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { after, test } from "node:test";
 import assert from "node:assert/strict";
 import { openDb } from "../src/db/schema.js";
 import bcrypt from "bcryptjs";
@@ -94,4 +94,5 @@ test("triple publication → V3, numérotation continue vérifiée en base", asy
 });
 
 process.on("exit", () => server.close());
+after(() => { (server as unknown as { closeAllConnections?: () => void }).closeAllConnections?.(); return Promise.resolve(server.close()); });
 server.unref();

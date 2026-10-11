@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { after, test } from "node:test";
 import assert from "node:assert/strict";
 import { openDb } from "../src/db/schema.js";
 import bcrypt from "bcryptjs";
@@ -36,4 +36,5 @@ test("RF-77 : les consultations alimentent les stats", async () => {
 });
 
 process.on("exit", () => { server.close(); fs.rmSync("data", { recursive: true, force: true }); });
+after(() => { (server as unknown as { closeAllConnections?: () => void }).closeAllConnections?.(); return Promise.resolve(server.close()); });
 server.unref();

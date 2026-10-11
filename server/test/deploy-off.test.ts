@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { after, test } from "node:test";
 import assert from "node:assert/strict";
 process.env.MODOP_DEPLOY = "off";
 const { openDb } = await import("../src/db/schema.js");
@@ -29,4 +29,5 @@ process.on("exit", () => {
   server.close();
   fs.rmSync("data", { recursive: true, force: true });
 });
+after(() => { (server as unknown as { closeAllConnections?: () => void }).closeAllConnections?.(); return Promise.resolve(server.close()); });
 server.unref();

@@ -6,7 +6,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "dev": "vite",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "bash scripts/run-tests.sh",
+    "test:seq": "for f in src/lib/*.test.*; do npx tsx \"$f\" || exit 1; done"
   },
   "devDependencies": {
     "@types/jsdom": "^30.0.0",

@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { after, test } from "node:test";
 import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 import fs from "node:fs";

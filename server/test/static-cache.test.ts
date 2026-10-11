@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { after, test } from "node:test";
 import assert from "node:assert/strict";
 import { openDb } from "../src/db/schema.js";
 import { createApp } from "../src/app.js";
@@ -34,6 +34,7 @@ test("assets empreintés servis en 200 (jamais de 500 middleware)", { skip: !has
 });
 
 process.on("exit", () => { server.close(); fs.rmSync("data", { recursive: true, force: true }); });
+after(() => { (server as unknown as { closeAllConnections?: () => void }).closeAllConnections?.(); return Promise.resolve(server.close()); });
 server.unref();
 
 // C-15 : le thème est injecté côté serveur depuis le cookie modop-theme —

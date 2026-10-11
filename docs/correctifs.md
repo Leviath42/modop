@@ -5,21 +5,19 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 *Les correctifs listés ici sont retirés de la roadmap (vague 6 livrée) : ce journal trace la série en cours.*
 
-## C-32 — Vague 6bis : correctifs de l'audit complet (4 workers, réalisé)
+---
 
-Audit complet (sécurité, bugs, code mort, UI/UX — items S-A1..S-A5, B-A1..B-A5, D-A1..D-A4, U-B1..U-B4 détaillés dans la roadmap, vague 6bis) corrigés par 4 workers fusionnés séquentiellement sur beta.
+## C-33 — Suite de tests rationalisée : 32 s + 55 s → 9 s + 16 s (réalisé)
 
-**Sécurité** : révocation immédiate des sessions au changement de rôle (S-A1) ; allowlist `MODOP_ALLOWED_HOSTS` pour `X-Forwarded-Host` (S-A2) ; payloads canvas/annotations bornés à 500 formes (S-A3) ; rate limiting 20/15 min sur les signalements terrain (S-A4) ; git interrogé en asynchrone dans la page déploiement, plus d'event loop bloquée (S-A5).
+**Problème** : les tests prenaient ~87 s au total. Mesures : côté serveur, chaque fichier de test traînait ~3,5 s APRÈS ses tests — les connexions keep-alive d'undici (`fetch`) maintenaient l'event loop en vie ; `server.unref()` et `process.on("exit")` ne suffisaient pas (le handler exit arrive après l'attente). Côté front, chaque fichier est un process tsx séparé (~1,1 s de boot + ~1,6 s d'import jsdom) exécuté en séquentiel.
 
-**Bugs** : « Terminé ✓ » de la lecture guidée navigue vers la lecture classique (B-A1, + test) ; autosave des métadonnées 800 ms après la frappe avec badge « Enregistrement… » (B-A2, RF-16) ; uploads de photos parallèles avec progression et tolérance d'échec (B-A3) ; bandaux succès/erreur distincts dans le lecteur (B-A4) ; compression client renvoie le fichier brut si l'image n'est pas parsable (B-A5).
+**Correctifs** :
+1. Serveur : hook `after()` de `node:test` dans chaque fichier — `server.closeAllConnections()` tue les keep-alive immédiatement à la fin des tests, puis `server.close()`. Fichier : 4,8 s → ~1 s. Suite : **32 s → 9 s** (103 pass, 3 skips webdist inchangés).
+2. Front : `web/scripts/run-tests.sh` — exécution parallèle des fichiers (xargs -P 8), **propagation d'échec vérifiée** (un test qui échoue → exit 1). Suite : **55 s → 16 s**. `npm test` dans `web/` pointe dessus ; `test:seq` conserve le séquentiel pour le débogage.
 
-**Code mort** : `photo-annotator.tsx` (398 lignes jamais rendues) et composant `AnnotatedPhoto` supprimés, avec leurs tests (D-A1/D-A2) ; `GET /api/admin/audit` expose enfin le journal (D-A3, + test admin 200 / auteur 403) ; dépendances de test déplacées en devDependencies (D-A4).
+**Fichiers** : `server/test/*.test.ts` (24 fichiers, hook after), `web/scripts/run-tests.sh`, `web/package.json`, `README.md`
 
-**UI/UX** : lightbox plein écran sur les photos en lecture (U-B1, RF-31) ; stats admin lisibles — titre + référence au lieu de « workflow:12 » (U-B2) ; titres de liste repliés sur 2 lignes (U-B3) ; section « Journal d'audit » dans /stats (U-B4).
-
-**Fichiers** : serveur (`admin.ts`, `origin.ts`, `security.ts`, `deploy.ts`, `photos.ts`, `workflows.ts`, `stats.ts`, `app.ts`), front (`editor.tsx`, `guided-reader.tsx`, `reader.tsx`, `step-canvas-view.tsx`, `stats.tsx`, `list.tsx`, `api.ts`, `annotated-photo.tsx`), tests (`security.test.ts`, `guided-finish.test.ts`).
-
-**État** : ✅ livré sur beta — 106/106 tests serveur, tsc + build + tous tests front verts.
+**État** : ✅ livré sur beta — 106/106 tests serveur, tous tests front verts, échec propagé prouvé.
 
 ---
 

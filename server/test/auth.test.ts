@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { after, test } from "node:test";
 import assert from "node:assert/strict";
 import { openDb } from "../src/db/schema.js";
 import bcrypt from "bcryptjs";
@@ -86,4 +86,5 @@ test("logout invalide aussi les sessions précédentes du même utilisateur", as
 });
 
 process.on("exit", () => server.close());
+after(() => { (server as unknown as { closeAllConnections?: () => void }).closeAllConnections?.(); return Promise.resolve(server.close()); });
 server.unref();

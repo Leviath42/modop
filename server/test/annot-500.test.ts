@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { after, test } from "node:test";
 import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 import fs from "node:fs";const PNG_MIN = Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c63000100000500010000000049454e44ae426082","hex");
@@ -83,4 +83,5 @@ test("annotations sur base migrée : parcours complet sans 500", async () => {
 });
 
 process.on("exit", () => { server.close(); fs.rmSync("data", { recursive: true, force: true }); });
+after(() => { (server as unknown as { closeAllConnections?: () => void }).closeAllConnections?.(); return Promise.resolve(server.close()); });
 server.unref();

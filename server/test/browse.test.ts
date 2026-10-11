@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { after, test } from "node:test";
 import assert from "node:assert/strict";
 import { openDb } from "../src/db/schema.js";
 import bcrypt from "bcryptjs";
@@ -82,4 +82,5 @@ test("sans session → 401", async () => {
 });
 
 process.on("exit", () => server.close());
+after(() => { (server as unknown as { closeAllConnections?: () => void }).closeAllConnections?.(); return Promise.resolve(server.close()); });
 server.unref();
