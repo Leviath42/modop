@@ -126,7 +126,22 @@ systemctl restart cloudflared
 
 **État** : ✅ livré sur beta — tsc + build + 14/14 tests front verts.
 
+## C-09 — Numéros d'étapes + thème sombre persistant au rafraîchissement (réalisé)
+
+**Problème 1** : les cartes d'étapes de l'éditeur n'étaient pas numérotées (le lecteur l'était déjà).
+**Problème 2** : le mode sombre « sautait » à chaque rafraîchissement. Le code de thème (script inline de `index.html` + localStorage) est correct, mais le serveur ne posait **aucun en-tête de cache sur le HTML** : le navigateur pouvait rejouer un `index.html` périmé depuis son cache HTTP — sans le script inline — d'où le flash clair puis le retour sombre (le saut).
+
+**Correctif** :
+1. **Numéros d'étapes** : badge circulaire accentué (1, 2, 3…) entre la poignée de drag et le titre de chaque carte d'étape de l'éditeur.
+2. **Cache HTTP corrigé côté serveur** :
+   - `index.html` servi avec `Cache-Control: no-cache, no-store, must-revalidate` — toujours frais, le script de thème s'exécute avant le premier rendu ;
+   - `/assets/*` (fichiers empreintés par Vite) servis avec `maxAge: 1y, immutable` — cache long sans risque de péremption.
+
+**Fichiers** : `web/src/pages/editor.tsx`, `server/src/app.ts`
+
+**État** : ✅ livré sur beta — 92/92 tests serveur, tsc + build + 14/14 tests front verts.
+
 <!-- Prochains correctifs de la série :
 
-## C-09 — (titre à définir)
+## C-10 — (titre à définir)
 -->

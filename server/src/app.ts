@@ -70,8 +70,15 @@ export function createApp(db: Database.Database, webDist?: string): express.Expr
   });
 
   if (webDist && fs.existsSync(webDist)) {
+    // Le HTML ne doit JAMAIS venir du cache HTTP navigateur : il porte le
+    // script inline de thème (localStorage lu avant le premier rendu). Un HTML
+    // périmé fait "sauter" le thème au rafraîchissement. Les assets /assets/*
+    // sont empreintés (hash) : cache long sans risque.
+    app.use((req, _res, next) => { if (req.path.startsWith("/assets/")) next("static-assets"); else next(); });
+    app.use("/assets", express.static(path.join(webDist, "assets"), { maxAge: "1y", immutable: true }));
     app.use(express.static(webDist));
     app.get(/^(?!\/api|\/photos).*/, (_req, res) => {
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
       res.sendFile(path.join(webDist, "index.html"));
     });
   }
