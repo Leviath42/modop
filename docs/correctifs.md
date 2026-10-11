@@ -353,3 +353,15 @@ Sur écran étroit, le wrap reste possible mais chaque élément est compact —
 **Fichiers** : `server/src/render/canvas-composite.ts` (nouveau), `server/src/routes/export.ts`, `server/test/export.test.ts` ; dépendance `@napi-rs/canvas`
 
 **État** : ✅ livré sur beta — 102/102 tests serveur, tsc OK.
+
+## C-26 — Formes sélectionnables par-dessus les images (réalisé)
+
+**Problème** : en édition, une forme posée sur une photo était impossible à sélectionner/déplacer — le clic atteignait toujours la photo.
+
+**Cause** : le hit-test testait `photoHit` d'abord et ne consultait `shapeHit` **que si aucune photo n'était touchée** — inversant l'ordre de rendu (où le SVG des formes est dessiné au-dessus des `<img>`).
+
+**Correctif** : le hit-test suit l'ordre visuel — **formes d'abord, photos ensuite** (`shapeHit` prioritaire). Une forme sur une image se sélectionne et se déplace désormais ; les photos restent atteignables partout où il n'y a pas de forme.
+
+**Fichiers** : `web/src/step-canvas.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.

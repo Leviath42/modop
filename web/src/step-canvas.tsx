@@ -279,8 +279,11 @@ export default function StepCanvas({
     if (e.pointerType === "mouse" && e.button !== 0) return;
     if (tool) return;            // les outils agissent au clic (le click part aussi au tactile)
     const p = pt(e);
-    const ph = photoHit(p);
-    const sh = ph < 0 ? shapeHit(p) : -1;
+    // C-26 : les formes sont rendues AU-DESSUS des photos (SVG après les <img>)
+    // — le hit-test suit le même ordre, sinon une forme posée sur une image
+    // est impossible à sélectionner (la photo captait toujours le clic).
+    const sh = shapeHit(p);
+    const ph = sh < 0 ? photoHit(p) : -1;
     // C-19 : au DOIGT sur le fond (aucun objet, aucun outil), on ne capture
     // pas — le navigateur gère le scroll de page (touch-action: pan-y).
     // La sélection-rectangle reste un geste SOURIS ; au tactile on tape
