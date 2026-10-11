@@ -38,15 +38,19 @@ test("layout photo : taille et position persistées et relues", async () => {
   const up = await fetch(`${base}/api/steps/${step.json.id}/photos`, { method: "POST", headers: { cookie }, body: fd });
   const photo = await up.json();
 
-  const set = await call("PUT", `/api/photos/${photo.id}/layout`, { display_size: "large", display_align: "left" }, cookie);
+  const set = await call("PUT", `/api/photos/${photo.id}/layout`, { display_size: "full", display_align: "left", display_x: 0.1, display_y: 0.2, display_w: 0.8 }, cookie);
   if (set.status !== 200) throw new Error("PUT layout: " + set.status + " " + JSON.stringify(set.json));
   assert.equal(set.status, 200);
   const got = await call("GET", `/api/workflows/${wf.json.id}`, undefined, cookie);
-  assert.equal(got.json.steps[0].photos[0].display_size, "large");
+  assert.equal(got.json.steps[0].photos[0].display_size, "full");
   assert.equal(got.json.steps[0].photos[0].display_align, "left");
+  assert.equal(got.json.steps[0].photos[0].display_x, 0.1);
+  assert.equal(got.json.steps[0].photos[0].display_w, 0.8);
 
   const bad = await call("PUT", `/api/photos/${photo.id}/layout`, { display_size: "énorme" }, cookie);
   assert.equal(bad.status, 422);
+  const bad2 = await call("PUT", `/api/photos/${photo.id}/layout`, { display_w: 1.5 }, cookie);
+  assert.equal(bad2.status, 422, "w>1 rejeté");
 });
 
 process.on("exit", () => { server.close(); fs.rmSync("data", { recursive: true, force: true }); });

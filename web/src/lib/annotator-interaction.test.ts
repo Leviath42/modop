@@ -29,7 +29,7 @@ const W = 400, H = 300;
 
 const root = createRoot(dom.window.document.getElementById("root")!);
 root.render(
-  React.createElement(PhotoAnnotator, { photoId: 42, filename: "t.png", alt: "a", initialAnnotations: [] })
+  React.createElement(PhotoAnnotator, { photoId: 42, filename: "t.png", alt: "a", initialAnnotations: [], initialLayout: { x: null, y: null, w: 0.65 } })
 );
 await new Promise((r) => setTimeout(r, 120));
 
@@ -37,7 +37,10 @@ const doc = dom.window.document;
 
 // React re-rend le DOM à chaque interaction : on requête le nœud au moment T
 function getBox(): HTMLElement {
-  return dom.window.document.querySelector('div[style*="position: relative"]') as HTMLElement;
+  // conteneur d'annotation : position relative + cursor (crosshair/grab)
+  const cands = [...dom.window.document.querySelectorAll('div[style*="position: relative"]')] as HTMLElement[];
+  const b = cands.find((el) => el.style.cursor) ?? cands[0];
+  return b;
 }
 function click(x: number, y: number) {
   const box = getBox();

@@ -245,7 +245,7 @@ export default function EditorPage() {
                   id={`edit-step-${step.id}`}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => { if (dragIndex !== null && dragIndex !== i) void moveStep(dragIndex, i); setDragIndex(null); }}
-                  style={{ background: "var(--surface)", borderRadius: "10px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "grid", gap: "0.5rem", outline: dragIndex === i ? "2px dashed var(--accent)" : "none", scrollMarginTop: "4rem" }}
+                  style={{ background: "var(--surface)", borderRadius: "10px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "grid", gap: "0.5rem", outline: dragIndex === i ? "2px dashed var(--accent)" : "none", scrollMarginTop: "5.5rem" }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                     <span
@@ -374,7 +374,7 @@ export default function EditorPage() {
                           onDragStart={(e) => e.preventDefault()}
                           onDragEnter={(e) => e.stopPropagation()}
                         >
-                          <PhotoAnnotator photoId={ph.id} filename={ph.filename} alt={ph.alt} initialAnnotations={ph.annotations} initialSize={ph.display_size} initialAlign={ph.display_align} />
+                          <PhotoAnnotator photoId={ph.id} filename={ph.filename} alt={ph.alt} initialAnnotations={ph.annotations} initialLayout={{ x: ph.display_x ?? null, y: ph.display_y ?? null, w: ph.display_w ?? (ph.display_size === "full" ? 1 : ph.display_size === "large" ? 0.85 : ph.display_size === "small" ? 0.35 : 0.65) }} />
                         </div>
                       </div>
                     ))}

@@ -104,19 +104,35 @@ export function photoLayoutRouter(db: Database.Database): Router {
       res.status(404).json({ error: "not_found", message: "photo introuvable" });
       return;
     }
-    const { display_size, display_align } = req.body ?? {};
+    const { display_size, display_align, display_x, display_y, display_w } = req.body ?? {};
     const SIZES = ["small", "medium", "large", "full"];
     const ALIGNS = ["left", "center", "right"];
+    const num01 = (v: unknown): boolean =>
+      v === undefined || v === null || (typeof v === "number" && v >= 0 && v <= 1);
     if (
       (display_size !== undefined && !SIZES.includes(display_size)) ||
-      (display_align !== undefined && !ALIGNS.includes(display_align))
+      (display_align !== undefined && !ALIGNS.includes(display_align)) ||
+      !num01(display_x) || !num01(display_y) || !num01(display_w)
     ) {
-      res.status(422).json({ error: "validation", message: "taille (small/medium/large/full) ou alignement (left/center/right) invalide" });
+      res.status(422).json({ error: "validation", message: "position/taille : nombres entre 0 et 1 (ou null)" });
       return;
     }
     db.prepare(
-      "UPDATE photos SET display_size = COALESCE(?, display_size), display_align = COALESCE(?, display_align) WHERE id = ?"
-    ).run(display_size ?? null, display_align ?? null, photo.id);
+      `UPDATE photos SET
+         display_size = COALESCE(?, display_size),
+         display_align = COALESCE(?, display_align),
+         display_x = ?,
+         display_y = ?,
+         display_w = ?
+       WHERE id = ?`
+    ).run(
+      display_size ?? null,
+      display_align ?? null,
+      display_x === undefined ? null : display_x,
+      display_y === undefined ? null : display_y,
+      display_w === undefined ? null : display_w,
+      photo.id
+    );
     res.json({ ok: true });
   });
 

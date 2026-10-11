@@ -24,6 +24,9 @@ export interface Photo {
   annotations?: unknown[];
   display_size?: "small" | "medium" | "large" | "full";
   display_align?: "left" | "center" | "right";
+  display_x?: number | null;
+  display_y?: number | null;
+  display_w?: number | null;
 }
 
 export interface Picto {
@@ -171,12 +174,12 @@ export const api = {
   async deletePhoto(id: number): Promise<void> {
     await handle<unknown>(await fetch(`/api/photos/${id}`, { method: "DELETE" }));
   },
-  async saveLayout(photoId: number, display_size: string, display_align: string): Promise<void> {
+  async saveLayout(photoId: number, display_size: string, display_align: string, display_x?: number | null, display_y?: number | null, display_w?: number | null): Promise<void> {
     await handle<unknown>(
       await fetch(`/api/photos/${photoId}/layout`, {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ display_size, display_align }),
+        body: JSON.stringify({ display_size, display_align, display_x: display_x ?? null, display_y: display_y ?? null, display_w: display_w ?? null }),
       })
     );
   },

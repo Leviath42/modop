@@ -50,7 +50,7 @@ export default function ReaderPage() {
           </p>
         )}
         {wf.steps.map((step, i) => (
-          <article key={step.id} id={`etape-${i}`} style={{ background: "var(--surface)", borderRadius: "10px", padding: "1.2rem", boxShadow: "0 1px 4px rgba(0,0,0,0.1)", marginBottom: "0.8rem", scrollMarginTop: "1rem" }}>
+          <article key={step.id} id={`etape-${i}`} style={{ background: "var(--surface)", borderRadius: "10px", padding: "1.2rem", boxShadow: "0 1px 4px rgba(0,0,0,0.1)", marginBottom: "0.8rem", scrollMarginTop: "5.5rem" }}>
             <h2 style={{ marginTop: 0 }}>{i + 1}. {step.title}</h2>
             {step.body && <p style={{ whiteSpace: "pre-wrap" }}>{step.body}</p>}
             {step.pictos.length > 0 && (
@@ -66,15 +66,18 @@ export default function ReaderPage() {
               <div style={{ display: "grid", gap: "0.6rem" }}>
                 {step.photos.map((ph) => {
                   const SIZES: Record<string, string> = { small: "35%", medium: "60%", large: "85%", full: "100%" };
+                  const freeW = typeof ph.display_w === "number" ? `${ph.display_w * 100}%` : (SIZES[ph.display_size ?? "medium"] ?? "60%");
                   return (
                     <div key={ph.id} style={{ display: "flex", justifyContent: ph.display_align ?? "center", width: "100%" }}>
-                      <AnnotatedPhoto
-                        filename={ph.filename}
-                        alt={ph.alt || step.title}
-                        shapes={parseShapes(ph.annotations)}
-                        maxWidth={SIZES[ph.display_size ?? "medium"] ?? "60%"}
-                        zoomable
-                      />
+                      <div style={{ width: freeW, marginLeft: typeof ph.display_x === "number" ? `${ph.display_x * 100}%` : undefined, maxWidth: "100%" }}>
+                        <AnnotatedPhoto
+                          filename={ph.filename}
+                          alt={ph.alt || step.title}
+                          shapes={parseShapes(ph.annotations)}
+                          maxWidth="100%"
+                          zoomable
+                        />
+                      </div>
                     </div>
                   );
                 })}

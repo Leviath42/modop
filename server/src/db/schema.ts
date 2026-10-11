@@ -38,7 +38,10 @@ CREATE TABLE IF NOT EXISTS photos (
   alt TEXT NOT NULL DEFAULT '',
   annotations TEXT NOT NULL DEFAULT '[]',
   display_size TEXT NOT NULL DEFAULT 'medium' CHECK (display_size IN ('small','medium','large','full')),
-  display_align TEXT NOT NULL DEFAULT 'center' CHECK (display_align IN ('left','center','right'))
+  display_align TEXT NOT NULL DEFAULT 'center' CHECK (display_align IN ('left','center','right')),
+  display_x REAL,
+  display_y REAL,
+  display_w REAL
 );
 CREATE TABLE IF NOT EXISTS versions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -81,6 +84,9 @@ const COLUMN_MIGRATIONS: { table: string; column: string; ddl: string }[] = [
   { table: "photos", column: "annotations", ddl: "TEXT NOT NULL DEFAULT '[]'" },
   { table: "photos", column: "display_size", ddl: "TEXT NOT NULL DEFAULT 'medium'" },
   { table: "photos", column: "display_align", ddl: "TEXT NOT NULL DEFAULT 'center'" },
+  { table: "photos", column: "display_x", ddl: "REAL" },
+  { table: "photos", column: "display_y", ddl: "REAL" },
+  { table: "photos", column: "display_w", ddl: "REAL" },
 ];
 
 // Réparation des pictos corrompus par le bug de l’ancien éditeur : la réponse
