@@ -170,7 +170,7 @@ export default function StepCanvas({
     if (!drag) return;
     const cx = (v: number) => Math.min(1, Math.max(0, v));
     const cy = (v: number) => Math.max(0, v);
-    const move = (e: MouseEvent) => {
+    const move = (e: PointerEvent) => {
       const p = pt(e);
       if (drag.kind === "selrect") {
         setSelRect({ x1: drag.from.x, y1: drag.from.y, x2: p.x, y2: p.y });
@@ -214,7 +214,7 @@ export default function StepCanvas({
         setObjs((arr) => arr.map((o) => o.photo.id === drag.photoId ? { ...o, w: rel - o.x } : o));
       }
     };
-    const up = (e: MouseEvent) => {
+    const up = (e: PointerEvent) => {
       const p = pt(e);
       const trash = p.x > 0.85;
       if (drag.kind === "selrect") {
@@ -251,16 +251,23 @@ export default function StepCanvas({
       setOverTrash(false);
       setDrag(null);
     };
-    window.addEventListener("mousemove", move);
-    window.addEventListener("mouseup", up);
-    return () => { window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drag]);
 
-  function onMouseDown(e: React.MouseEvent) {
-    if (e.button !== 0) return;
+  function onPointerDown(e: React.PointerEvent) {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    if (tool) return;            // les outils agissent au clic (le click part aussi au tactile)
+    e.preventDefault();
+    try { canvasRef.current?.setPointerCapture(e.pointerId); } catch { /* pointeur parti */ }
     const p = pt(e);
-    if (tool) return;            // les outils agissent au clic
     const ph = photoHit(p);
     const sh = ph < 0 ? shapeHit(p) : -1;
     if (ph >= 0) {
@@ -299,7 +306,8 @@ export default function StepCanvas({
     }
   }
 
-  function onClick(e: React.MouseEvent) {
+  function onToolPointerUp(e: React.PointerEvent) {
+    if (!tool) return;
     const p = pt(e);
     if (tool === "text") {
       setTextDraft({ x: p.x, y: p.y, value: "" });
@@ -322,9 +330,9 @@ export default function StepCanvas({
 
   useEffect(() => {
     if (!pendingStart) return;
-    const move = (e: MouseEvent) => setPreview(pt(e));
-    canvasRef.current?.addEventListener("mousemove", move);
-    return () => canvasRef.current?.removeEventListener("mousemove", move);
+    const move = (e: PointerEvent) => setPreview(pt(e));
+    canvasRef.current?.addEventListener("pointermove", move);
+    return () => canvasRef.current?.removeEventListener("pointermove", move);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingStart !== null]);
 
@@ -351,11 +359,11 @@ export default function StepCanvas({
         ))}
         {COLORS.map((c) => (
           <button key={c} onClick={() => setColor(c)} aria-label={`Couleur ${c}`}
-            style={{ width: "20px", height: "20px", borderRadius: "50%", cursor: "pointer", background: c, border: color === c ? "3px solid #333" : "1px solid #ccc" }} />
+            style={{ width: "32px", height: "32px", borderRadius: "50%", cursor: "pointer", background: c, border: color === c ? "3px solid #333" : "1px solid #ccc" }} />
         ))}
-        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginLeft: "auto" }}>
+        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginLeft: "auto", flexBasis: "100%" }}>
           {tool ? (tool === "text" ? "Cliquez pour poser le texte" : pendingStart ? "Cliquez l'arrivée" : "Cliquez le départ")
-            : "Glissez le fond : sélection au rectangle · Maj-clic : ajouter · bande du bas : suppression"}
+            : "Glissez le fond : sélection au rectangle · Maj-clic : ajouter · relâchez sur la colonne droite pour supprimer"}
         </span>
         {(selPhotos.size > 0 || selShapes.size > 0) && (
           <button onClick={deleteSelection} style={{ fontSize: "0.78rem", color: "var(--error-text)" }}>
@@ -370,8 +378,8 @@ export default function StepCanvas({
       {/* zone canevas : images + formes + interactions */}
       <div
         ref={canvasRef}
-        onMouseDown={onMouseDown}
-        onClick={onClick}
+        onPointerDown={onPointerDown}
+        onPointerUp={onToolPointerUp}
         style={{ position: "relative", width: "100%", height: `${H}px`, background: "var(--surface-2, #f0f1f4)", borderRadius: "8px", overflow: "hidden", touchAction: "none", cursor: tool ? "crosshair" : "default" }}
       >
         {/* images */}
@@ -383,9 +391,9 @@ export default function StepCanvas({
             <img src={`/photos/${o.photo.filename}`} alt={o.photo.alt || ""} draggable={false}
               style={{ width: "100%", display: "block", pointerEvents: "none" }} />
             <span
-              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setSelPhotos(new Set([i])); setDrag({ kind: "resize", photoId: o.photo.id }); }}
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setSelPhotos(new Set([i])); setDrag({ kind: "resize", photoId: o.photo.id }); }}
               role="button" aria-label="Redimensionner l'image"
-              style={{ position: "absolute", right: 0, bottom: 0, width: "12px", height: "12px", cursor: "ew-resize", background: "var(--accent)", borderTopLeftRadius: "4px", display: "block" }}
+              style={{ position: "absolute", right: 0, bottom: 0, width: "28px", height: "28px", cursor: "ew-resize", background: "var(--accent)", borderTopLeftRadius: "6px", display: "block", opacity: 0.85, touchAction: "none" }}
             />
           </div>
         ))}

@@ -266,7 +266,7 @@ export default function EditorPage() {
                   onDrop={() => { if (dragIndex !== null && dragIndex !== i) void moveStep(dragIndex, i); setDragIndex(null); }}
                   style={{ background: "var(--surface)", borderRadius: "10px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "grid", gap: "0.5rem", outline: dragIndex === i ? "2px dashed var(--accent)" : "none", scrollMarginTop: "5.5rem" }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
                     <span
                       draggable
                       onDragStart={() => setDragIndex(i)}
@@ -296,7 +296,7 @@ export default function EditorPage() {
                       value={step.title}
                       onChange={(e) => setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, title: e.target.value } : s)))}
                       onBlur={() => patchStep(step, { title: step.title })}
-                      style={{ ...input, fontWeight: 600, flex: 1 }}
+                      style={{ ...input, fontWeight: 600, flex: 1, minWidth: "9rem" }}
                       aria-label={`Titre étape ${i + 1}`}
                       onClick={() => { if (!openSteps.has(step.id)) setOpenSteps((prev) => new Set([...prev, step.id])); }}
                     />
@@ -369,7 +369,7 @@ export default function EditorPage() {
                           }}
                           onBlur={() => patchStep(step, { pictos: step.pictos })}
                           placeholder="Texte de l'avertissement"
-                          style={{ flex: 1, minWidth: "160px", padding: "0.3rem 0.5rem", borderRadius: "4px", border: "1px solid var(--border)" }}
+                          style={{ flex: 1, minWidth: "8rem", maxWidth: "100%", padding: "0.3rem 0.5rem", borderRadius: "4px", border: "1px solid var(--border)" }}
                           aria-label={`Texte du pictogramme ${pi + 1}`}
                         />
                         <button

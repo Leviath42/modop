@@ -72,11 +72,11 @@ const canvases2 = Array.from(doc.querySelectorAll("div")).filter((d) => d.style.
 const c2 = canvases2[canvases2.length - 1] as HTMLElement;
 const imgBox = c2.querySelector("img")?.parentElement as HTMLElement;
 if (!imgBox) throw new Error("image non rendue");
-function fire(el: Element | EventTarget, type: string, opts: MouseEventInit = {}) {
-  el.dispatchEvent(new dom.window.MouseEvent(type, { bubbles: true, cancelable: true, button: 0, ...opts }));
+function fire(el: Element | EventTarget, type: string, opts: PointerEventInit = {}) {
+  el.dispatchEvent(new dom.window.PointerEvent(type, { bubbles: true, cancelable: true, button: 0, ...opts }));
 }
-fire(imgBox, "mousedown", { clientX: 200, clientY: 200 });
-fire(dom.window, "mouseup", { clientX: 200, clientY: 200 });
+fire(imgBox, "pointerdown", { clientX: 200, clientY: 200 });
+fire(dom.window, "pointerup", { clientX: 200, clientY: 200 });
 await new Promise((r) => setTimeout(r, 30));
 const canvases3 = Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%");
 const imgBox2 = (canvases3[canvases3.length - 1] as HTMLElement).querySelector("img")?.parentElement as HTMLElement;
@@ -86,8 +86,8 @@ console.log("U-CANVAS CLIC IMAGE = SÉLECTION UNIQUE OK");
 // clic sur le fond SANS déplacement : la sélection doit être conservée
 // (le rectangle ne s'applique qu'au relâchement avec déplacement)
 const c4 = (Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%") as HTMLElement[]).pop()!;
-fire(c4, "mousedown", { clientX: 5, clientY: 5 });
-fire(dom.window, "mouseup", { clientX: 5, clientY: 5 });
+fire(c4, "pointerdown", { clientX: 5, clientY: 5 });
+fire(dom.window, "pointerup", { clientX: 5, clientY: 5 });
 await new Promise((r) => setTimeout(r, 30));
 const c5 = (Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%") as HTMLElement[]).pop()!;
 const imgBox3 = c5.querySelector("img")?.parentElement as HTMLElement;

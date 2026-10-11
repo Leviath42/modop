@@ -59,6 +59,14 @@ input, select, textarea { font-size: 16px; }
 @media (max-width: 699px) {
   input, select, textarea { font-size: 16px !important; }
 }
+/* Tactile : cibles confortables (reco Apple/Google : >= 44px) sur les
+   boutons et poignées, sans changer le look desktop. */
+@media (pointer: coarse) {
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
 body { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
 button, [role="button"] { touch-action: manipulation; }
 

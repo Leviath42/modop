@@ -54,16 +54,16 @@ const zoneBtn = Array.from(doc.querySelectorAll("button")).find((b) => b.textCon
 zoneBtn.click();
 await new Promise((r) => setTimeout(r, 30));
 
-function fire(el: Element | EventTarget, type: string, opts: MouseEventInit = {}) {
-  (el as Element).dispatchEvent(new dom.window.MouseEvent(type, { bubbles: true, cancelable: true, button: 0, ...opts }));
+function fire(el: Element | EventTarget, type: string, opts: PointerEventInit = {}) {
+  (el as Element).dispatchEvent(new dom.window.PointerEvent(type, { bubbles: true, cancelable: true, button: 0, pointerId: 1, pointerType: "touch", ...opts }));
 }
 // canevas : hauteur ~ (0.05 + 1*800*0.75/240)*240 + 12 = 612px ; ratio 0.75 par défaut
 // dessiner une zone vers le BAS du canevas : y ≈ 400px (=1.667 en fraction REF_H)
 const cv2 = (Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%") as HTMLElement[]).pop()!;
-fire(cv2, "click", { clientX: 100, clientY: 400 });
+fire(cv2, "pointerup", { clientX: 100, clientY: 400 });
 await new Promise((r) => setTimeout(r, 30));
 const cv3 = (Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%") as HTMLElement[]).pop()!;
-fire(cv3, "click", { clientX: 300, clientY: 450 });
+fire(cv3, "pointerup", { clientX: 300, clientY: 450 });
 await new Promise((r) => setTimeout(r, 80));
 
 if (savedShapes.length === 0) throw new Error("aucune forme sauvegardée");
