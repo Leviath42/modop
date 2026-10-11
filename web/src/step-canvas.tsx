@@ -407,7 +407,7 @@ export default function StepCanvas({
                 stroke={s.color} strokeWidth={sw(i)} vectorEffect="non-scaling-stroke" strokeLinecap="round" markerEnd={`url(#cs-ah-${stepId}-${s.color.replace("#", "")})`} />;
             }
             if (s.type === "rect" && s.w !== undefined && s.h !== undefined) {
-              return <rect key={i} x={s.x1 * W} y1={s.y1 * REF_H} width={s.w * W} height={s.h * REF_H}
+              return <rect key={i} x={s.x1 * W} y={s.y1 * REF_H} width={s.w * W} height={s.h * REF_H}
                 fill="none" stroke={s.color} strokeWidth={sw(i)} vectorEffect="non-scaling-stroke" />;
             }
             return null;

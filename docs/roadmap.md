@@ -42,6 +42,9 @@ Application web de création, publication et consultation de **modes opératoire
 - **Mobile** : largeurs bornées dans la nav (email tronqué) et le bandeau éditeur — plus de débordement.
 - **Éditeur** : métadonnées repliées par défaut (titre + référence visibles, bouton « ✉ Détails ») ; clic sur le titre d'une étape l'ouvre directement (plus besoin du petit bouton ▸, qui reste et est plus visible).
 - **Journal de déploiement** : séquences ANSI, spinners npm et \r filtrés côté serveur.
+- **Zones en haut — VRAIE cause (3e signalement)** : l'élément SVG `<rect>` était rendu avec l'attribut **`y1`** (qui n'existe pas pour un rect — c'est un attribut de `<line>`) au lieu de **`y`** : le navigateur ignorait la position verticale et affichait **toute zone à y=0, en haut du canevas**, quelle que soit sa position enregistrée (les étapes précédentes traitaient les coordonnées, pas ce bug de rendu). Corrigé dans l'éditeur ET le lecteur ; test runtime zone-roundtrip (dessin → sauvegarde → re-rendu au même pixel près) ajouté.
+- **Icône thème** : emojis remplacés par les icônes SVG Heroicons de meal_plan (soleil/lune au trait, `currentColor`).
+- **Mobile (bonnes pratiques appliquées)** : base `html { font-size: 16px }`, tout contrôle de saisie forcé à **16px sur mobile** (empêche le zoom automatique iOS Safari au focus — cause principale du « débordement » ressenti), `viewport-fit=cover` + `env(safe-area-inset-*)` pour l'encoche, `touch-action: manipulation` (fin du délai de 300ms au tap).
 
 ### Constats des campagnes de tests
 - Annotation : le drag natif navigateur entre en conflit avec les cartes d'étapes → **clic-clic** retenu (départ/arrivée), plus le déplacement des formes posées.

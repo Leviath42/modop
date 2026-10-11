@@ -14,7 +14,7 @@
 
 ## Thème clair / sombre
 
-Bouton **☀️ / 🌙** dans la barre du haut (et sur la page de connexion). Votre choix est mémorisé sur l'appareil, et la barre du navigateur mobile suit le thème.
+Bouton **icône soleil / lune** dans la barre du haut (et sur la page de connexion). Votre choix est mémorisé sur l'appareil, et la barre du navigateur mobile suit le thème.
 
 ## Consulter les modes opératoires
 

@@ -70,7 +70,7 @@ export default function StepCanvasView({ photos, shapes }: { photos: Photo[]; sh
               stroke={s.color} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinecap="round" markerEnd={`url(#rv-ah-${s.color.replace("#", "")})`} />;
           }
           if (s.type === "rect" && s.w !== undefined && s.h !== undefined) {
-            return <rect key={i} x={s.x1 * W} y1={s.y1 * 240} width={s.w * W} height={s.h * 240}
+            return <rect key={i} x={s.x1 * W} y={s.y1 * 240} width={s.w * W} height={s.h * 240}
               fill="none" stroke={s.color} strokeWidth="2" vectorEffect="non-scaling-stroke" />;
           }
           return null;
