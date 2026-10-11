@@ -201,6 +201,16 @@ export default function EditorPage() {
           <section style={{ display: "grid", gap: "0.6rem" }}>
             <div style={{ position: "sticky", top: 0, zIndex: 30, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", padding: "0.5rem 0.8rem", display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", boxShadow: "0 2px 6px rgba(0,0,0,0.15)" }}>
               <h2 style={{ margin: 0, fontSize: "1rem", marginRight: "auto", minWidth: "80px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "30%" }}>Étapes — {title || "sans titre"}</h2>
+              {!isNew && (
+                <>
+                  <button onClick={addStep} style={secondaryBtn}>+ Étape</button>
+                  {steps.length > 0 && (
+                    <button onClick={publish} style={primaryBtn}>
+                      {wf?.state === "published" ? `Publier V${(wf.current_version ?? 0) + 1}` : "Publier V1"}
+                    </button>
+                  )}
+                </>
+              )}
               {steps.length > 1 && (
                 <>
                   <button onClick={() => setOpenSteps(new Set(steps.map((st) => st.id)))} style={secondaryBtn}>Tout ouvrir</button>
