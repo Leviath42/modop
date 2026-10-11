@@ -75,24 +75,81 @@ if (!imgBox) throw new Error("image non rendue");
 function fire(el: Element | EventTarget, type: string, opts: PointerEventInit = {}) {
   el.dispatchEvent(new dom.window.PointerEvent(type, { bubbles: true, cancelable: true, button: 0, ...opts }));
 }
-fire(imgBox, "pointerdown", { clientX: 200, clientY: 200 });
-fire(dom.window, "pointerup", { clientX: 200, clientY: 200 });
+// C-28 : une photo se sélectionne au DOUBLE-CLIC ; un clic simple ne
+// sélectionne pas ; un clic fond désélectionne.
+function firePd(imgBox2: HTMLElement) {
+  fire(imgBox2, "pointerdown", { clientX: 200, clientY: 200 });
+  fire(dom.window, "pointerup", { clientX: 200, clientY: 200 });
+}
+firePd(imgBox);
 await new Promise((r) => setTimeout(r, 30));
 const canvases3 = Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%");
 const imgBox2 = (canvases3[canvases3.length - 1] as HTMLElement).querySelector("img")?.parentElement as HTMLElement;
-if (imgBox2.style.outline !== "2px solid var(--accent)") throw new Error(`image non sélectionnée après clic (outline=${imgBox2.style.outline})`);
-console.log("U-CANVAS CLIC IMAGE = SÉLECTION UNIQUE OK");
+if (imgBox2.style.outline === "2px solid var(--accent)") throw new Error("un simple clic ne doit PAS sélectionner (double-clic requis, C-28)");
+// deuxième clic dans la fenêtre double-clic : sélection
+firePd(imgBox2);
+await new Promise((r) => setTimeout(r, 30));
+const canvases3b = Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%");
+const imgBox2b = (canvases3b[canvases3b.length - 1] as HTMLElement).querySelector("img")?.parentElement as HTMLElement;
+if (imgBox2b.style.outline !== "2px solid var(--accent)") throw new Error(`image non sélectionnée après double-clic (outline=${imgBox2b.style.outline})`);
+console.log("U-CANVAS DOUBLE-CLIC = SÉLECTION OK");
 
-// clic sur le fond SANS déplacement : la sélection doit être conservée
-// (le rectangle ne s'applique qu'au relâchement avec déplacement)
+// C-28 : un clic sur le fond DÉSÉLECTIONNE la photo
 const c4 = (Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%") as HTMLElement[]).pop()!;
-// C-27 : la corbeille est désormais un carré en haut à gauche (x<0.14, y<56) —
-// pointer le clic fond hors de cette zone.
-fire(c4, "pointerdown", { clientX: 400, clientY: 150 });
-fire(dom.window, "pointerup", { clientX: 400, clientY: 150 });
+// C-27 : la corbeille est un carré en haut à gauche (x<0.14, y<56) — clic fond hors zone.
+fire(c4, "pointerdown", { clientX: 700, clientY: 150 });
+fire(dom.window, "pointerup", { clientX: 700, clientY: 150 });
 await new Promise((r) => setTimeout(r, 30));
 const c5 = (Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%") as HTMLElement[]).pop()!;
 const imgBox3 = c5.querySelector("img")?.parentElement as HTMLElement;
-if (imgBox3.style.outline !== "2px solid var(--accent)") throw new Error("clic fond sans déplacement a vidé la sélection");
-console.log("U-CANVAS CLIC FOND NE VIDE PAS LA SÉLECTION OK");
+if (imgBox3.style.outline === "2px solid var(--accent)") throw new Error("le clic fond doit désélectionner (C-28)");
+console.log("U-CANVAS CLIC FOND = DÉSÉLECTION OK");
+
+// C-29 : un drag COMMENCÉ dans la zone corbeille ne supprime pas —
+// il faut que le doigt ait quitté le départ pour rejoindre la corbeille.
+{
+  const c6 = (Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%") as HTMLElement[]).pop()!;
+  // double-clic pour sélectionner la photo (C-28)
+  const imgB = c6.querySelector("img")?.parentElement as HTMLElement;
+  fire(imgB, "pointerdown", { clientX: 200, clientY: 300 });
+  fire(dom.window, "pointerup", { clientX: 200, clientY: 300 });
+  fire(imgB, "pointerdown", { clientX: 200, clientY: 300 });
+  fire(dom.window, "pointerup", { clientX: 200, clientY: 300 });
+  await new Promise((r) => setTimeout(r, 30));
+  // Démontage du premier montage : ses listeners window pollueraient le
+// scénario suivant (deux racines sur le même dom.window).
+root.unmount();
+// C-29 : une photo posée DANS la zone corbeille (haut gauche) ne doit pas
+// se supprimer par simple frôlement — le geste doit être CONDUIT depuis
+// l'extérieur vers la corbeille. Montage dédié (photo en haut à gauche).
+{
+  const host = dom.window.document.createElement("div");
+  dom.window.document.body.appendChild(host);
+  const r2 = createRoot(host);
+  r2.render(
+    React.createElement(StepCanvas, {
+      stepId: 2,
+      photos: [{ photo: { ...photo, id: 2 }, x: 0.03, y: 0.04, w: 0.2 }],
+      canvasShapes: [],
+    })
+  );
+  await new Promise((r) => setTimeout(r, 100));
+  const cc = (Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%") as HTMLElement[]).pop()!;
+  const im = cc.querySelector("img")?.parentElement as HTMLElement;
+  if (!im) throw new Error("photo haut-gauche non rendue");
+  // sélection au double-clic
+  fire(im, "pointerdown", { clientX: 40, clientY: 30 });
+  fire(dom.window, "pointerup", { clientX: 40, clientY: 30 });
+  fire(im, "pointerdown", { clientX: 40, clientY: 30 });
+  fire(dom.window, "pointerup", { clientX: 40, clientY: 30 });
+  await new Promise((r) => setTimeout(r, 30));
+  // frôlement : petit geste RESTANT dans la zone corbeille -> pas de suppression
+  fire(im, "pointerdown", { clientX: 40, clientY: 30 });
+  fire(dom.window, "pointermove", { clientX: 45, clientY: 33 });
+  fire(dom.window, "pointerup", { clientX: 45, clientY: 33 });
+  await new Promise((r) => setTimeout(r, 80));
+  if (!host.querySelector("img")) throw new Error("photo supprimée par frôlement dans la zone corbeille (C-29)");
+  console.log("U-CANVAS CORBEILLE = GESTE CONDUIT UNIQUEMENT OK");
+}
 process.exit(0);
+}

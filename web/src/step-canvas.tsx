@@ -76,6 +76,7 @@ export default function StepCanvas({
     | null
   >(null);
   const [overTrash, setOverTrash] = useState(false);
+  const lastPhotoDownRef = useRef<{ idx: number; at: number } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setObjs(photos); }, [JSON.stringify(photos)]);
@@ -200,7 +201,7 @@ export default function StepCanvas({
           if (c.x >= R.l && c.x <= R.r && c.y >= R.t && c.y <= R.b) ns.add(i);
         });
         setSelPhotos(np); setSelShapes(ns);
-        setOverTrash(p.x < 0.14 && p.y * 240 < 56);
+        setOverTrash(p.x < 0.14 && p.y * 240 < 56 && !(drag.from.x < 0.14 && drag.from.y * 240 < 56));
       } else if (drag.kind === "photo") {
         const dx = p.x - drag.from.x, dy = p.y - drag.from.y;
         setObjs((arr) => arr.map((o, i) => {
@@ -208,7 +209,7 @@ export default function StepCanvas({
           const g = drag.grabs[drag.ids.indexOf(i)];
           return { ...o, x: cx(p.x - g.x), y: cy(p.y - g.y) };
         }));
-        setOverTrash(p.x < 0.14 && p.y * 240 < 56);
+        setOverTrash(p.x < 0.14 && p.y * 240 < 56 && !(drag.from.x < 0.14 && drag.from.y * 240 < 56));
       } else if (drag.kind === "shape") {
         setShapes((arr) => arr.map((s, i) => {
           if (!drag.indices.includes(i)) return s;
@@ -220,7 +221,7 @@ export default function StepCanvas({
           }
           return { ...s, x1: ox, y1: oy };
         }));
-        setOverTrash(p.x < 0.14 && p.y * 240 < 56);
+        setOverTrash(p.x < 0.14 && p.y * 240 < 56 && !(drag.from.x < 0.14 && drag.from.y * 240 < 56));
       } else if (drag.kind === "resize") {
         const r = canvasRef.current!.getBoundingClientRect();
         const rel = Math.min(1, Math.max(0.1, (e.clientX - r.left) / r.width));
@@ -229,7 +230,11 @@ export default function StepCanvas({
     };
     const up = (e: PointerEvent) => {
       const p = pt(e);
-      const trash = p.x < 0.14 && p.y * 240 < 56;
+      const inTrash = (q: { x: number; y: number }) => q.x < 0.14 && q.y * 240 < 56;
+      // C-29 : la suppression exige que le doigt ait CONDUIT l'objet jusqu'à
+      // la corbeille — le point de départ ne doit pas déjà y être (sinon un
+      // objet posé près du coin supprime au moindre frôlement).
+      const trash = drag.kind === "photo" || drag.kind === "shape" ? inTrash(p) && !inTrash(drag.from) : false;
       if (drag.kind === "selrect") {
         setSelRect(null);
         const moved = Math.hypot(p.x - drag.from.x, p.y - drag.from.y) >= 0.01;
@@ -288,21 +293,34 @@ export default function StepCanvas({
     // pas — le navigateur gère le scroll de page (touch-action: pan-y).
     // La sélection-rectangle reste un geste SOURIS ; au tactile on tape
     // directement les objets pour les sélectionner.
-    if (e.pointerType !== "mouse" && ph < 0 && sh < 0) return;
+    const touch = e.pointerType === "touch" || e.pointerType === "pen";
+    if (touch && ph < 0 && sh < 0) return;
     e.preventDefault();
     try { canvasRef.current?.setPointerCapture(e.pointerId); } catch { /* pointeur parti */ }
     if (ph >= 0) {
+      // C-28 : une photo se sélectionne au DOUBLE-CLIC ; un premier clic
+      // simple ne fait qu'armer (il permet en revanche de déplacer une photo
+      // déjà sélectionnée, et Maj-clic reste la sélection additive).
+      const now = Date.now();
+      const dbl = lastPhotoDownRef.current?.idx === ph && now - (lastPhotoDownRef.current?.at ?? 0) < 400;
+      lastPhotoDownRef.current = { idx: ph, at: now };
       let ids: number[];
       if (e.shiftKey) {
         ids = new Set(selPhotos).has(ph) ? [...selPhotos].filter((x) => x !== ph) : [...selPhotos, ph];
-      } else if (selPhotos.has(ph)) {
-        ids = [...selPhotos];
-      } else {
+      } else if (dbl || selPhotos.has(ph)) {
         ids = [ph];
+      } else {
+        // premier clic simple : pas de sélection — juste préparer le drag
+        // éventuel si la photo est déjà sélectionnée ; sinon ne rien faire.
+        ids = [];
       }
-      setSelPhotos(new Set(ids));
+      if (ids.length === 0 && !selPhotos.has(ph)) {
+        // clic simple hors sélection : rien (pas de drag d'une photo non sélectionnée)
+        return;
+      }
+      setSelPhotos(new Set(ids.length ? ids : [...selPhotos]));
       setSelShapes(new Set());
-      setDrag({ kind: "photo", ids, grabs: ids.map((i) => ({ x: p.x - objs[i].x, y: p.y - objs[i].y })), from: p });
+      setDrag({ kind: "photo", ids: [...(ids.length ? ids : selPhotos)], grabs: (ids.length ? ids : [...selPhotos]).map((i) => ({ x: p.x - objs[i].x, y: p.y - objs[i].y })), from: p });
     } else if (sh >= 0) {
       let idx: number[];
       if (e.shiftKey) {
@@ -320,11 +338,14 @@ export default function StepCanvas({
         return { x: p.x - c.x, y: p.y - c.y };
       });
       setDrag({ kind: "shape", indices: idx, grabs, from: p });
-    } else if (e.pointerType === "mouse") {
-      // fond : rectangle de sélection — GESTE SOURIS UNIQUEMENT.
-      // Au doigt, le fond ne démarre aucun drag : touch-action: pan-y
-      // laisse le navigateur scroller la page (C-19/C-21).
-      setDrag({ kind: "selrect", from: p });
+    } else {
+      // C-28 : un clic sur le fond (souris) désélectionne les photos —
+      // et démarre le rectangle de sélection (geste souris uniquement).
+      const isTouch = e.pointerType === "touch" || e.pointerType === "pen";
+      if (selPhotos.size > 0 && !isTouch) setSelPhotos(new Set());
+      // rectangle de sélection : geste SOURIS uniquement — au doigt le fond
+      // ne démarre rien, le navigateur scrolle la page (C-19/C-21).
+      if (!isTouch) setDrag({ kind: "selrect", from: p });
     }
   }
 

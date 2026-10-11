@@ -373,3 +373,15 @@ Sur écran étroit, le wrap reste possible mais chaque élément est compact —
 **Fichiers** : `web/src/step-canvas.tsx`, `web/src/lib/step-canvas-adaptive.test.ts` (clic fond déplacé hors zone)
 
 **État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-29 — Corbeille : suppression seulement si le geste y est conduit (réalisé)
+
+**Problème** : un petit mouvement suffisait à supprimer un objet — notamment une photo posée en haut à gauche, qui démarre son drag **dans** la zone corbeille (C-27).
+
+**Correctif** : la suppression exige les deux conditions au relâchement — le pointeur est dans la corbeille **ET le point de départ du geste n'y était pas**. Le doigt doit avoir conduit l'objet depuis l'extérieur jusqu'à la corbeille ; un frôlement démarré dans la zone ne supprime plus. Le visuel « Relâchez ici » suit la même règle (pas de faux positif pour un objet déjà dans la zone).
+
+**Test** : scénario dédié dans `step-canvas-adaptive.test.ts` — photo posée en haut à gauche, sélection double-clic, frôlement complet dans la zone : la photo reste. (Au passage : le premier montage du test est démonté, ses listeners window polluaient les scénarios suivants.)
+
+**Fichiers** : `web/src/step-canvas.tsx`, `web/src/lib/step-canvas-adaptive.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front + 102/102 serveur.
