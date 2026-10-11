@@ -15,6 +15,7 @@ import { publishRouter } from "./routes/publish.js";
 import { exportRouter } from "./routes/export.js";
 import { deployRouter } from "./routes/deploy.js";
 import { adminRouter } from "./routes/admin.js";
+import { statsRouter } from "./routes/stats.js";
 
 function disabledDeployRouter() {
   const r = express.Router();
@@ -47,6 +48,7 @@ export function createApp(db: Database.Database, webDist?: string): express.Expr
   app.use("/api/photos", deletePhotoRouter(db));
   app.use("/api/deploy", process.env.MODOP_DEPLOY === "off" ? disabledDeployRouter() : deployRouter(db));
   app.use("/api/admin", adminRouter(db));
+  app.use("/api/stats", statsRouter(db));
   app.get("/photos/:filename", staticPhotos());
 
   if (webDist && fs.existsSync(webDist)) {
