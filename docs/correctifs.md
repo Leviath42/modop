@@ -20,7 +20,29 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 **État** : ✅ livré sur beta — build + tsc + 13 tests front verts.
 
+## C-02 — « Requête cross-site refusée » à la mise à jour (réalisé)
+
+**Problème** : après la vague 6, toutes les requêtes mutantes renvoient 403 « Requête cross-site refusée » quand Modop est servi via le **tunnel Cloudflare**. Cause : la config du tunnel force `httpHostHeader: localhost` — cloudflared réécrit le header `Host` en `localhost` tandis que le navigateur envoie `Origin: https://modop-beta.calironi.com`. L'anti-CSRF comparait `Origin` au `Host` réécrit → faux positif systémique.
+
+**Correctif (double)** :
+1. `assertSameOrigin` compare désormais l'`Origin` au **`X-Forwarded-Host`** (première valeur) sinon au `Host`, insensible à la casse. Un vrai cross-site derrière le même proxy reste refusé (test runtime).
+2. `scripts/hardening-tunnel.sh` n'écrit plus `httpHostHeader: localhost` — le tunnel préserve l'hôte public.
+
+**⚠️ Action requise sur le CT existant** : la config du tunnel déjà installée ne se corrige pas toute seule. Sur le conteneur :
+```bash
+sed -i '/httpHostHeader/d' /etc/cloudflared/config.yml
+systemctl restart cloudflared
+```
+(ou relancer `bash scripts/hardening-tunnel.sh --tunnel-only`, qui resynchronise la config)
+
+**Fichiers** : `server/src/auth/origin.ts`, `scripts/hardening-tunnel.sh`, `server/test/security.test.ts`
+
+**État** : ✅ livré sur beta — 92/92 tests runtime (dont le scénario tunnel), tsc + build verts.
+
 <!-- Prochains correctifs de la série (à cocher une fois réalisés) :
 
-## C-02 — (titre à définir)
+## C-03 — (titre à définir)
+<!--
+
+## C-03 — (titre à définir)
 -->

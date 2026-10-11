@@ -190,12 +190,9 @@ tunnel: $TUNNEL_ID
 credentials-file: $CRED
 originRequest:
   connectTimeout: 10s
-  httpHostHeader: localhost
 ingress:
   - hostname: $FQDN
     service: http://localhost:3000
-    originRequest:
-      httpHostHeader: localhost
   - service: http_status:404
 YML
 log "configuration écrite (/root/.cloudflared/config.yml)"

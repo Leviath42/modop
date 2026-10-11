@@ -179,3 +179,36 @@ process.on("exit", () => {
   fs.rmSync("data", { recursive: true, force: true });
 });
 server.unref();
+
+test("anti-CSRF : X-Forwarded-Host honored derrière un reverse proxy/tunnel", async () => {
+  // Deux sessions fraîches (le rate-limiter compte les login ; emails distincts)
+  const login1 = await call("POST", "/api/auth/login", { email: "user@modop.local", password: "motdepasse1" });
+  db.prepare("INSERT OR IGNORE INTO users (email, password_hash, role) VALUES (?, ?, 'author')").run(
+    "admin2@modop.local",
+    bcrypt.hashSync("motdepasse1", 4)
+  );
+  const login2 = await call("POST", "/api/auth/login", { email: "admin2@modop.local", password: "motdepasse1" });
+  assert.equal(login2.status, 200);
+  // Scénario tunnel : le Host vu par Express est localhost, mais le proxy
+  // transmet l'hôte public dans X-Forwarded-Host — doit être accepté.
+  const ok = await fetch(base + "/api/auth/logout", {
+    method: "POST",
+    headers: {
+      origin: "https://modop-beta.calironi.com",
+      "x-forwarded-host": "modop-beta.calironi.com",
+      "x-forwarded-proto": "https",
+      cookie: login1.cookie!,
+    },
+  });
+  assert.equal(ok.status, 200);
+  // Et un vrai cross-site derrière le même proxy reste refusé.
+  const csrf = await fetch(base + "/api/auth/logout", {
+    method: "POST",
+    headers: {
+      origin: "https://attaquant.example",
+      "x-forwarded-host": "modop-beta.calironi.com",
+      cookie: login2.cookie!,
+    },
+  });
+  assert.equal(csrf.status, 403);
+});
