@@ -127,6 +127,22 @@ La série de petits correctifs UI/UX suivie après la vague 6 est journalisée d
 | 5 | **Annotations sur le DOCX** | dessiner les shapes sur les images exportées (fusionne avec F7) |
 | 6 | **PWA : cache amélioré** | pré-cache des MO publiés pour lecture hors-ligne complète (après assainissement F8) |
 
+## ✅ Vague v1.4 — socle GED + terrain — LIVRÉE SUR `delta` (en attente de fusion dans beta)
+
+Travaillée sur la branche `delta` en parallèle du fix page blanche (C-10, sur beta). 6 workers fusionnés séquentiellement, portes à chaque fusion (99/99 tests serveur + tsc + build web) :
+
+| RF | Fonction | Worker |
+|---|---|---|
+| RF-74/75 | `review_due` (revue périodique) + `owner_email` (responsable) sur les workflows, filtre `?review=overdue` | W-GED |
+| RF-65 | `changelog` saisi à la publication, stocké et lu dans l'historique des versions | W-GED |
+| RF-73 | POST/GET `/api/workflows/:id/feedback` — signalement terrain par étape (audit + consultation auteur) | W-FEEDBACK |
+| RF-77 | `view_workflow` tracé à chaque consultation, `/api/stats` expose `views` + `topViewed` | W-STATS |
+| RF-71 | Vignette QR imprimable `/workflow/:id/qr` (canvas, styles print, lien depuis le lecteur) — dépendance `qrcode` | W-QR |
+| RF-72 | Lecture guidée `/workflow/:id/guided` — une étape par écran, boutons zone pouce, progression n/N | W-GUIDED |
+| RF-70 | Gabarit qualité autoring : conseil une-action-par-étape, alerte >400 caractères, rappel photo manquante | W-TEMPLATE |
+
+**Reste du Lot 5/6 à spécifier** : champs GED dans l'UI éditeur (review_due/owner dans les détails), badge « à revoir » en liste, consultation des feedbacks côté auteur, intégration des stats dans la page admin.
+
 ## 🚧 Vague 8 — Gestion documentaire avancée (proposition, à spécifier)
 
 > **Revue v1.4** : le cahier des charges intègre désormais un **socle GED** (RF-70 à RF-77, voir [docs/revue-cahier-des-charges.md](revue-cahier-des-charges.md)) issu du benchmark des plateformes du segment (Dozuki, Poka, SwipeGuide/L2L…) et des standards ISO 15489/23081. Séquencement recommandé : **Lot 5 (socle GED : revue périodique, responsable, obsolescence, stats) AVANT l'arborescence** — on ne classe pas des documents sans cycle de vie — puis **Lot 6 (terrain : QR d'accès, lecture guidée mobile, retour terrain, mode atelier)**.
