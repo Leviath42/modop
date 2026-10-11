@@ -141,7 +141,20 @@ systemctl restart cloudflared
 
 **État** : ✅ livré sur beta — 92/92 tests serveur, tsc + build + 14/14 tests front verts.
 
+## C-10 — Page blanche après C-09 (régression corrigée en urgence)
+
+**Problème** : après C-09, toutes les pages étaient blanches. Cause : le middleware que j'avais ajouté appelait `next("static-assets")` — dans Express, **`next()` avec une chaîne la traite comme une ERREUR** et court-circuite tous les middlewares suivants vers le handler 500. Toutes les requêtes `/assets/*` (JS/CSS du front) renvoyaient donc 500 → page blanche.
+
+**Correctif** :
+- Middleware fautif supprimé. Le montage `app.use("/assets", express.static(...))` **avant** le static général suffit à attraper les `/assets/*` avec le cache long.
+- En corrigeant : découverte que `GET /` était servi par `express.static` (index.html par défaut) **avant** la route SPA qui posait le `no-store` — l'en-tête n'était donc jamais posé sur la racine. Ajout d'un middleware qui pose `Cache-Control: no-cache, no-store, must-revalidate` sur toute navigation sans extension (le HTML), avant le static.
+- **Nouveau test runtime** `static-cache.test.ts` : GET / → 200 + no-store ; asset JS → 200 + immutable. La régression page blanche (assets en 500) ne pourra plus repasser.
+
+**Fichiers** : `server/src/app.ts`, `server/test/static-cache.test.ts`
+
+**État** : ✅ livré sur beta — 94/94 tests serveur (dont 2 nouveaux), tsc OK.
+
 <!-- Prochains correctifs de la série :
 
-## C-10 — (titre à définir)
+## C-11 — (titre à définir)
 -->

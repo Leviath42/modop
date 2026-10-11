@@ -74,8 +74,15 @@ export function createApp(db: Database.Database, webDist?: string): express.Expr
     // script inline de thème (localStorage lu avant le premier rendu). Un HTML
     // périmé fait "sauter" le thème au rafraîchissement. Les assets /assets/*
     // sont empreintés (hash) : cache long sans risque.
-    app.use((req, _res, next) => { if (req.path.startsWith("/assets/")) next("static-assets"); else next(); });
     app.use("/assets", express.static(path.join(webDist, "assets"), { maxAge: "1y", immutable: true }));
+    // Toute navigation (HTML, y compris servi par express.static à la racine)
+    // part sans cache navigateur : le script inline de thème doit être frais.
+    app.use((req, res, next) => {
+      if (req.method === "GET" && !req.path.startsWith("/assets/") && !path.extname(req.path)) {
+        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      }
+      next();
+    });
     app.use(express.static(webDist));
     app.get(/^(?!\/api|\/photos).*/, (_req, res) => {
       res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
