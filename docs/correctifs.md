@@ -5,8 +5,22 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 *Les correctifs listés ici sont retirés de la roadmap (vague 6 livrée) : ce journal trace la série en cours.*
 
----
+## C-31 — Désélection : clic/tap ailleurs que sur l'image (réalisé)
 
+**Problème** : une image (ou forme) sélectionnée dans le canevas d'édition ne pouvait être désélectionnée QUE par un clic souris sur le fond du canevas. Trois cas restaient bloqués : 1) au **tactile/stylo**, un tap sur le fond ne désélectionnait rien (le `return` C-19 court-circuitait tout traitement du fond au doigt) ; 2) **les formes** n'étaient jamais vidées par un clic fond (seules les photos l'étaient) ; 3) un clic **ailleurs dans l'éditeur** (champs, boutons, fond de page — hors canevas) laissait la sélection intacte.
+
+**Correctif** (`web/src/step-canvas.tsx`) :
+1. Un tap tactile/pen sur le fond démarre désormais une gesture `selrect` sans capture ni `preventDefault` : si le navigateur reprend le geste en scroll, **`pointercancel` restaure la sélection d'avant le geste** (sauvegardée dans `prevSel`) ; si c'est un vrai tap, la sélection est vidée immédiatement (sauf Maj). Le selrect tactile ne modifie plus la sélection en cours de geste (pas de sélection en direct au doigt).
+2. Le clic fond (souris comme tactile) vide **photos ET formes**, immédiatement au pointerdown (le rectangle de sélection ne réajambe la sélection qu'au relâchement s'il a une vraie surface, C-30 inchangé).
+3. Un listener `pointerdown` global (capture) vide la sélection quand le clic a lieu **hors du canevas** — les éléments marqués `data-keep-canvas-selection` (bouton « 🗑 Objets (n) » du bandeau d'édition) sont exclus pour rester fonctionnels.
+
+**Tests** : deux scénarios ajoutés à `web/src/lib/step-canvas-adaptive.test.ts` — « TAP TACTILE FOND = DÉSÉLECTION » et « CLIC HORS CANEVAS = DÉSÉLECTION » (sélection préalable prouvée par l'outline avant chaque geste).
+
+**Fichiers** : `web/src/step-canvas.tsx`, `web/src/pages/editor.tsx` (attribut `data-keep-canvas-selection` sur « 🗑 Objets »), `web/src/lib/step-canvas-adaptive.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + 15/15 tests front verts.
+
+---
 ## C-01 — Étapes repliées trop hautes (réalisé)
 
 **Problème** : en mode replié, chaque carte d'étape empile la poignée de drag, les flèches ▲▼ et la corbeille 🗑 — la liste déborde verticalement et on voit peu d'étapes à l'écran.

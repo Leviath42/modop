@@ -401,6 +401,7 @@ export default function EditorPage() {
                   {canvasSelection > 0 && (
                     <button
                       onClick={() => canvasDeleteRef.current?.()}
+                    data-keep-canvas-selection="1"
                       style={{ ...iconBtn, borderColor: "var(--danger-border)", background: "var(--danger-bg)", color: "var(--error-text)" }}
                       title="Supprimer les objets sélectionnés du canevas de l'étape affichée"
                       aria-label="Supprimer les objets sélectionnés"

@@ -179,6 +179,54 @@ root.unmount();
   if (!cd.querySelector("img")) throw new Error("photo supprimée loin de la corbeille (C-30)");
   console.log("U-CANVAS PAS DE SUPPRESSION LOIN CORBEILLE OK");
 }
+// C-31 : un TAP TACTILE sur le fond du canevas déselectionne la photo
+// (avant, seul le pointeur souris vidait la sélection) ; un pointerdown
+// HORS du canevas (ailleurs dans l'éditeur) déselectionne aussi.
+{
+  const r4 = createRoot(host2());
+  r4.render(React.createElement(StepCanvas, {
+    stepId: 4,
+    photos: [{ photo: { ...photo, id: 4 }, x: 0.5, y: 0.5, w: 0.3 }],
+    canvasShapes: [],
+  }));
+  await new Promise((r) => setTimeout(r, 100));
+  const ce = (Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%") as HTMLElement[]).pop()!;
+  const im4 = ce.querySelector("img")?.parentElement as HTMLElement;
+  // sélection au double-clic (souris)
+  fire(im4, "pointerdown", { clientX: 520, clientY: 220 });
+  fire(dom.window, "pointerup", { clientX: 520, clientY: 220 });
+  fire(im4, "pointerdown", { clientX: 520, clientY: 220 });
+  fire(dom.window, "pointerup", { clientX: 520, clientY: 220 });
+  await new Promise((r) => setTimeout(r, 30));
+  const ce2 = (Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%") as HTMLElement[]).pop()!;
+  const im4b = ce2.querySelector("img")?.parentElement as HTMLElement;
+  if (im4b.style.outline !== "2px solid var(--accent)") throw new Error("pré-condition : photo non sélectionnée");
+  // TAP TACTILE sur le fond (pointerType touch)
+  fire(ce2, "pointerdown", { clientX: 100, clientY: 150, pointerType: "touch" });
+  fire(dom.window, "pointerup", { clientX: 100, clientY: 150, pointerType: "touch" });
+  await new Promise((r) => setTimeout(r, 30));
+  const im4c = ((Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%") as HTMLElement[]).pop()!).querySelector("img")?.parentElement as HTMLElement;
+  if (im4c.style.outline === "2px solid var(--accent)") throw new Error("le tap tactile sur le fond doit déselectionner (C-31)");
+  console.log("U-CANVAS TAP TACTILE FOND = DÉSÉLECTION OK");
+
+  // re-sélection puis clic HORS canevas (sur le body)
+  fire(im4c, "pointerdown", { clientX: 520, clientY: 220 });
+  fire(dom.window, "pointerup", { clientX: 520, clientY: 220 });
+  fire(im4c, "pointerdown", { clientX: 520, clientY: 220 });
+  fire(dom.window, "pointerup", { clientX: 520, clientY: 220 });
+  await new Promise((r) => setTimeout(r, 30));
+  const im4d = ((Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%") as HTMLElement[]).pop()!).querySelector("img")?.parentElement as HTMLElement;
+  if (im4d.style.outline !== "2px solid var(--accent)") throw new Error("pré-condition 2 : photo non sélectionnée");
+  const outside = doc.createElement("button");
+  doc.body.appendChild(outside);
+  outside.dispatchEvent(new dom.window.PointerEvent("pointerdown", { bubbles: true, cancelable: true, button: 0, clientX: 10, clientY: 10 }));
+  await new Promise((r) => setTimeout(r, 30));
+  const im4e = ((Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%") as HTMLElement[]).pop()!).querySelector("img")?.parentElement as HTMLElement;
+  if (im4e.style.outline === "2px solid var(--accent)") throw new Error("le clic hors canevas doit déselectionner (C-31)");
+  console.log("U-CANVAS CLIC HORS CANEVAS = DÉSÉLECTION OK");
+  r4.unmount();
+}
+
 process.exit(0);
 
 function host2() {
