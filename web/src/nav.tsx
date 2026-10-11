@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "./auth-context";
-import { getStoredTheme, toggleTheme, type Theme } from "./theme";
+import { getStoredTheme, toggleTheme, watchTheme, type Theme } from "./theme";
 
 const SunIcon = () => (
   <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -20,6 +20,7 @@ export default function NavBar() {
   const [theme, setTheme] = useState<Theme>(() =>
     (document.documentElement.dataset.theme as Theme) || getStoredTheme()
   );
+  useEffect(() => watchTheme(setTheme), []);
   if (!user) return null;
 
   return (

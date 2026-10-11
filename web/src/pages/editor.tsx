@@ -1,5 +1,6 @@
 import StepCanvas, { TOOLS, COLORS } from "../step-canvas";
 import type { Shape } from "../annotated-photo";
+import { PhotoIcon, ArrowIcon, RectIcon, TextIcon, PlusIcon, PublishIcon, CollapseIcon, ExpandIcon } from "../icons";
 import PhotoAnnotator from "../photo-annotator";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -223,68 +224,69 @@ export default function EditorPage() {
 
         {!isNew && (
           <section style={{ display: "grid", gap: "0.6rem" }}>
-            <div style={{ position: "sticky", top: 0, zIndex: 30, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", padding: "0.4rem 0.6rem", display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", minWidth: 0 }}>
-              <h2 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 600, marginRight: "auto", flex: "1 1 8rem", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
+            <div style={{ position: "sticky", top: 0, zIndex: 30, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", padding: "0.3rem 0.5rem", display: "flex", alignItems: "center", gap: "0.35rem", flexWrap: "wrap", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", minWidth: 0 }}>
+              <h2 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 600, flex: "1 1 6rem", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, color: "var(--text)" }}>
                 {(() => { const st = steps.find((x) => x.id === (activeStepId ?? steps[0]?.id)); return st ? st.title : (title || "sans titre"); })()}
               </h2>
-              <button onClick={addStep} style={secondaryBtn} title="Ajouter une étape">+</button>
               {steps.length > 0 && (
-                <button onClick={publish} style={primaryBtn}>{wf?.state === "published" ? `Publier V${(wf.current_version ?? 0) + 1}` : "Publier"}</button>
+                <button onClick={publish} style={iconBtn} title="Publier une nouvelle version" aria-label="Publier">
+                  <PublishIcon /><span style={{ fontSize: "0.8rem", fontWeight: 600 }}>Publier</span>
+                </button>
               )}
               <button
                 onClick={() => {
-                  if (openSteps.size === steps.length && steps.length > 0) setOpenSteps(new Set());
+                  if (steps.length === 0) return;
+                  if (openSteps.size === steps.length) setOpenSteps(new Set());
                   else setOpenSteps(new Set(steps.map((st) => st.id)));
                 }}
-                style={secondaryBtn}
+                style={iconBtn}
                 title={openSteps.size === steps.length && steps.length > 0 ? "Tout replier" : "Tout ouvrir"}
-              >{openSteps.size === steps.length && steps.length > 0 ? "▾" : "▸"}</button>
-              {steps.length > 0 && (
-                <button
-                  onClick={() => setShowTools((v) => !v)}
-                  style={{ ...secondaryBtn, background: showTools || insertTool ? "var(--accent-bg)" : "var(--surface)", borderColor: showTools || insertTool ? "var(--accent)" : "var(--border)" }}
-                  aria-expanded={showTools}
-                  title="Insertion d'images, formes, textes, pictogrammes sur l'étape affichée"
-                >+</button>
-              )}
+                aria-label="Tout replier ou ouvrir"
+              >{openSteps.size === steps.length && steps.length > 0 ? <CollapseIcon /> : <ExpandIcon />}</button>
+              <button
+                onClick={() => { setShowTools((v) => !v); const target = activeStepId ?? steps[0]?.id; if (steps.length > 0 && !openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); } }}
+                style={{ ...iconBtn, background: showTools || insertTool ? "var(--accent-bg)" : "var(--surface)", borderColor: showTools || insertTool ? "var(--accent)" : "var(--border)" }}
+                aria-expanded={showTools}
+                title="Insertion : photos, flèches, zones, textes, pictogrammes"
+                aria-label="Insertion"
+              ><PlusIcon /></button>
+              <button onClick={addStep} style={iconBtn} title="Ajouter une étape" aria-label="Ajouter une étape"><PlusIcon /><span style={{ fontSize: "0.8rem" }}>étape</span></button>
               {steps.length > 1 && (
                 <select value="" onChange={(e) => {
                   const stepId = Number(e.target.value);
                   setOpenSteps((prev) => new Set([...prev, stepId]));
                   setActiveStepId(stepId);
                   setTimeout(() => { document.getElementById(`edit-step-${stepId}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 80);
-                }} aria-label="Aller à une étape" style={{ padding: "0.3rem", borderRadius: "6px", border: "1px solid var(--border)", maxWidth: "100%", minWidth: 0, fontSize: "0.8rem" }}
+                }} aria-label="Aller à une étape" style={{ padding: "0.25rem", borderRadius: "6px", border: "1px solid var(--border)", maxWidth: "100%", minWidth: 0, fontSize: "0.8rem", background: "var(--surface)", color: "var(--text)" }}
                 >
                   <option value="">…</option>
                   {steps.map((st, si) => <option key={st.id} value={st.id}>{si + 1}. {st.title}</option>)}
                 </select>
               )}
               {showTools && steps.length > 0 && (
-                <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap", alignItems: "center", flexBasis: "100%", minWidth: 0 }}>
+                <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap", alignItems: "center", flexBasis: "100%", minWidth: 0, paddingTop: "0.25rem", borderTop: "1px solid var(--border-soft)" }}>
                   <button
                     onClick={() => {
                       const target = activeStepId ?? steps[0].id;
                       if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); }
                       fileRefs.current[target]?.click();
                     }}
-                    style={toolBtn}
-                    aria-label="Ajouter des photos à l'étape affichée"
-                    title="Photos"
-                  >📷</button>
+                    style={iconBtn} title="Photos" aria-label="Photos"
+                  ><PhotoIcon /></button>
                   {TOOLS.map((t) => (
                     <button
                       key={t.kind}
                       onClick={() => { setInsertTool(insertTool === t.kind ? null : t.kind); const target = activeStepId ?? steps[0].id; if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); } }}
-                      style={{ ...toolBtn, background: insertTool === t.kind ? "var(--accent-bg)" : "var(--surface)", borderColor: insertTool === t.kind ? "var(--accent)" : "var(--border)" }}
+                      style={{ ...iconBtn, background: insertTool === t.kind ? "var(--accent-bg)" : "var(--surface)", borderColor: insertTool === t.kind ? "var(--accent)" : "var(--border)" }}
                       aria-pressed={insertTool === t.kind}
                       title={t.label}
-                    >{t.kind === "arrow" ? "➶" : t.kind === "rect" ? "▭" : "T"}</button>
+                    >{t.kind === "arrow" ? <ArrowIcon /> : t.kind === "rect" ? <RectIcon /> : <TextIcon />}</button>
                   ))}
                   {insertTool && insertTool !== "text" && COLORS.map((c) => (
                     <button key={c} onClick={() => setInsertColor(c)} aria-label={`Couleur ${c}`}
                       style={{ width: "18px", height: "18px", borderRadius: "50%", background: c, border: insertColor === c ? "2px solid var(--text)" : "1px solid var(--border)", padding: 0, cursor: "pointer", boxSizing: "border-box" }} />
                   ))}
-                  <span style={{ width: "1px", height: "18px", background: "var(--border)" }} aria-hidden="true" />
+                  <span style={{ width: "1px", height: "20px", background: "var(--border)" }} aria-hidden="true" />
                   {PICTO_PRESETS.map((preset) => {
                     const st = steps.find((x) => x.id === (activeStepId ?? steps[0].id));
                     const on = st ? st.pictos.some((x) => x.kind === preset.kind) : false;
@@ -299,7 +301,7 @@ export default function EditorPage() {
                           const idx = stp.pictos.findIndex((x) => x.kind === preset.kind);
                           void patchStep(stp, { pictos: idx >= 0 ? stp.pictos.filter((_, k) => k !== idx) : [...stp.pictos, { kind: preset.kind, label: preset.label, color: preset.color }] });
                         }}
-                        style={{ ...toolBtn, fontSize: "0.72rem", padding: "0.2rem 0.45rem", borderColor: on ? preset.color : "var(--border)", background: on ? `${preset.color}22` : "var(--surface)" }}
+                        style={{ ...iconBtn, fontSize: "0.7rem", padding: "0.2rem 0.45rem", borderColor: on ? preset.color : "var(--border)", background: on ? `${preset.color}22` : "var(--surface)" }}
                         aria-pressed={on}
                         title={preset.label}
                       >{preset.label}</button>
@@ -433,5 +435,6 @@ const label: React.CSSProperties = { display: "grid", gap: "0.25rem", fontSize: 
 const input: React.CSSProperties = { padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border)", fontSize: "1rem", fontFamily: "inherit", width: "100%", minWidth: 0, boxSizing: "border-box", maxWidth: "100%" };
 const primaryBtn: React.CSSProperties = { padding: "0.35rem 0.7rem", borderRadius: "6px", border: "none", background: "var(--accent)", color: "white", fontSize: "0.85rem" };
 const secondaryBtn: React.CSSProperties = { padding: "0.35rem 0.7rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.85rem" };
+const iconBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.3rem 0.5rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.8rem", lineHeight: 1.2, minWidth: 0, cursor: "pointer" };
 const toolBtn: React.CSSProperties = { padding: "0.25rem 0.55rem", borderRadius: "5px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.85rem", lineHeight: 1.2, minWidth: 0 };
 const dangerBtn: React.CSSProperties = { padding: "0.3rem 0.5rem", borderRadius: "6px", border: "1px solid var(--danger-border)", background: "var(--danger-bg)", color: "var(--text)", fontSize: "0.9rem" };

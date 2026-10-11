@@ -1,8 +1,8 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth-context";
-import { getStoredTheme, toggleTheme, type Theme } from "../theme";
+import { getStoredTheme, toggleTheme, watchTheme, type Theme } from "../theme";
 
 const SunIcon = () => (
   <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -24,6 +24,7 @@ export default function LoginPage() {
   const [theme, setTheme] = useState<Theme>(() =>
     (document.documentElement.dataset.theme as Theme) || getStoredTheme()
   );
+  useEffect(() => watchTheme(setTheme), []);
 
   if (user) return <Navigate to="/" replace />;
 

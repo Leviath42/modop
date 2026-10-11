@@ -20,6 +20,9 @@ g.document = dom.window.document;
 const step: Step = {
   id: 7, workflow_id: 42, position: 1, title: "Dévisser", body: "", pictos: [], photos: [], canvas: [],
 };
+(g as { ResizeObserver: unknown }).ResizeObserver = class { observe() {} disconnect() {} unobserve() {} };
+class FakeImage { onload: (() => void) | null = null; naturalWidth = 0; naturalHeight = 0; src = ""; }
+(g as { Image: unknown }).Image = FakeImage;
 (g as { fetch: unknown }).fetch = async (url: string) => {
   if (String(url).includes("/api/workflows/42")) {
     return { ok: true, status: 200, json: async () => ({ id: 42, reference: "MO-001", title: "Test", description: "", state: "draft", current_version: 0, family: "", category: "", steps: [step] }) } as unknown as Response;
@@ -53,19 +56,20 @@ if (plusBtns < 1) throw new Error("bouton d'insertion (palette) absent du header
 if (!/position: sticky/.test(html)) throw new Error("header non sticky");
 
 // 1. la palette est fermée par défaut : pas d'outils visibles
-if (html.includes("📷")) throw new Error("palette d'outils ouverte par défaut (attendu fermée)");
+if (html.includes('aria-label="Photos"')) throw new Error("palette d'outils ouverte par défaut (attendu fermée)");
 
 // 2. ouverture de la palette par le bouton + : outils présents
 const btns = Array.from(dom.window.document.querySelectorAll("button"));
-const plusBtn = btns.find((b) => b.textContent === "+" && b.getAttribute("aria-expanded") !== null) as HTMLElement;
+const plusBtn = btns.find((b) => b.getAttribute("aria-label") === "Insertion") as HTMLElement;
 if (!plusBtn) throw new Error("bouton palette introuvable");
 plusBtn.click();
 await new Promise((r) => setTimeout(r, 60));
 const html2 = dom.window.document.getElementById("root")!.innerHTML;
-if (!html2.includes("📷")) throw new Error("bouton photo absent de la palette");
-if (!html2.includes("➶")) throw new Error("outil flèche absent de la palette");
-if (!html2.includes("▭")) throw new Error("outil zone absent de la palette");
-if (!html2.includes("Attention")) throw new Error("pictos d'attention absents de la palette");
+if (!html2.includes('aria-label="Photos"')) throw new Error("bouton photo absent de la palette");
+if (!/title="Flèche"/.test(html2)) throw new Error("outil flèche absent de la palette");
+if (!/title="Zone"/.test(html2)) throw new Error("outil zone absent de la palette");
+if (!/title="Texte"/.test(html2)) throw new Error("outil texte absent de la palette");
+if (!/title="Attention"/.test(html2)) throw new Error("pictos d'attention absents de la palette");
 
 // 3. zone d'étape : plus de bouton "Photo(s)…"
 const photoBtnCount = (html2.match(/Photo\(s\)…/g) || []).length;

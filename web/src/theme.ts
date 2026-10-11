@@ -1,18 +1,18 @@
-// Thème clair/sombre (issue #2).
-// L'état est porté par <html data-theme="..."> pour que le CSS
-// (variables de styles.css) s'applique partout, y compris avant React.
+// Thème clair/sombre. L'état est porté par <html data-theme="..."> pour que
+// le CSS s'applique partout, y compris avant React. Le script inline de
+// index.html fait la même chose au chargement : au premier rendu React,
+// dataset.theme est TOUJOURS déjà défini (jamais de flash ni de saut).
 export type Theme = "light" | "dark";
-
 const STORAGE_KEY = "modop-theme";
 
 export function getStoredTheme(): Theme {
   try {
     const v = localStorage.getItem(STORAGE_KEY);
     if (v === "light" || v === "dark") return v;
-  } catch {
-    /* localStorage indisponible */
-  }
-  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  } catch { /* localStorage indisponible */ }
+  return document.documentElement.dataset.theme === "dark"
+    || window.matchMedia?.("(prefers-color-scheme: dark)").matches
+    ? "dark" : "light";
 }
 
 export function applyTheme(theme: Theme): void {
@@ -21,13 +21,24 @@ export function applyTheme(theme: Theme): void {
   if (meta) meta.setAttribute("content", theme === "dark" ? "#12151a" : "#1f4e9c");
   try {
     localStorage.setItem(STORAGE_KEY, theme);
-  } catch {
-    /* localStorage indisponible */
-  }
+  } catch { /* localStorage indisponible */ }
 }
 
 export function toggleTheme(): Theme {
   const next: Theme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
   applyTheme(next);
   return next;
+}
+
+// Persistance multi-contextes : un autre onglet (ou la PWA) qui change le
+// thème doit se répercuter ici sans rechargement.
+export function watchTheme(onChange: (t: Theme) => void): () => void {
+  const h = (e: StorageEvent) => {
+    if (e.key === STORAGE_KEY && (e.newValue === "light" || e.newValue === "dark")) {
+      document.documentElement.dataset.theme = e.newValue;
+      onChange(e.newValue);
+    }
+  };
+  window.addEventListener("storage", h);
+  return () => window.removeEventListener("storage", h);
 }
