@@ -3,14 +3,14 @@ import cookieParser from "cookie-parser";
 import path from "node:path";
 import fs from "node:fs";
 import type Database from "better-sqlite3";
-import { attachAuth } from "./auth/middleware.js";
+import { attachAuth, requireAuth } from "./auth/middleware.js";
 import { securityHeaders, loginRateLimiter } from "./auth/security.js";
 import { purgeExpiredSessions } from "./auth/sessions.js";
 import { purgeAudit } from "./auth/audit.js";
 import { authRouter } from "./routes/auth.js";
 import { workflowRouter, stepRouter } from "./routes/workflows.js";
 import { listRouter } from "./routes/list.js";
-import { photoRouter, staticPhotos, deletePhotoRouter, annotationsRouter, photoLayoutRouter } from "./routes/photos.js";
+import { photoRouter, staticPhotos, deletePhotoRouter, annotationsRouter, photoLayoutRouter, purgeOrphanPhotos } from "./routes/photos.js";
 import { publishRouter } from "./routes/publish.js";
 import { exportRouter } from "./routes/export.js";
 import { restoreRouter } from "./routes/restore.js";
@@ -34,6 +34,7 @@ export function createApp(db: Database.Database, webDist?: string): express.Expr
   }
   purgeExpiredSessions(db);
   purgeAudit(db);
+  purgeOrphanPhotos(db, process.env.MODOP_PHOTOS_DIR ?? path.resolve("data/photos"));
   app.use(securityHeaders());
   app.use(express.json());
   app.use(cookieParser());
@@ -56,7 +57,7 @@ export function createApp(db: Database.Database, webDist?: string): express.Expr
   app.use("/api/stats", statsRouter(db));
   app.use("/api/workflows", duplicateRouter(db));
   app.use("/api/stats", statsRouter(db));
-  app.get("/photos/:filename", staticPhotos());
+  app.get("/photos/:filename", requireAuth("reader"), staticPhotos(db));
 
   // Handler d'erreurs : les 500 renvoient un JSON explicite et loggué
   // (l'HTML par défaut d'Express masque la cause côté client).

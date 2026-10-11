@@ -95,3 +95,33 @@ process.on("exit", () => {
   fs.rmSync("data", { recursive: true, force: true });
 });
 server.unref();
+
+test("S2 : photos accessibles uniquement authentifié", async () => {
+  const png = Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c63000100000500010000000049454e44ae426082", "hex");
+fs.mkdirSync("data/photos", { recursive: true });
+  fs.writeFileSync("data/photos/test-secure.png", png);
+  // Non authentifié -> 401
+  const anon = await fetch(base + "/photos/test-secure.png");
+  assert.equal(anon.status, 401);
+  // Authentifié -> 200
+  const login = await call("POST", "/api/auth/login", { email: "user@modop.local", password: "motdepasse1" });
+  const auth = await fetch(base + "/photos/test-secure.png", { headers: { cookie: login.cookie! } });
+  assert.equal(auth.status, 200);
+});
+
+test("S3 : upload avec contenu non conforme refusé (magic numbers)", async () => {
+  const login = await call("POST", "/api/auth/login", { email: "user@modop.local", password: "motdepasse1" });
+  const wf = await call("POST", "/api/workflows", { title: "Sniff", reference: "SNIFF-1" }, login.cookie!);
+  assert.equal(wf.status, 201);
+  const step = await call("POST", `/api/workflows/${wf.json.id}/steps`, { title: "Étape" }, login.cookie!);
+  assert.equal(step.status, 201);
+  const fake = new FormData();
+  fake.append("file", new Blob([Buffer.from("<script>alert(1)</script>")], { type: "image/png" }), "evil.png");
+  fake.append("alt", "piège");
+  const res = await fetch(base + `/api/steps/${step.json.id}/photos`, {
+    method: "POST",
+    headers: { cookie: login.cookie! },
+    body: fake,
+  });
+  assert.equal(res.status, 422);
+});
