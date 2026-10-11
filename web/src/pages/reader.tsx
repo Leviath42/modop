@@ -44,6 +44,7 @@ export default function ReaderPage() {
               <option key={s.id} value={i}>{i + 1}. {s.title}</option>
             ))}
           </select>
+          <Link to={`/workflow/${wf.id}/qr`} aria-label="Vignette QR imprimable" title="Vignette QR imprimable" style={{ fontSize: "0.85rem", color: "var(--accent)", textDecoration: "none" }}>QR</Link>
         </header>
         {wf.state === "published" && (
           <p style={{ margin: "0 0 0.8rem", color: "var(--text-muted)", fontSize: "0.85rem" }}>
