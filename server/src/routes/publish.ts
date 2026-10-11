@@ -9,7 +9,8 @@ interface SnapshotStep {
   title: string;
   body: string;
   pictos: string[];
-  photos: { id: number; filename: string; alt: string }[];
+  canvas: unknown[];
+  photos: { id: number; filename: string; alt: string; display_size?: string; display_align?: string; display_x?: number | null; display_y?: number | null; display_w?: number | null }[];
 }
 
 export function publishRouter(db: Database.Database): Router {
@@ -26,7 +27,7 @@ export function publishRouter(db: Database.Database): Router {
     const user = (req as { user?: { email: string } }).user!;
     const steps = db
       .prepare("SELECT * FROM steps WHERE workflow_id = ? ORDER BY position")
-      .all(wf.id) as { id: number; position: number; title: string; body: string; pictos: string }[];
+      .all(wf.id) as { id: number; position: number; title: string; body: string; pictos: string; canvas: string }[];
     if (steps.length === 0) {
       res.status(422).json({ error: "validation", message: "impossible de publier sans étape" });
       return;
@@ -39,7 +40,8 @@ export function publishRouter(db: Database.Database): Router {
         title: s.title,
         body: s.body,
         pictos: JSON.parse(s.pictos),
-        photos: db.prepare("SELECT id, filename, alt FROM photos WHERE step_id = ?").all(s.id),
+        canvas: JSON.parse(s.canvas ?? "[]"),
+        photos: db.prepare("SELECT id, filename, alt, display_size, display_align, display_x, display_y, display_w FROM photos WHERE step_id = ?").all(s.id),
       })) as SnapshotStep[],
     };
     const number = wf.current_version + 1;
