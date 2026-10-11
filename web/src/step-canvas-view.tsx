@@ -2,10 +2,42 @@ import { useEffect, useRef, useState } from "react";
 import { parseShapes, type Shape } from "./annotated-photo";
 import type { Photo } from "./api";
 
+// U-B1 (RF-31) : lightbox plein écran — clic/tap sur une photo du canevas de
+// lecture ouvre l'image en plein écran ; clic/tap à nouveau (ou Échap) ferme ;
+// molette / pinch du navigateur zoome nativement l'image pleine taille.
+function Lightbox({ photo, onClose }: { photo: Photo; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div
+      role="dialog"
+      aria-label={`Photo plein écran : ${photo.alt || "photo de l'étape"}`}
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", cursor: "zoom-out", touchAction: "pinch-zoom" }}
+    >
+      <img
+        src={`/photos/${photo.filename}`}
+        alt={photo.alt || ""}
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: "6px" }}
+      />
+      <button
+        onClick={onClose}
+        aria-label="Fermer la photo plein écran"
+        style={{ position: "absolute", top: "0.8rem", right: "0.9rem", width: "2.6rem", height: "2.6rem", borderRadius: "50%", border: "1px solid rgba(255,255,255,0.5)", background: "rgba(0,0,0,0.5)", color: "white", fontSize: "1.2rem", cursor: "pointer" }}
+      >✕</button>
+    </div>
+  );
+}
+
 // Vue lecture du canevas d'étape : images positionnées librement (côte à
 // côte possibles) + formes dessinées par-dessus, en lecture seule.
 export default function StepCanvasView({ photos, shapes }: { photos: Photo[]; shapes: Shape[] }) {
   const [H, setH] = useState(240);
+  const [zoomed, setZoomed] = useState<Photo | null>(null);
   const [ratios, setRatios] = useState<Record<number, number>>({});
   const ref = useRef<HTMLDivElement>(null);
   const sh = parseShapes(shapes);
@@ -52,7 +84,9 @@ export default function StepCanvasView({ photos, shapes }: { photos: Photo[]; sh
         const y = typeof ph.display_y === "number" ? ph.display_y : 0.05;
         return (
           <img key={ph.id} src={`/photos/${ph.filename}`} alt={ph.alt || ""} draggable={false}
-            style={{ position: "absolute", left: `${x * 100}%`, top: `${y * 240}px`, width: `${w * 100}%`, borderRadius: "8px", display: "block" }} />
+            onClick={() => setZoomed(ph)}
+            title="Agrandir la photo"
+            style={{ position: "absolute", left: `${x * 100}%`, top: `${y * 240}px`, width: `${w * 100}%`, borderRadius: "8px", display: "block", cursor: "zoom-in" }} />
         );
       })}
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none"
@@ -76,6 +110,7 @@ export default function StepCanvasView({ photos, shapes }: { photos: Photo[]; sh
           return null;
         })}
       </svg>
+      {zoomed && <Lightbox photo={zoomed} onClose={() => setZoomed(null)} />}
       {sh.map((s, i) => s.type === "text" && s.text ? (
         <span key={`t${i}`} style={{
           position: "absolute", left: `${s.x1 * 100}%`, top: `${s.y1 * 240}px`, transform: "translate(-50%, -50%)",
