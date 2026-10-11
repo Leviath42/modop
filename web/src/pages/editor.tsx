@@ -1,7 +1,6 @@
 import StepCanvas, { TOOLS, COLORS } from "../step-canvas";
 import type { Shape } from "../annotated-photo";
 import { PhotoIcon, ArrowIcon, RectIcon, TextIcon, PlusIcon, PublishIcon, CollapseIcon, ExpandIcon } from "../icons";
-import PhotoAnnotator from "../photo-annotator";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError, type Step, type WorkflowDetail } from "../api";

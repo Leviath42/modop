@@ -212,3 +212,26 @@ test("anti-CSRF : X-Forwarded-Host honored derrière un reverse proxy/tunnel", a
   });
   assert.equal(csrf.status, 403);
 });
+
+// D-A3 : endpoint journal d'audit — admin OK, non-admin refusé
+test("GET /api/admin/audit : admin 200, auteur 403 (D-A3)", async () => {
+  db.prepare("INSERT OR IGNORE INTO users (email, password_hash, role) VALUES (?, ?, 'admin')").run(
+    "auditor@modop.local",
+    bcrypt.hashSync("motdepasse1", 4)
+  );
+  const adminLogin = await call("POST", "/api/auth/login", { email: "auditor@modop.local", password: "motdepasse1" });
+  assert.equal(adminLogin.status, 200);
+  const ok = await call("GET", "/api/admin/audit", undefined, adminLogin.cookie!);
+  assert.equal(ok.status, 200);
+  assert.ok(Array.isArray(ok.json));
+  // auteur dédié : le rôle de user@modop.local a pu être modifié par d'autres tests
+  db.prepare("INSERT OR IGNORE INTO users (email, password_hash, role) VALUES (?, ?, 'author')").run(
+    "plainauthor@modop.local",
+    bcrypt.hashSync("motdepasse1", 4)
+  );
+  const authorLogin = await call("POST", "/api/auth/login", { email: "plainauthor@modop.local", password: "motdepasse1" });
+  assert.equal(authorLogin.status, 200);
+  const forbidden = await call("GET", "/api/admin/audit", undefined, authorLogin.cookie!);
+  assert.equal(forbidden.status, 403);
+  db.prepare("DELETE FROM users WHERE email IN ('auditor@modop.local', 'plainauthor@modop.local')").run();
+});

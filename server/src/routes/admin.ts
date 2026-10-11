@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 import type Database from "better-sqlite3";
 import { requireAuth } from "../auth/middleware.js";
-import { auditLog } from "../auth/audit.js";
+import { auditLog, listAudit } from "../auth/audit.js";
 
 export interface UserRow {
   id: number;
@@ -102,6 +102,10 @@ export function adminRouter(db: Database.Database): Router {
     res.json(updated);
   });
 
+  // D-A3 : journal d'audit complet, admin uniquement (200 dernières lignes).
+  r.get("/audit", (_req, res) => {
+    res.json(listAudit(db, 200));
+  });
   r.post("/users/:id/reset-password", (req, res) => {
     const target = db
       .prepare("SELECT id, email, auth_provider FROM users WHERE id = ?")
