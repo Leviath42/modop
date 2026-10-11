@@ -50,6 +50,7 @@ export default function EditorPage() {
   const [insertTool, setInsertTool] = useState<Shape["type"] | null>(null);
   const [insertColor, setInsertColor] = useState(COLORS[0]);
   const [activeStepId, setActiveStepId] = useState<number | null>(null);
+  const [showTools, setShowTools] = useState(false);
   const fileRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const isNew = id === "new";
@@ -222,92 +223,91 @@ export default function EditorPage() {
 
         {!isNew && (
           <section style={{ display: "grid", gap: "0.6rem" }}>
-            <div style={{ position: "sticky", top: 0, zIndex: 30, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", padding: "0.5rem 0.8rem", display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", minWidth: 0 }}>
-              <h2 style={{ margin: 0, fontSize: "1rem", marginRight: "auto", minWidth: "6rem", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Étapes — {title || "sans titre"}</h2>
-              {!isNew && (
-                <>
-                  <button onClick={addStep} style={secondaryBtn}>+ Étape</button>
-                  {steps.length > 0 && (
-                    <button onClick={publish} style={primaryBtn}>
-                      {wf?.state === "published" ? `Publier V${(wf.current_version ?? 0) + 1}` : "Publier V1"}
-                    </button>
-                  )}
-                </>
+            <div style={{ position: "sticky", top: 0, zIndex: 30, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", padding: "0.4rem 0.6rem", display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", minWidth: 0 }}>
+              <h2 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 600, marginRight: "auto", flex: "1 1 8rem", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
+                {(() => { const st = steps.find((x) => x.id === (activeStepId ?? steps[0]?.id)); return st ? st.title : (title || "sans titre"); })()}
+              </h2>
+              <button onClick={addStep} style={secondaryBtn} title="Ajouter une étape">+</button>
+              {steps.length > 0 && (
+                <button onClick={publish} style={primaryBtn}>{wf?.state === "published" ? `Publier V${(wf.current_version ?? 0) + 1}` : "Publier"}</button>
+              )}
+              <button
+                onClick={() => {
+                  if (openSteps.size === steps.length && steps.length > 0) setOpenSteps(new Set());
+                  else setOpenSteps(new Set(steps.map((st) => st.id)));
+                }}
+                style={secondaryBtn}
+                title={openSteps.size === steps.length && steps.length > 0 ? "Tout replier" : "Tout ouvrir"}
+              >{openSteps.size === steps.length && steps.length > 0 ? "▾" : "▸"}</button>
+              {steps.length > 0 && (
+                <button
+                  onClick={() => setShowTools((v) => !v)}
+                  style={{ ...secondaryBtn, background: showTools || insertTool ? "var(--accent-bg)" : "var(--surface)", borderColor: showTools || insertTool ? "var(--accent)" : "var(--border)" }}
+                  aria-expanded={showTools}
+                  title="Insertion d'images, formes, textes, pictogrammes sur l'étape affichée"
+                >+</button>
               )}
               {steps.length > 1 && (
-                <>
-                  <button onClick={() => setOpenSteps(new Set(steps.map((st) => st.id)))} style={secondaryBtn}>Tout ouvrir</button>
-                  <button onClick={() => setOpenSteps(new Set())} style={secondaryBtn}>Tout replier</button>
-                  <select
-                    value=""
-                    onChange={(e) => {
-                      const stepId = Number(e.target.value);
-                      // On ouvre d'abord l'étape (son contenu change la hauteur
-                      // de page), puis on ne déclenche le défilement qu'une fois
-                      // la mise en page stabilisée : sinon la cible glisse sous
-                      // le pli pendant le scroll et apparaît en bas (issue #3).
-                      setOpenSteps((prev) => new Set([...prev, stepId]));
-                      setTimeout(() => {
-                        document.getElementById(`edit-step-${stepId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-                      }, 80);
+                <select value="" onChange={(e) => {
+                  const stepId = Number(e.target.value);
+                  setOpenSteps((prev) => new Set([...prev, stepId]));
+                  setActiveStepId(stepId);
+                  setTimeout(() => { document.getElementById(`edit-step-${stepId}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 80);
+                }} aria-label="Aller à une étape" style={{ padding: "0.3rem", borderRadius: "6px", border: "1px solid var(--border)", maxWidth: "100%", minWidth: 0, fontSize: "0.8rem" }}
+                >
+                  <option value="">…</option>
+                  {steps.map((st, si) => <option key={st.id} value={st.id}>{si + 1}. {st.title}</option>)}
+                </select>
+              )}
+              {showTools && steps.length > 0 && (
+                <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap", alignItems: "center", flexBasis: "100%", minWidth: 0 }}>
+                  <button
+                    onClick={() => {
+                      const target = activeStepId ?? steps[0].id;
+                      if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); }
+                      fileRefs.current[target]?.click();
                     }}
-                    aria-label="Aller à une étape"
-                    style={{ padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border)", maxWidth: "100%", minWidth: 0 }}
-                  >
-                    <option value="">Aller à…</option>
-                    {steps.map((st, si) => <option key={st.id} value={st.id}>{si + 1}. {st.title}</option>)}
-                  </select>
-                </>
+                    style={toolBtn}
+                    aria-label="Ajouter des photos à l'étape affichée"
+                    title="Photos"
+                  >📷</button>
+                  {TOOLS.map((t) => (
+                    <button
+                      key={t.kind}
+                      onClick={() => { setInsertTool(insertTool === t.kind ? null : t.kind); const target = activeStepId ?? steps[0].id; if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); } }}
+                      style={{ ...toolBtn, background: insertTool === t.kind ? "var(--accent-bg)" : "var(--surface)", borderColor: insertTool === t.kind ? "var(--accent)" : "var(--border)" }}
+                      aria-pressed={insertTool === t.kind}
+                      title={t.label}
+                    >{t.kind === "arrow" ? "➶" : t.kind === "rect" ? "▭" : "T"}</button>
+                  ))}
+                  {insertTool && insertTool !== "text" && COLORS.map((c) => (
+                    <button key={c} onClick={() => setInsertColor(c)} aria-label={`Couleur ${c}`}
+                      style={{ width: "18px", height: "18px", borderRadius: "50%", background: c, border: insertColor === c ? "2px solid var(--text)" : "1px solid var(--border)", padding: 0, cursor: "pointer", boxSizing: "border-box" }} />
+                  ))}
+                  <span style={{ width: "1px", height: "18px", background: "var(--border)" }} aria-hidden="true" />
+                  {PICTO_PRESETS.map((preset) => {
+                    const st = steps.find((x) => x.id === (activeStepId ?? steps[0].id));
+                    const on = st ? st.pictos.some((x) => x.kind === preset.kind) : false;
+                    return (
+                      <button
+                        key={preset.kind}
+                        onClick={() => {
+                          const target = activeStepId ?? steps[0].id;
+                          const stp = steps.find((x) => x.id === target);
+                          if (!stp) return;
+                          if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); }
+                          const idx = stp.pictos.findIndex((x) => x.kind === preset.kind);
+                          void patchStep(stp, { pictos: idx >= 0 ? stp.pictos.filter((_, k) => k !== idx) : [...stp.pictos, { kind: preset.kind, label: preset.label, color: preset.color }] });
+                        }}
+                        style={{ ...toolBtn, fontSize: "0.72rem", padding: "0.2rem 0.45rem", borderColor: on ? preset.color : "var(--border)", background: on ? `${preset.color}22` : "var(--surface)" }}
+                        aria-pressed={on}
+                        title={preset.label}
+                      >{preset.label}</button>
+                    );
+                  })}
+                </div>
               )}
             </div>
-            {steps.length > 0 && (
-              <div style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.35rem" }}>
-                <button
-                  onClick={() => {
-                    const target = activeStepId ?? steps[0].id;
-                    if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); }
-                    fileRefs.current[target]?.click();
-                  }}
-                  style={toolBtn}
-                  aria-label="Ajouter des photos à l'étape ouverte"
-                  title="Photos de l'étape ouverte"
-                >📷</button>
-                {TOOLS.map((t) => (
-                  <button
-                    key={t.kind}
-                    onClick={() => { setInsertTool(insertTool === t.kind ? null : t.kind); const target = activeStepId ?? steps[0].id; if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); } }}
-                    style={{ ...toolBtn, background: insertTool === t.kind ? "var(--accent-bg)" : "var(--surface)", borderColor: insertTool === t.kind ? "var(--accent)" : "var(--border)" }}
-                    aria-pressed={insertTool === t.kind}
-                    title={`${t.label} sur l'étape ouverte`}
-                  >{t.kind === "arrow" ? "➶" : t.kind === "rect" ? "▭" : "T"}</button>
-                ))}
-                {insertTool && insertTool !== "text" && COLORS.map((c) => (
-                  <button key={c} onClick={() => setInsertColor(c)} aria-label={`Couleur ${c}`}
-                    style={{ width: "18px", height: "18px", borderRadius: "50%", background: c, border: insertColor === c ? "2px solid var(--text)" : "1px solid var(--border)", padding: 0, cursor: "pointer", boxSizing: "border-box" }} />
-                ))}
-                <span style={{ width: "1px", height: "18px", background: "var(--border)" }} aria-hidden="true" />
-                {PICTO_PRESETS.map((preset) => {
-                  const st = steps.find((x) => x.id === (activeStepId ?? steps[0].id));
-                  const on = st ? st.pictos.some((x) => x.kind === preset.kind) : false;
-                  return (
-                    <button
-                      key={preset.kind}
-                      onClick={() => {
-                        const target = activeStepId ?? steps[0].id;
-                        const stp = steps.find((x) => x.id === target);
-                        if (!stp) return;
-                        if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); }
-                        const idx = stp.pictos.findIndex((x) => x.kind === preset.kind);
-                        void patchStep(stp, { pictos: idx >= 0 ? stp.pictos.filter((_, k) => k !== idx) : [...stp.pictos, { kind: preset.kind, label: preset.label, color: preset.color }] });
-                      }}
-                      style={{ ...toolBtn, fontSize: "0.75rem", borderColor: on ? preset.color : "var(--border)", background: on ? `${preset.color}22` : "var(--surface)" }}
-                      aria-pressed={on}
-                      title={`${preset.label} sur l'étape ouverte`}
-                    >{preset.label}</button>
-                  );
-                })}
-              </div>
-            )}
             {steps.length === 0 && <p style={{ color: "var(--text-muted)" }}>Aucune étape. Ajoutez la première.</p>}
             <ol style={{ listStyle: "none", padding: 0, display: "grid", gap: "0.6rem" }}>
               {steps.map((step, i) => (

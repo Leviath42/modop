@@ -51,8 +51,8 @@ await new Promise((r) => setTimeout(r, 300));
 const html = dom.window.document.getElementById("root")!.innerHTML;
 
 if (!html.includes("position: sticky")) throw new Error("bandeau non sticky");
-if (!html.includes("Tout ouvrir")) throw new Error("Tout ouvrir absent");
-if (!html.includes("Tout replier")) throw new Error("Tout replier absent");
+if (!/(▾|▸)/.test(html)) throw new Error("bouton réduire/développer absent");
+if (!/Tout (ouvrir|replier)/.test(html)) throw new Error("title réduire/développer absent");
 if (!html.includes("Aller à")) throw new Error("Aller à absent");
 if (!html.includes("Remontage pompe")) throw new Error("titre du document absent du bandeau");
 console.log("BANDEAU ÉDITEUR STICKY OK (titre, tout ouvrir/replier, aller à)");

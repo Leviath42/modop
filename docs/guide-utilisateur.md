@@ -61,9 +61,9 @@ Boutons préréglés (Attention, Danger, EPI, Risque électrique, Point chaud, O
    - couleurs : 4 pastilles.
 5. Supprimer une photo : 🗑.
 
-#### Outils d'insertion (bandeau du haut)
+#### Header d'édition (suit le défilement)
 
-Dans le bandeau « Étapes », une seconde ligne d'outils : **📷** (photos de l'étape ouverte), **➶** flèche, **▭** zone, **T** texte, et les pastilles de couleur. Ils agissent sur l'**étape active** — celle ouverte en dernier (une étape s'ouvre en cliquant son titre). Après chaque pose de forme, l'outil se désactive (retour au mode sélection/déplacement).
+Le header affiche le **nom de l'étape active**, **Publier**, **▸/▾** (tout réduire/développer) et **+** (palette d'insertion). La palette s'ouvre en appuyant sur **+** : **📷** photos, **➶** flèche, **▭** zone, **T** texte, pastilles de couleur et pictos (Attention, Danger, EPI…). Tout s'applique à l'étape dont le nom est affiché (ouvrir une étape en cliquant son titre la rend active). Après chaque pose de forme, l'outil se désactive.
 
 #### Canevas d'étape (photos + formes)
 
