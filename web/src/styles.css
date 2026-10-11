@@ -132,3 +132,6 @@ li { list-style: none; }
    explicitement stylés ; ce réglage borne les h1 "nus". */
 h1 { font-size: 1.05rem; margin: 0.4rem 0 0.6rem; }
 h2 { font-size: 0.95rem; }
+
+/* C-19 : navigations internes (liens d'étapes, retours en haut) fluides. */
+html { scroll-behavior: smooth; }

@@ -278,11 +278,16 @@ export default function StepCanvas({
   function onPointerDown(e: React.PointerEvent) {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     if (tool) return;            // les outils agissent au clic (le click part aussi au tactile)
-    e.preventDefault();
-    try { canvasRef.current?.setPointerCapture(e.pointerId); } catch { /* pointeur parti */ }
     const p = pt(e);
     const ph = photoHit(p);
     const sh = ph < 0 ? shapeHit(p) : -1;
+    // C-19 : au DOIGT sur le fond (aucun objet, aucun outil), on ne capture
+    // pas — le navigateur gère le scroll de page (touch-action: pan-y).
+    // La sélection-rectangle reste un geste SOURIS ; au tactile on tape
+    // directement les objets pour les sélectionner.
+    if (e.pointerType !== "mouse" && ph < 0 && sh < 0) return;
+    e.preventDefault();
+    try { canvasRef.current?.setPointerCapture(e.pointerId); } catch { /* pointeur parti */ }
     if (ph >= 0) {
       let ids: number[];
       if (e.shiftKey) {
@@ -379,7 +384,7 @@ export default function StepCanvas({
         ref={canvasRef}
         onPointerDown={onPointerDown}
         onPointerUp={onToolPointerUp}
-        style={{ position: "relative", width: "100%", height: `${H}px`, background: "var(--surface-2, #f0f1f4)", borderRadius: "8px", overflow: "hidden", touchAction: "none", cursor: tool ? "crosshair" : "default" }}
+        style={{ position: "relative", width: "100%", height: `${H}px`, background: "var(--surface-2, #f0f1f4)", borderRadius: "8px", overflow: "hidden", touchAction: tool ? "none" : "pan-y", cursor: tool ? "crosshair" : "default" }}
       >
         {/* images */}
         {objs.map((o, i) => (

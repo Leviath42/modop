@@ -270,3 +270,18 @@ Sur écran étroit, le wrap reste possible mais chaque élément est compact —
 **Fichiers** : `web/src/pages/list.tsx`, `web/src/api.ts`, `web/src/lib/browse-smoke.test.ts`
 
 **État** : ✅ livré sur beta — tsc + build + tous tests front + 101/101 serveur.
+
+## C-19 — Scroll fluide en édition : le canevas ne piège plus le doigt (réalisé)
+
+**Problème** : en mode édition, le scroll était haché/impossible sur mobile — chaque canevas d'étape portait `touch-action: none` sur **toute sa surface** : poser le doigt n'importe où (même sur le fond vide) avale le geste. Plusieurs étapes ouvertes = une suite de zones mortes au scroll.
+
+**Correctif — le geste n'est capturé que là où c'est nécessaire** :
+- **Fond du canevas** (sans outil actif) : `touch-action: pan-y` — un doigt sur le fond **scrolle la page nativement** (inertie du navigateur conservée) ; le `onPointerDown` tactile retourne immédiatement si aucun objet n'est touché.
+- **Objets** (photos, formes, poignée de redimensionnement) : `touch-action: none` conservé — déplacement et redimensionnement au doigt inchangés.
+- **Outil actif** (flèche/zone/texte) : canevas en `none` complet — le dessin prime sur le scroll.
+- La **sélection au rectangle** devient un geste souris ; au tactile on sélectionne en tapant l'objet (comportement déjà présent).
+- `scroll-behavior: smooth` global : navigations d'étapes (sélecteur « … », liens) fluides.
+
+**Fichiers** : `web/src/step-canvas.tsx`, `web/src/styles.css`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.
