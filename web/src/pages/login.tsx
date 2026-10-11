@@ -21,11 +21,18 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [ssoEnabled, setSsoEnabled] = useState(false);
   const [theme, setTheme] = useState<Theme>(() =>
     (document.documentElement.dataset.theme as Theme) || getStoredTheme()
   );
   useEffect(() => watchTheme(setTheme), []);
 
+  useEffect(() => {
+    fetch("/api/auth/oidc/status")
+      .then((r) => (r.ok ? r.json() : { enabled: false }))
+      .then((j: { enabled?: boolean }) => setSsoEnabled(Boolean(j.enabled)))
+      .catch(() => setSsoEnabled(false));
+  }, []);
   if (user) return <Navigate to="/" replace />;
 
   async function submit(e: FormEvent) {
@@ -96,6 +103,14 @@ export default function LoginPage() {
         <button type="submit" disabled={busy} style={buttonStyle}>
           {busy ? "Connexion…" : "Se connecter"}
         </button>
+        {ssoEnabled && (
+          <>
+            <p style={{ margin: 0, textAlign: "center", color: "var(--text-muted)", fontSize: "0.85rem" }}>ou</p>
+            <a href="/api/auth/oidc/login" style={{ ...buttonStyle, display: "block", textAlign: "center", textDecoration: "none", boxSizing: "border-box" }}>
+              Se connecter avec le SSO
+            </a>
+          </>
+        )}
       </form>
     </main>
   );
