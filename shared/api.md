@@ -34,3 +34,12 @@ Auth par cookie de session (httpOnly). Codes : 401 non connecté, 403 rôle insu
 
 ## Navigation web (squelette figé)
 - `/login`, `/` (liste), `/workflow/new`, `/workflow/:id/edit`, `/workflow/:id/read`, `/admin/users`
+
+## Contrat v3 (vague 5) — routes ajoutées
+- `POST /api/workflows/:id/duplicate` → Workflow copié en brouillon (author+)
+- `GET  /api/workflows?sort=title|updated_at|reference|family` → tri (défaut updated_at DESC)
+- `GET  /api/workflows?search=` → étendu au texte des étapes (LIKE sur steps.title/body)
+- `POST /api/workflows/:id/versions/:number/restore` → recrée les étapes depuis le snapshot (author+)
+- `GET  /api/admin/stats` → { workflows, published, users, topViewed[], recentActivity[] } (admin)
+- `POST /api/photos/:id/annotations` { annotations: Shape[] } → persiste l'overlay (author+)
+- Colonne `photos.annotations` (JSON, défaut '[]') : shapes {type: arrow|rect|text, ...}
