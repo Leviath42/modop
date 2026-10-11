@@ -11,7 +11,7 @@ export default function AdminPage() {
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState<AdminUser["role"]>("reader");
-  const [confirmDelete, setConfirmDelete] = useState<AdminUser | null>(null);
+
   const [tempPassword, setTempPassword] = useState<{ email: string; password: string } | null>(null);
 
   const isAdmin = user?.role === "admin";
@@ -134,7 +134,6 @@ export default function AdminPage() {
           ))}
         </section>
 
-        {confirmDelete && <p>{confirmDelete.email}</p>}
       </main>
     </>
   );
