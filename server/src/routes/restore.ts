@@ -7,6 +7,11 @@ interface SnapshotPhoto {
   filename: string;
   alt: string;
   annotations?: unknown[];
+  display_size?: string;
+  display_align?: string;
+  display_x?: number | null;
+  display_y?: number | null;
+  display_w?: number | null;
 }
 
 interface SnapshotStep {
@@ -16,6 +21,7 @@ interface SnapshotStep {
   body: string;
   pictos: unknown[];
   photos: SnapshotPhoto[];
+  canvas?: unknown[];
 }
 
 export function restoreRouter(db: Database.Database): Router {
@@ -48,14 +54,19 @@ export function restoreRouter(db: Database.Database): Router {
       db.prepare("DELETE FROM steps WHERE workflow_id = ?").run(wf.id);
       for (const step of snap.steps) {
         const info = db
-          .prepare("INSERT INTO steps (workflow_id, position, title, body, pictos) VALUES (?, ?, ?, ?, ?)")
-          .run(wf.id, step.position, step.title, step.body, JSON.stringify(step.pictos ?? []));
+          .prepare("INSERT INTO steps (workflow_id, position, title, body, pictos, canvas) VALUES (?, ?, ?, ?, ?, ?)")
+          .run(wf.id, step.position, step.title, step.body, JSON.stringify(step.pictos ?? []), JSON.stringify(step.canvas ?? []));
         for (const ph of step.photos ?? []) {
-          db.prepare("INSERT INTO photos (step_id, filename, alt, annotations) VALUES (?, ?, ?, ?)").run(
+          db.prepare("INSERT INTO photos (step_id, filename, alt, annotations, display_size, display_align, display_x, display_y, display_w) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").run(
             info.lastInsertRowid,
             ph.filename,
             ph.alt,
-            JSON.stringify(ph.annotations ?? [])
+            JSON.stringify(ph.annotations ?? []),
+            ph.display_size ?? "medium",
+            ph.display_align ?? "center",
+            ph.display_x ?? null,
+            ph.display_y ?? null,
+            ph.display_w ?? null
           );
         }
       }

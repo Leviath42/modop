@@ -18,12 +18,18 @@ interface StepRow {
   title: string;
   body: string;
   pictos: string;
+  canvas: string;
 }
 
 interface PhotoRow {
   filename: string;
   alt: string;
   annotations: string;
+  display_size: string;
+  display_align: string;
+  display_x: number | null;
+  display_y: number | null;
+  display_w: number | null;
 }
 
 export function duplicateRouter(db: Database.Database): Router {
@@ -58,8 +64,8 @@ export function duplicateRouter(db: Database.Database): Router {
         .all(wf.id) as StepRow[];
       for (const step of steps) {
         const stepInfo = db
-          .prepare("INSERT INTO steps (workflow_id, position, title, body, pictos) VALUES (?, ?, ?, ?, ?)")
-          .run(newId, step.position, step.title, step.body, step.pictos);
+          .prepare("INSERT INTO steps (workflow_id, position, title, body, pictos, canvas) VALUES (?, ?, ?, ?, ?, ?)")
+          .run(newId, step.position, step.title, step.body, step.pictos, step.canvas ?? "[]");
         const photos = db
           .prepare("SELECT * FROM photos WHERE step_id = ?")
           .all(step.id) as PhotoRow[];
@@ -72,8 +78,8 @@ export function duplicateRouter(db: Database.Database): Router {
             filename = `${crypto.randomBytes(16).toString("hex")}${path.extname(ph.filename)}`;
             fs.copyFileSync(src, path.join(dir, filename));
           }
-          db.prepare("INSERT INTO photos (step_id, filename, alt, annotations) VALUES (?, ?, ?, ?)").run(
-            stepInfo.lastInsertRowid, filename, ph.alt, ph.annotations ?? "[]"
+          db.prepare("INSERT INTO photos (step_id, filename, alt, annotations, display_size, display_align, display_x, display_y, display_w) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").run(
+            stepInfo.lastInsertRowid, filename, ph.alt, ph.annotations ?? "[]", ph.display_size ?? "medium", ph.display_align ?? "center", ph.display_x ?? null, ph.display_y ?? null, ph.display_w ?? null
           );
         }
       }
