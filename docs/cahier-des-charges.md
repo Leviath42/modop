@@ -2,7 +2,7 @@
 
 **Projet :** Application web de création et consultation de modes opératoires, auto-hébergée.
 
-**Statut :** **v1.3** — vagues 0→5 livrées sur `beta` ; ajoute le layout des photos, les annotations cliquables et le guide utilisateur. Historique : v1.2 (gestion comptes, pictos enrichis, familles), v1.1 (durcissement sécurité), v1.0 (MVP).
+**Statut :** **v1.4** — vagues 0→6 livrées sur `beta` ; intègre la revue de benchmark (voir [docs/revue-cahier-des-charges.md](revue-cahier-des-charges.md)) : socle GED (RF-70 à RF-77), lecture guidée terrain, QR d'accès. Historique : v1.3 (layout photos, annotations, guide utilisateur), v1.2 (gestion comptes, pictos enrichis, familles), v1.1 (durcissement sécurité), v1.0 (MVP).
 
 ## 1. Présentation du projet
 
@@ -51,7 +51,15 @@ Un mode opératoire se compose de :
 - **RF-68 — Import multiple d'images** : le sélecteur de fichiers accepte **plusieurs images à la fois** (téléversées séquentiellement avec la compression existante). Implémenté.
 - **RF-65 — Gestion des versions enrichie** : en plus du numéro/auteur/date, chaque publication porte une **description des modifications apportées** (saisie à la publication, visible dans l'historique).
 - **RF-66 — Documents parents** : un mode opératoire peut être rattaché à un **document parent** (ex. notice machine > modes opératoires associés) ; navigation parent/enfants dans les deux sens.
-- **RF-67 — Gestion de statut** : statut éditorial paramétrable sur le document (ex. *brouillon / en relecture / validé / obsolète*), distinct de l'état de publication ; filtrage et badge visible en liste et lecture. À spécifier (valeurs, transitions, permissions).
+- **RF-67 — Gestion de statut** : statut éditorial paramétrable sur le document — valeurs normalisées *brouillon / en relecture / validé / à revoir / obsolète* ; transitions contrôlées par rôle (auteur : brouillon→relecture ; validateur : relecture→validé ; passage automatique à « à revoir » à l'échéance de revue). Filtrage et badge en liste/lecture.
+- **RF-70 — Gabarit qualité étape** (revue v1.4) : aide contextuelle dans l'éditeur — conseil « une action par étape », limite indicative de longueur de description, rappel photo — informative, jamais bloquante.
+- **RF-71 — QR code d'accès** (revue v1.4) : chaque mode opératoire publié expose une vignette imprimable (PDF : titre, référence, QR pointant vers la page de lecture) pour affichage au poste ; consignes d'impression (taille min., zone de silence).
+- **RF-72 — Mode lecture guidée** (revue v1.4) : sur mobile, option de lecture « une étape par écran » avec boutons Suivant/Précédent en zone pouce et indicateur de progression (étape n/N).
+- **RF-73 — Retour terrain** (revue v1.4) : bouton « Signaler un problème sur cette étape » en lecture → entrée d'audit + notification à l'auteur ; les signalements sont consultables par l'auteur et l'admin.
+- **RF-74 — Date de revue périodique** (revue v1.4) : champ « à revoir le » par document ; alerte visuelle en liste et lecture quand l'échéance est dépassée ; filtre « à revoir ». Un document jamais relu devient silencieusement faux — c'est le cœur du socle GED.
+- **RF-75 — Responsable éditorial** (revue v1.4) : champ propriétaire du document, distinct de l'auteur d'une version ; affiché dans l'historique.
+- **RF-76 — Obsolescence tracée** (revue v1.4) : un mode opératoire remplacé pointe vers son successeur (badge + lien) ; jamais de suppression silencieuse tant que la politique de conservation ne l'archive pas.
+- **RF-77 — Statistiques de consultation** (revue v1.4) : vues et exports par mode opératoire exposés à l'auteur (l'API `/api/stats` existe en partie) — aide à prioriser les mises à jour.
 
 ### 1.4 Hors périmètre (V1)
 
@@ -118,7 +126,7 @@ L'application est destinée à une **équipe interne** : pas d'inscription libre
 | RNF-2 | **PWA** : installable sur mobile et PC (manifest + service worker). |
 | RNF-3 | **Performance** : chargement initial < 3 s, photos optimisées (WebP, compression). |
 | RNF-4 | **Sécurité** : mots de passe hachés (bcrypt/argon2), HTTPS obligatoire, contrôles d'accès côté serveur. |
-| RNF-5 | **Accessibilité** : bonnes pratiques WCAG de base (contrastes, navigation clavier, textes alternatifs des photos). |
+| RNF-5 | **Accessibilité** : bonnes pratiques WCAG de base (contrastes, navigation clavier, textes alternatifs des photos) + **mode atelier** (v1.4) : contraste renforcé, cibles tactiles ≥ 48 px, lecture debout/gants. |
 | RNF-6 | **Sauvegarde** : sauvegardes quotidiennes de la base et des fichiers. |
 | RNF-7 | **Langue** : interface en français. |
 | RNF-8 | **Scalabilité** : conçu pour une équipe type de 10 à 200 utilisateurs. |
@@ -149,6 +157,8 @@ Application classique en trois tiers, dans un monorepo :
 | **Lot 2** | Annotations photos + pictogrammes, consultation hors ligne (PWA), prévisualisation temps réel |
 | **Lot 3** | Historique de versions consultable, exports versionnés, ergonomie avancée (glisser-déposer, catégories personnalisées) |
 | **Lot 4 (options)** | Statistiques d'usage, workflow de validation, API publique |
+| **Lot 5 — socle GED** (v1.4) | RF-70 (gabarit qualité), RF-74 (revue périodique), RF-75 (responsable), RF-76 (obsolescence), RF-77 (stats de consultation) — le cycle de vie documentaire **avant** l'arborescence RF-62 |
+| **Lot 6 — terrain** (v1.4) | RF-71 (QR d'accès), RF-72 (lecture guidée mobile), RF-73 (retour terrain), RNF-5 mode atelier |
 
 ## 8. Critères d'acceptation (lot 1)
 

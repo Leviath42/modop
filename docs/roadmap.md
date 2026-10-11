@@ -129,6 +129,8 @@ La série de petits correctifs UI/UX suivie après la vague 6 est journalisée d
 
 ## 🚧 Vague 8 — Gestion documentaire avancée (proposition, à spécifier)
 
+> **Revue v1.4** : le cahier des charges intègre désormais un **socle GED** (RF-70 à RF-77, voir [docs/revue-cahier-des-charges.md](revue-cahier-des-charges.md)) issu du benchmark des plateformes du segment (Dozuki, Poka, SwipeGuide/L2L…) et des standards ISO 15489/23081. Séquencement recommandé : **Lot 5 (socle GED : revue périodique, responsable, obsolescence, stats) AVANT l'arborescence** — on ne classe pas des documents sans cycle de vie — puis **Lot 6 (terrain : QR d'accès, lecture guidée mobile, retour terrain, mode atelier)**.
+
 Demandes du propriétaire à intégrer au cahier des charges :
 
 | # | Fonctionnalité | Pistes |
