@@ -3,10 +3,17 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#1f4e9c" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <title>Modop</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/app.tsx"></script>
+  <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js"));
+      }
+    </script>
   </body>
 </html>
