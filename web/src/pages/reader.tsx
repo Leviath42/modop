@@ -2,6 +2,7 @@ import StepCanvasView from "../step-canvas-view";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, ApiError, type WorkflowDetail } from "../api";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
 

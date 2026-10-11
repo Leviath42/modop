@@ -56,6 +56,49 @@ export function publishRouter(db: Database.Database): Router {
     res.json({ number });
   });
 
+  // F2 : consultation d'une version publiée précise, rendue depuis le
+  // snapshot immuable (même forme de réponse que GET /api/workflows/:id).
+  r.get("/:id/versions/:number", requireAuth("reader"), (req, res) => {
+    const wf = db.prepare("SELECT * FROM workflows WHERE id = ?").get(Number(req.params.id)) as
+      | { id: number; title: string; reference: string; description: string; category: string; family: string; state: string; current_version: number }
+      | undefined;
+    if (!wf) {
+      res.status(404).json({ error: "not_found", message: "mode opératoire introuvable" });
+      return;
+    }
+    const version = db
+      .prepare("SELECT snapshot, number FROM versions WHERE workflow_id = ? AND number = ?")
+      .get(wf.id, Number(req.params.number)) as { snapshot: string; number: number } | undefined;
+    if (!version) {
+      res.status(404).json({ error: "not_found", message: "version introuvable" });
+      return;
+    }
+    const snap = JSON.parse(version.snapshot) as {
+      workflow: { title: string; reference: string; description: string; category: string; family?: string };
+      steps: { id: number; position: number; title: string; body: string; pictos: unknown[]; canvas?: unknown[]; photos: unknown[] }[];
+    };
+    res.json({
+      id: wf.id,
+      title: snap.workflow.title,
+      reference: snap.workflow.reference,
+      description: snap.workflow.description,
+      category: snap.workflow.category,
+      family: snap.workflow.family ?? "",
+      state: "published",
+      current_version: version.number,
+      steps: snap.steps.map((s) => ({
+        id: s.id,
+        workflow_id: wf.id,
+        position: s.position,
+        title: s.title,
+        body: s.body,
+        pictos: s.pictos,
+        canvas: s.canvas ?? [],
+        photos: s.photos ?? [],
+      })),
+    });
+  });
+
   r.get("/:id/versions", requireAuth("reader"), (req, res) => {
     const wf = db.prepare("SELECT id FROM workflows WHERE id = ?").get(Number(req.params.id)) as { id: number } | undefined;
     if (!wf) {
