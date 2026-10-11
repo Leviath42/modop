@@ -47,10 +47,23 @@ systemctl restart cloudflared
 
 **État** : ✅ livré sur beta — 92/92 tests runtime (dont le scénario tunnel), tsc + build verts.
 
-<!-- Prochains correctifs de la série (à cocher une fois réalisés) :
+## C-03 — Drag & drop des étapes ne fonctionne pas (réalisé)
 
-## C-03 — (titre à définir)
-<!--
+**Problème** : après C-01 (retrait des flèches ▲▼), le réordonnancement reposait uniquement sur le drag HTML5 (`draggable`) — qui **ne fonctionne pas au tactile** (limites connues des navigateurs mobiles ; point U1 de l'audit) et s'avérait fragile à la souris.
 
-## C-03 — (titre à définir)
+**Correctif** : la poignée ⠿ passe en **Pointer Events** (même approche que le canevas, commit f766785) :
+- `pointerdown` sur la poignée → listeners `pointermove`/`pointerup`/`pointercancel` attachés au `window` (survivent aux re-renders React) ;
+- badge flottant « Déplacer "…" » suivant le doigt/curseur pendant le drag ;
+- au relâchement, la carte sous le pointeur est identifiée (`elementFromPoint` → `id="edit-step-<n>"`) → `moveStep(from, to)` (même API qu'avant) ;
+- annulation propre sur `pointercancel` ; `touch-action: none` localisé sur la poignée (le scroll de la page reste libre ailleurs).
+
+**Test** : `web/src/lib/step-drag.test.ts` — simule pointerdown/move/up en jsdom (étape 1 relâchée sur la carte 2) et prouve le `PUT /steps/reorder` avec l'ordre `[202, 101]`, plus l'absence d'attribut `draggable` sur la poignée.
+
+**Fichiers** : `web/src/pages/editor.tsx`, `web/src/lib/step-drag.test.ts`
+
+**État** : ✅ livré sur beta (`40e273d`) — tsc + build + 14/14 tests front verts.
+
+<!-- Prochains correctifs de la série :
+
+## C-04 — (titre à définir)
 -->
