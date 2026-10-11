@@ -40,6 +40,8 @@ export default function StepCanvas({
   tool: toolProp,
   color: colorProp,
   onToolDone,
+  onSelectionChange,
+  deleteActionRef,
 }: {
   stepId: number;
   photos: CanvasPhoto[];
@@ -48,6 +50,8 @@ export default function StepCanvas({
   tool?: Shape["type"] | null;
   color?: string;
   onToolDone?: () => void;
+  onSelectionChange?: (count: number) => void;
+  deleteActionRef?: (fn: () => void) => void;
 }) {
   const [objs, setObjs] = useState<CanvasPhoto[]>(photos);
   const [shapes, setShapes] = useState<Shape[]>(parseShapes(canvasShapes));
@@ -60,6 +64,7 @@ export default function StepCanvas({
   const [textDraft, setTextDraft] = useState<{ x: number; y: number; value: string } | null>(null);
   const [selPhotos, setSelPhotos] = useState<Set<number>>(new Set());
   const [selShapes, setSelShapes] = useState<Set<number>>(new Set());
+  useEffect(() => { onSelectionChange?.(selPhotos.size + selShapes.size); }, [selPhotos, selShapes, onSelectionChange]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selRect, setSelRect] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
@@ -353,6 +358,7 @@ export default function StepCanvas({
     }
     setSelPhotos(new Set()); setSelShapes(new Set());
   };
+  useEffect(() => { deleteActionRef?.(deleteSelection); });
 
   const sw = (i: number) => (selShapes.has(i) ? 3 : 2);
 
@@ -363,11 +369,6 @@ export default function StepCanvas({
           {tool ? (tool === "text" ? "Touchez pour poser le texte" : pendingStart ? "Touchez l'arrivée" : "Touchez le départ")
             : "Glissez le fond : sélection · relâchez à droite pour supprimer"}
         </span>
-        {(selPhotos.size > 0 || selShapes.size > 0) && (
-          <button onClick={deleteSelection} style={{ fontSize: "0.78rem", color: "var(--error-text)" }}>
-            🗑 Supprimer ({selPhotos.size + selShapes.size})
-          </button>
-        )}
         {busy && <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>…</span>}
       </div>
 

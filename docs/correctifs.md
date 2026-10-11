@@ -112,7 +112,21 @@ systemctl restart cloudflared
 
 **État** : ✅ livré sur beta — tsc + build + tests front verts.
 
+## C-08 — « Supprimer les objets » déplacé dans la palette d'outils (réalisé)
+
+**Problème** : le bouton « 🗑 Supprimer (n) » des objets sélectionnés (photos/formes du canevas) apparaissait dans la barre d'aide du canevas, sous l'étape — éloigné des autres actions et perdu dans le contenu.
+
+**Correctif** :
+- Le bouton inline du canevas est retiré.
+- `StepCanvas` expose son état de sélection (`onSelectionChange`) et sa fonction de suppression (`deleteActionRef`) à la page.
+- Le bouton « 🗑 Objets ({n}) » apparaît dans la **palette d'outils** du bandeau (à côté de « Supprimer l'étape »), uniquement quand des objets sont sélectionnés sur l'étape active, ciblant son canevas.
+- La suppression reste aussi possible par glisser-déposer sur la corbeille verticale à droite du canevas (inchangée).
+
+**Fichiers** : `web/src/step-canvas.tsx`, `web/src/pages/editor.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + 14/14 tests front verts.
+
 <!-- Prochains correctifs de la série :
 
-## C-08 — (titre à définir)
+## C-09 — (titre à définir)
 -->

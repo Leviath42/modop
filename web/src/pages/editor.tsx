@@ -49,6 +49,8 @@ export default function EditorPage() {
   const dragGhostRef = useRef<HTMLDivElement | null>(null);
   const dragFromRef = useRef<number | null>(null);
   const [dragCursor, setDragCursor] = useState<{ x: number; y: number } | null>(null);
+  const [canvasSelection, setCanvasSelection] = useState(0);
+  const canvasDeleteRef = useRef<(() => void) | null>(null);
   const [openSteps, setOpenSteps] = useState<Set<number>>(new Set());
   const [showMeta, setShowMeta] = useState(false);
   const [insertTool, setInsertTool] = useState<Shape["type"] | null>(null);
@@ -314,6 +316,14 @@ export default function EditorPage() {
                     title="Supprimer l'étape affichée (confirmation demandée)"
                     aria-label="Supprimer l'étape affichée"
                   >Supprimer l'étape</button>
+                  {canvasSelection > 0 && (
+                    <button
+                      onClick={() => canvasDeleteRef.current?.()}
+                      style={{ ...iconBtn, borderColor: "var(--danger-border)", background: "var(--danger-bg)", color: "var(--error-text)" }}
+                      title="Supprimer les objets sélectionnés du canevas de l'étape affichée"
+                      aria-label="Supprimer les objets sélectionnés"
+                    >🗑 Objets ({canvasSelection})</button>
+                  )}
                 </div>
               )}
             </div>
@@ -412,6 +422,8 @@ export default function EditorPage() {
                       tool={activeStepId === step.id ? insertTool : null}
                       color={insertColor}
                       onToolDone={() => setInsertTool(null)}
+                      onSelectionChange={activeStepId === step.id ? (n) => setCanvasSelection(n) : undefined}
+                      deleteActionRef={activeStepId === step.id ? (fn) => { canvasDeleteRef.current = fn; } : undefined}
                       photos={(step.photos ?? []).map((ph) => {
                         const w = typeof ph.display_w === "number" ? ph.display_w : ph.display_size === "full" ? 1 : ph.display_size === "large" ? 0.85 : ph.display_size === "small" ? 0.35 : 0.6;
                         return {
