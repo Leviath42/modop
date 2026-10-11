@@ -62,3 +62,29 @@ Le JSON des colonnes `versions.snapshot` inclut désormais, par étape : `canvas
 
 ## Ordre des middlewares (S10)
 `express.json()` AVANT le rate-limiter de login (la clé IP+email nécessite req.body).
+
+# Contrat v5 (vagues v1.4 — branche delta) — FIGÉ avant lancement des workers
+
+## Workflows — champs GED (W-GED)
+- `workflows` porte deux nouvelles colonnes (migration idempotente) :
+  - `review_due` TEXT (date ISO `YYYY-MM-DD`, nullable) — prochaine revue obligatoire (RF-74)
+  - `owner_email` TEXT NOT NULL DEFAULT '' — responsable éditorial (RF-75)
+- `PUT /api/workflows/:id` accepte en plus `{ review_due?: string|null, owner_email?: string }` (author+)
+- `GET /api/workflows?review=overdue` — filtre documents dont `review_due < date('now')` (reader+, RF-74)
+- `POST /api/workflows/:id/publish` accepte un `changelog` optionnel dans le body ; stocké dans le snapshot `versions.changelog` + colonne `versions.changelog TEXT NOT NULL DEFAULT ''` (RF-65)
+
+## Statistiques (W-STATS)
+- `GET /api/stats` expose en plus `views` (total) et ne change pas ailleurs — l'audit log `view_workflow` alimente les compteurs (RF-77)
+
+## Retour terrain (W-FEEDBACK)
+- `POST /api/workflows/:id/feedback` { step_id: number, message: string } (reader+) — signalement d'un problème sur une étape (RF-73) : entrée `audit_log (action='feedback', target='workflow:<id>', detail='step:<step_id> <message>')` + réponse `{ ok: true }`
+- `GET /api/workflows/:id/feedback` (author+) → liste des signalements du document
+
+## Front (W-QR, W-GUIDED, W-TEMPLATE) — aucun changement d'API
+- RF-71 : vignette QR imprimable (page dédiée `/workflow/:id/qr`, canvas client, pas de serveur)
+- RF-72 : mode lecture guidée (paramètre d'URL `?guided=1`, composant front pur)
+- RF-70 : aides contextuelles d'autoring dans l'éditeur (front pur)
+
+## Ordre des workers
+W-GED (migration + API) → W-FEEDBACK → W-STATS → W-QR / W-GUIDED / W-TEMPLATE (front, parallèles entre eux).
+Fusion séquentielle delta ← une branche à la fois, portes : tsc + 96 tests runtime attendus + build web.
