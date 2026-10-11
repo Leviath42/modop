@@ -67,6 +67,7 @@ export function workflowRouter(db: Database.Database): Router {
         }))
       );
     }
+    auditLog(db, (req as { user?: { email: string } }).user?.email ?? "?", "view_workflow", `workflow:${wf.id}`);
     res.json({
       ...wf,
       steps: steps.map((s) => ({
