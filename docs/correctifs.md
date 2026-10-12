@@ -34,6 +34,20 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-47 — Comptes existants : édition inline du Prénom/Nom (réalisé)
+
+**Problème** : les comptes créés avant C-45 n'ont pas de prénom/nom, et la page Comptes n'offrait pas de moyen de les renseigner (seule la création portait les champs).
+
+**Correctif** : **édition inline** dans la liste des comptes — un bouton **✎** à côté de chaque nom ouvre deux champs Prénom/Nom (pré-remplis) avec **✓** (Valider) et Annuler ; la validation envoie le `PUT` admin (`first_name`/`last_name`) et rafraîchit la liste. Les comptes sans nom affichent « (sans nom) » pour signifier le champ à compléter.
+
+**Test** : `admin-name-edit.test.ts` — compte sans nom rendu, bouton ✎ présent, champs ouverts en édition, saisie conservée, PUT émis vers le bon compte avec `first_name`/`last_name`.
+
+**Fichiers** : `web/src/pages/admin.tsx`, `web/src/lib/admin-name-edit.test.ts`
+
+**État** : ✅ livré sur beta — 107/107 tests serveur, tsc + build + tous tests front verts.
+
+---
+
 ## C-46 — Suppression d'un MO : case décochée par défaut + admins uniquement (réalisé)
 
 **Problème** : à la dernière étape de confirmation de suppression, la case « Je comprends… » arrivait **cochée** (le même état servait de flag d'étape et de case), et tout auteur pouvait supprimer définitivement un MO.

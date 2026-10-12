@@ -13,6 +13,10 @@ export default function AdminPage() {
   const [newRole, setNewRole] = useState<AdminUser["role"]>("reader");
   const [newFirstName, setNewFirstName] = useState("");
   const [newLastName, setNewLastName] = useState("");
+  // C-47 : édition inline du Prénom/Nom des comptes existants
+  const [editNameId, setEditNameId] = useState<number | null>(null);
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
 
   const [tempPassword, setTempPassword] = useState<{ email: string; password: string } | null>(null);
 
@@ -40,6 +44,18 @@ export default function AdminPage() {
       await refresh();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Création impossible");
+    }
+  }
+
+  async function saveName(u: AdminUser) {
+    setError(null);
+    try {
+      await updateUser(u, { first_name: editFirstName.trim(), last_name: editLastName.trim() });
+      setEditNameId(null);
+      setNotice("Nom mis à jour");
+      await refresh();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Mise à jour impossible");
     }
   }
 
@@ -110,7 +126,25 @@ export default function AdminPage() {
         <section style={{ display: "grid", gap: "0.5rem" }}>
           {users.map((u) => (
             <div key={u.id} style={{ background: "var(--surface)", borderRadius: "10px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", opacity: u.active === 0 ? 0.55 : 1 }}>
-              <span style={{ fontWeight: 600, flex: "1 1 10rem", overflowWrap: "anywhere" }}>{[u.first_name, u.last_name].filter(Boolean).join(" ") || u.email} <span style={{ color: "var(--text-muted)", fontWeight: 400, fontSize: "0.8rem" }}>({u.email})</span></span>
+              {editNameId === u.id ? (
+                <span style={{ display: "flex", gap: "0.35rem", flex: "1 1 12rem", minWidth: 0, alignItems: "center" }}>
+                  <input value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} placeholder="Prénom" aria-label={`Prénom de ${u.email}`} style={{ ...input, flex: "1 1 5rem", minWidth: 0 }} />
+                  <input value={editLastName} onChange={(e) => setEditLastName(e.target.value)} placeholder="Nom" aria-label={`Nom de ${u.email}`} style={{ ...input, flex: "1 1 5rem", minWidth: 0 }} />
+                  <button onClick={() => void saveName(u)} style={primaryBtn}>✓</button>
+                  <button onClick={() => setEditNameId(null)} style={secondaryBtn}>Annuler</button>
+                </span>
+              ) : (
+                <span style={{ fontWeight: 600, flex: "1 1 10rem", overflowWrap: "anywhere", display: "flex", gap: "0.4rem", alignItems: "baseline", minWidth: 0 }}>
+                  <span style={{ overflowWrap: "anywhere" }}>{[u.first_name, u.last_name].filter(Boolean).join(" ") || <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(sans nom)</span>}</span>
+                  <span style={{ color: "var(--text-muted)", fontWeight: 400, fontSize: "0.8rem" }}>({u.email})</span>
+                  <button
+                    onClick={() => { setEditNameId(u.id); setEditFirstName(u.first_name ?? ""); setEditLastName(u.last_name ?? ""); }}
+                    aria-label={`Modifier le nom de ${u.email}`}
+                    title="Modifier le Prénom / Nom"
+                    style={{ border: "none", background: "none", color: "var(--accent)", cursor: "pointer", padding: "0 0.2rem", fontSize: "0.9rem", flexShrink: 0 }}
+                  >✎</button>
+                </span>
+              )}
               <select
                 value={u.role}
                 onChange={(e) => updateUser(u, { role: e.target.value as AdminUser["role"] })}
