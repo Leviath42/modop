@@ -87,6 +87,7 @@ export default function EditorPage() {
   const [changelog, setChangelog] = useState("");
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(false);
   const [confirmDeleteDoc2, setConfirmDeleteDoc2] = useState(false);
+  const [deleteAck, setDeleteAck] = useState(false); // C-46 : case décochée par défaut
   const [metaSaved, setMetaSaved] = useState(true);
   const fileRefs = useRef<Record<number, HTMLInputElement | null>>({});
   // C-42 : input dédié appareil photo (capture natif du navigateur, sans
@@ -656,7 +657,7 @@ export default function EditorPage() {
                 </li>
               ))}
             </ol>
-          {!isNew && (
+          {!isNew && user?.role === "admin" && (
             <section style={{ marginTop: "1.2rem", padding: "0.9rem 1rem", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "10px", display: "grid", gap: "0.5rem" }} aria-label="Suppression du mode opératoire">
               {!confirmDeleteDoc ? (
                 <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
@@ -673,7 +674,7 @@ export default function EditorPage() {
                   </p>
                   <div style={{ display: "flex", gap: "0.5rem", justifyContent: "end" }}>
                     <button onClick={() => setConfirmDeleteDoc(false)} style={{ padding: "0.35rem 0.8rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.85rem" }}>Annuler</button>
-                    <button onClick={() => setConfirmDeleteDoc2(true)} style={{ padding: "0.35rem 0.8rem", borderRadius: "6px", border: "1px solid var(--danger-border)", background: "var(--surface)", color: "var(--error-text)", fontSize: "0.85rem", fontWeight: 600 }}>Continuer…</button>
+                    <button onClick={() => { setConfirmDeleteDoc2(true); setDeleteAck(false); }} style={{ padding: "0.35rem 0.8rem", borderRadius: "6px", border: "1px solid var(--danger-border)", background: "var(--surface)", color: "var(--error-text)", fontSize: "0.85rem", fontWeight: 600 }}>Continuer…</button>
                   </div>
                 </div>
               ) : (
@@ -682,12 +683,12 @@ export default function EditorPage() {
                     Dernière confirmation — cochez pour valider la suppression définitive :
                   </p>
                   <label style={{ display: "flex", gap: "0.4rem", alignItems: "center", fontSize: "0.85rem" }}>
-                    <input type="checkbox" checked={confirmDeleteDoc2} onChange={(e) => setConfirmDeleteDoc2(e.target.checked)} />
+                    <input type="checkbox" checked={deleteAck} onChange={(e) => setDeleteAck(e.target.checked)} />
                     Je comprends que « {title || wf?.title} » et tout son historique seront supprimés sans possibilité de retour
                   </label>
                   <div style={{ display: "flex", gap: "0.5rem", justifyContent: "end" }}>
-                    <button onClick={() => { setConfirmDeleteDoc(false); setConfirmDeleteDoc2(false); }} style={{ padding: "0.35rem 0.8rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.85rem" }}>Annuler</button>
-                    <button onClick={() => void deleteWorkflow()} disabled={!confirmDeleteDoc2} style={{ padding: "0.35rem 0.8rem", borderRadius: "6px", border: "none", background: "var(--error-text)", color: "white", fontSize: "0.85rem", fontWeight: 600 }}>Supprimer définitivement</button>
+                    <button onClick={() => { setConfirmDeleteDoc(false); setConfirmDeleteDoc2(false); setDeleteAck(false); }} style={{ padding: "0.35rem 0.8rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.85rem" }}>Annuler</button>
+                    <button onClick={() => void deleteWorkflow()} disabled={!deleteAck} style={{ padding: "0.35rem 0.8rem", borderRadius: "6px", border: "none", background: "var(--error-text)", color: "white", fontSize: "0.85rem", fontWeight: 600 }}>Supprimer définitivement</button>
                   </div>
                 </div>
               )}

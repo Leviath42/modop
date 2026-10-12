@@ -92,6 +92,7 @@ Le header affiche le **nom de l'étape active**, **Publier**, **▸/▾** (tout 
 - **« Publier V1 »** exige au moins une étape ; chaque republication crée **V2, V3…** (snapshot immuable).
 - La liste des versions (auteur, date) est consultable ; une version peut être **restaurée** (l'état d'alors remplace le brouillon, l'historique reste intact).
 - **Dupliquer** un mode opératoire : copie complète en brouillon (référence `-COPIE`), photos indépendantes.
+- **Supprimer un mode opératoire** (admin uniquement) : section en bas de l'éditeur, double confirmation avec **case à cocher décochée par défaut**.
 
 ### Supprimer
 Bouton « Supprimer » dans la liste → **confirmation explicite** (tout est définitivement supprimé : étapes, photos, versions).

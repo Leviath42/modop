@@ -7,10 +7,11 @@ import http from "node:http";
 
 const db = openDb(":memory:");
 db.prepare(
-  "INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?), (?, ?, ?)"
+  "INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?), (?, ?, ?), (?, ?, ?)"
 ).run(
   "auteur@modop.local", bcrypt.hashSync("auteurpass1", 4), "author",
-  "lecteur@modop.local", bcrypt.hashSync("lecteurpass1", 4), "reader"
+  "lecteur@modop.local", bcrypt.hashSync("lecteurpass1", 4), "reader",
+  "admin@modop.local", bcrypt.hashSync("adminpass1", 4), "admin"
 );
 
 const app = createApp(db);
@@ -28,6 +29,8 @@ async function call(method: string, path: string, body?: object, cookie?: string
 }
 
 const login = await call("POST", "/api/auth/login", { email: "auteur@modop.local", password: "auteurpass1" });
+const adminLogin = await call("POST", "/api/auth/login", { email: "admin@modop.local", password: "adminpass1" });
+const admin = adminLogin.cookie!;
 const author = login.cookie!;
 const llogin = await call("POST", "/api/auth/login", { email: "lecteur@modop.local", password: "lecteurpass1" });
 const reader = llogin.cookie!;
@@ -102,11 +105,14 @@ test("mise à jour étape avec pictos", async () => {
   assert.deepEqual(got.json.steps[0].pictos, ["epi", "attention"]);
 });
 
-test("suppression du workflow en cascade", async () => {
+test("suppression du workflow en cascade (C-46 : admin uniquement)", async () => {
   const create = await call("POST", "/api/workflows", { title: "Périmé", reference: "MO-006" }, author);
   const id = create.json.id;
   await call("POST", `/api/workflows/${id}/steps`, { title: "S" }, author);
-  const del = await call("DELETE", `/api/workflows/${id}`, undefined, author);
+  // C-46 : un AUTEUR ne peut plus supprimer un MO — 403
+  const forbidden = await call("DELETE", `/api/workflows/${id}`, undefined, author);
+  assert.equal(forbidden.status, 403, "C-46 : la suppression est réservée aux admins");
+  const del = await call("DELETE", `/api/workflows/${id}`, undefined, admin);
   assert.equal(del.status, 200);
   const got = await call("GET", `/api/workflows/${id}`, undefined, author);
   assert.equal(got.status, 404);

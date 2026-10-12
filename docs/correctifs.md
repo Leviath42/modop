@@ -17,6 +17,22 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 **Fichiers** : `web/src/step-canvas.tsx`, `web/src/lib/step-canvas-adaptive.test.ts`
 
+## C-46 — Suppression d'un MO : case décochée par défaut + admins uniquement (réalisé)
+
+**Problème** : à la dernière étape de confirmation de suppression, la case « Je comprends… » arrivait **cochée** (le même état servait de flag d'étape et de case), et tout auteur pouvait supprimer définitivement un MO.
+
+**Correctif** :
+1. **Case décochée par défaut** : l'état d'étape et la case sont désormais séparés (`deleteAck`) — à l'étape finale, la case est **décochée** et le bouton « Supprimer définitivement » **désactivé** jusqu'à cochetée explicite. Annuler réinitialise tout.
+2. **Admins uniquement** : côté serveur, `DELETE /api/workflows/:id` passe de `requireAuth("author")` à **`requireAuth("admin")`** — la destruction irréversible (cascade étapes/photos/versions) est une opération de gestion. Côté front, la section de suppression n'est **visible que des admins**.
+
+**Tests** : serveur — l'auteur reçoit **403**, l'admin supprime (cascade prouvée) dans `workflows.test.ts` et `features.test.ts` ; front — `delete-guard.test.ts` : section invisible d'un non-admin, visible d'un admin, case décochée, bouton désactivé.
+
+**Fichiers** : `server/src/routes/workflows.ts`, `web/src/pages/editor.tsx`, `server/test/workflows.test.ts`, `server/test/features.test.ts`, `web/src/lib/delete-guard.test.ts`
+
+**État** : ✅ livré sur beta — 106/106 tests serveur, tsc + build + tous tests front verts.
+
+---
+
 ## C-44 — Accueil : groupes Publié/Brouillon et familles repliables (réalisé)
 
 **Problème** : le regroupement C-43 affichait tout déplié — pas moyen de rabattre un état ou une famille pour focaliser la liste.

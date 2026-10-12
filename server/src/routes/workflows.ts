@@ -141,7 +141,9 @@ export function workflowRouter(db: Database.Database): Router {
     res.json({ ok: true, count: shapes.length });
   });
 
-  r.delete("/:id", requireAuth("author"), (req, res) => {
+  // C-46 : suppression d'un MO — ADMIN uniquement (l'auteur peut tout
+  // éditer, mais la destruction irréversible est une opération de gestion).
+  r.delete("/:id", requireAuth("admin"), (req, res) => {
     const wf = db.prepare("SELECT id FROM workflows WHERE id = ?").get(req.params.id) as { id: number } | undefined;
     if (!wf) {
       res.status(404).json({ error: "not_found", message: "mode opératoire introuvable" });

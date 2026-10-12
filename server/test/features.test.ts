@@ -129,10 +129,13 @@ test("pictos structurés : couleur + texte libre persistés et relus", async () 
   assert.equal(stored[0].color, "#d0021b");
 });
 
-test("suppression workflow : confirmée en base (cascade)", async () => {
+test("suppression workflow : admin uniquement, confirmée en base (cascade)", async () => {
   const wf = await call("POST", "/api/workflows", { title: "D", reference: "MO-DEL1" }, authorFresh!);
   await call("POST", `/api/workflows/${wf.json.id}/steps`, { title: "S" }, authorFresh!);
-  const del = await call("DELETE", `/api/workflows/${wf.json.id}`, undefined, authorFresh!);
+  // C-46 : un AUTEUR ne peut plus supprimer un MO — 403
+  const forbidden = await call("DELETE", `/api/workflows/${wf.json.id}`, undefined, authorFresh!);
+  assert.equal(forbidden.status, 403, "C-46 : la suppression est réservée aux admins");
+  const del = await call("DELETE", `/api/workflows/${wf.json.id}`, undefined, admin);
   assert.equal(del.status, 200);
   const got = await call("GET", `/api/workflows/${wf.json.id}`, undefined, reader);
   assert.equal(got.status, 404);
