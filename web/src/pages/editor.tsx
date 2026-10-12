@@ -80,6 +80,19 @@ export default function EditorPage() {
   const cameraRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const pictosMenuRef = useRef<HTMLSpanElement | null>(null);
   const toolsRef = useRef<HTMLDivElement | null>(null);
+  const bandeauRef = useRef<HTMLElement | null>(null);
+  // C-51 : publier la hauteur du bandeau pour que la barre d'outils sticky
+  // se colle JUSTE dessous (même mécanique que --nav-h).
+  useEffect(() => {
+    const el = bandeauRef.current;
+    if (!el) return;
+    const publish = () => document.documentElement.style.setProperty("--bandeau-h", `${el.offsetHeight}px`);
+    publish();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(publish);
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
   useEffect(() => {
     if (!showTools) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setShowTools(false); };
@@ -294,7 +307,7 @@ export default function EditorPage() {
         {error && <p role="alert" style={{ color: "var(--error-text)", background: "var(--error-bg)", padding: "0.5rem 0.8rem", borderRadius: "6px" }}>{error}</p>}
         {notice && <p style={{ color: "var(--ok-text)", background: "var(--ok-bg)", padding: "0.5rem 0.8rem", borderRadius: "6px" }}>{notice}</p>}
 
-        <section style={{ position: "sticky", top: "var(--nav-h, 2.9rem)", zIndex: 30, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px", padding: "0.6rem 0.8rem", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", display: "grid", gap: "0.5rem", minWidth: 0 }}>
+        <section ref={bandeauRef} style={{ position: "sticky", top: "var(--nav-h, 2.9rem)", zIndex: 30, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px", padding: "0.6rem 0.8rem", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", display: "grid", gap: "0.5rem", minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
             <h1 style={{ margin: 0, fontSize: "1rem", flex: "1 1 8rem", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
               {isNew ? "Nouveau mode opératoire" : (title || "Sans titre")}{" "}
@@ -395,7 +408,7 @@ export default function EditorPage() {
         {/* C-50 : barre d'outils en rangée INDÉPENDANTE sous le bandeau (C-49 :
             inspiration Figma/Docs) — groupes : Étape | Insertion | Indications | Actions */}
         {!isNew && (
-        <div ref={toolsRef} style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap", alignItems: "center", paddingTop: "0.4rem", borderTop: "1px solid var(--border-soft)", overflow: "visible", minWidth: 0 }}>
+        <div ref={toolsRef} style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap", alignItems: "center", paddingTop: "0.4rem", borderTop: "1px solid var(--border-soft)", overflow: "visible", minWidth: 0, position: "sticky", top: "calc(var(--nav-h, 2.9rem) + var(--bandeau-h, 3.6rem) + 0.55rem)", zIndex: 25, background: "var(--bg)", borderRadius: "10px", padding: "0.4rem 0.6rem", border: "1px solid var(--border)", boxShadow: "0 2px 6px rgba(0,0,0,0.12)" }}>
           {/* — groupe Étape — */}
           <button onClick={addStep} style={{ ...toolLabelBtn }} title="Ajouter une étape" aria-label="Ajouter une étape">
             <PlusIcon /><span>Étape</span>

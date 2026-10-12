@@ -34,6 +34,18 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-51 — Barre d'outils : sticky sous le bandeau (réalisé)
+
+**Problème** : C-50 avait sorti la barre du bandeau, mais elle restait en haut de page — au défilement, les outils disparaissaient : inutilisables sur un MO long.
+
+**Correctif** : la barre devient **sticky** et se colle **juste sous le bandeau** qui est lui-même sticky sous la nav — les trois niveaux (nav → bandeau léger → barre d'outils) restent visibles en permanence pendant le défilement. La hauteur du bandeau est publiée en variable CSS (`--bandeau-h`, même mécanique que `--nav-h` via ResizeObserver) pour que la barre s'accroche à la bonne position quelle que soit la hauteur du bandeau (détails repliés/dépliés). `zIndex` 25 — sous le bandeau (30), au-dessus du contenu ; fond opaque, bord et ombre pour rester lisible par-dessus les étapes.
+
+**Fichiers** : `web/src/pages/editor.tsx`
+
+**État** : ✅ livré sur beta — tsc + build verts (pas de test supplémentaire, sur demande).
+
+---
+
 ## C-50 — Barre d'outils : sortie du bandeau, rangée indépendante + labels (réalisé)
 
 **Problème** : après C-49, la barre vivait DANS le bandeau sticky — l'ensemble (titre, Publier, replier, sélecteur d'étape, + 12 boutons d'outils) formait une masse compacte illisible, et le header n'était « plus du tout compréhensible ».
