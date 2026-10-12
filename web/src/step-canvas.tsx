@@ -257,8 +257,12 @@ export default function StepCanvas({
           const g = drag.grabs[drag.indices.indexOf(i)];
           const ox = cx(p.x - g.x), oy = cy(p.y - g.y);
           if (s.type === "arrow") {
+            // C-40 : grabs = offset pointeur->CENTRE ; le déplacement conserve
+            // le centre sous le pointeur — la flèche ne saute plus d'un bond
+            // de la moitié de sa longueur au premier mouvement.
             const lenX = (s.x2 ?? 0) - s.x1, lenY = (s.y2 ?? 0) - s.y1;
-            return { ...s, x1: ox, y1: oy, x2: ox + lenX, y2: oy + lenY };
+            const nx1 = ox - lenX / 2, ny1 = oy - lenY / 2;
+            return { ...s, x1: cx(nx1), y1: cy(ny1), x2: cx(nx1 + lenX), y2: cy(ny1 + lenY) };
           }
           return { ...s, x1: ox, y1: oy };
         }));

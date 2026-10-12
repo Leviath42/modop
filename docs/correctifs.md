@@ -17,6 +17,22 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 **Fichiers** : `web/src/step-canvas.tsx`, `web/src/lib/step-canvas-adaptive.test.ts`
 
+## C-40 — Le VRAI bug des flèches : bond au premier déplacement (réalisé)
+
+**Problème** ( уточнение de C-38) : une flèche sélectionnée sautait **d'un bond** non pas au clic, mais **au moindre déplacement** — le bond valait la moitié de la longueur de la flèche, dans la direction du geste.
+
+**Cause racine** : incohérence entre le point de saisie et l'assignation au move. Le grab (offset pointeur → forme) est calculé depuis le **centre** de la flèche (`(x1+x2)/2`), mais le move assignait la position du pointeur moins le grab (= le nouveau **centre**) **directement à `x1`** — qui est le point de **départ** de la flèche. La flèche se retrouvait donc translatée de la moitié de sa longueur au premier mouvement. (C-38 avait traité un vrai problème connexe — le micro-glissement du tap — mais pas celui-ci.)
+
+**Correctif** : le move conserve le **centre sous le pointeur** — `x1 = centre.x − lenX/2`, `x2 = centre.x + lenX/2` (idem en y), avec bornage aux bords du canevas. La flèche suit exactement le geste, sans bond. (Les zones et photos étaient déjà cohérentes : leur grab est relatif au coin d'origine.)
+
+**Test** : scénario C-40 dans `step-canvas-adaptive.test.ts` — saisir une flèche par son centre, glisser de (+0.025, +0.05) : les coordonnées rendues bougent d'exactement le delta du geste (l'assertion à ±0.005 aurait détecté le bond d'avant). Au passage : mock `clientWidth` en jsdom (le rendu SVG lit `clientWidth`, toujours 0 en jsdom) et attente d'un tick entre pointerdown et pointermove (le temps que l'effet attache les listeners window).
+
+**Fichiers** : `web/src/step-canvas.tsx`, `web/src/lib/step-canvas-adaptive.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front (9 OK dans le canvas adaptatif) + 106/106 tests serveur verts.
+
+---
+
 ## C-39 — Palette d'outils : persistante pendant l'usage + scroll recalé à l'ouverture (réalisé)
 
 **Problème** : la palette se refermait au premier clic dans le canevas (poser une flèche = rouvrir la palette pour l'outil suivant) ; et à l'ouverture, la palette — posée en absolu sous le bandeau sticky — pouvait dépasser du bas de l'écran sans recalage du scroll.

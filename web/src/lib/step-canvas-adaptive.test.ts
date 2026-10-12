@@ -16,8 +16,12 @@ g.window = dom.window;
 g.document = dom.window.document;
 
 const calls: string[] = [];
-(g as { fetch: unknown }).fetch = async (url: string) => {
+let lastPutBody: unknown = null;
+(g as { fetch: unknown }).fetch = async (url: string, init?: { method?: string; body?: string }) => {
   calls.push(String(url));
+  if (init?.method === "PUT") {
+    try { lastPutBody = JSON.parse(init.body ?? "{}"); } catch { lastPutBody = null; }
+  }
   return { ok: true, status: 200, json: async () => ({}) } as unknown as Response;
 };
 
@@ -26,6 +30,8 @@ const CANVAS_W = 800;
   .HTMLElement.prototype.getBoundingClientRect = function () {
   return { width: (this as HTMLElement).id === "c" ? CANVAS_W : 800, height: 300, left: 0, top: 0, right: CANVAS_W, bottom: 300, x: 0, y: 0, toJSON: () => ({}) } as DOMRect;
 };
+// C-40 : le rendu SVG lit clientWidth (0 en jsdom) — le mocker à 800
+Object.defineProperty(dom.window.HTMLElement.prototype, "clientWidth", { configurable: true, get() { return CANVAS_W; } });
 
 // images "chargées" : ratio réel 0.5 (h = w/2), pas 0.75
 (dom.window as unknown as { Image: unknown }).Image = class {
@@ -252,6 +258,41 @@ root.unmount();
   if (put) throw new Error("un simple tap (sous 6 px) ne doit sauvegarder/déplacer aucune forme (C-38)");
   console.log("U-CANVAS TAP SANS GLISSEMENT = AUCUN DÉPLACEMENT OK");
   r5.unmount();
+}
+
+// C-40 : drag de flèche SANS SAUT — la flèche conserve son centre sous le
+// pointeur : au premier déplacement, les extrémités bougent d'exactement le
+// delta du geste (et non d'un bond de la moitié de la longueur).
+{
+  const r6 = createRoot(host2());
+  r6.render(React.createElement(StepCanvas, {
+    stepId: 6,
+    photos: [],
+    canvasShapes: [{ type: "arrow", x1: 0.3, y1: 0.3, x2: 0.5, y2: 0.5, color: "#d0021b" }],
+  }));
+  await new Promise((r) => setTimeout(r, 100));
+  const cg = (Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%") as HTMLElement[]).pop()!;
+  // saisir le CENTRE de la flèche (0.4, 0.4) et glisser de +0.02
+  const sx = 0.4 * 800, sy = 0.4 * 240;
+  fire(cg, "pointerdown", { clientX: sx, clientY: sy });
+  await new Promise((r) => setTimeout(r, 30));   // laisser l'effet attacher les listeners
+  fire(dom.window, "pointermove", { clientX: sx + 20, clientY: sy + 12 }); // +0.025 en x, +0.05 en y
+  await new Promise((r) => setTimeout(r, 50));
+  // lire la flèche déplacée directement dans le SVG rendu (le move met à
+  // jour le rendu ; le PUT n'est émis qu'au relâchement)
+  await new Promise((r) => setTimeout(r, 50));
+  const svg = cg.querySelector("svg");
+  const line = svg?.querySelector("line");
+  if (!line) throw new Error("flèche non rendue dans le SVG");
+  const x1 = Number(line.getAttribute("x1")) / 800;   // coordonnées écran -> fraction
+  const y1 = Number(line.getAttribute("y1")) / 240;
+  // deltas attendus : le centre suit le pointeur de (+0.025, +0.05) — x1
+  // (le départ de la flèche) doit passer de 0.3 à ~0.325, SANS bond
+  if (Math.abs(x1 - (0.3 + 0.025)) > 0.005 || Math.abs(y1 - (0.3 + 0.05)) > 0.005) {
+    throw new Error(`SAUT détecté : x1 attendu ~0.325 (delta du geste), obtenu ${x1.toFixed(3)} ; y1 attendu ~0.35, obtenu ${y1.toFixed(3)} (C-40)`);
+  }
+  console.log("U-CANVAS DRAG FLÈCHE SANS SAUT OK");
+  r6.unmount();
 }
 
 process.exit(0);
