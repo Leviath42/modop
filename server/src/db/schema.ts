@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL DEFAULT '',
+  first_name TEXT NOT NULL DEFAULT '',
+  last_name TEXT NOT NULL DEFAULT '',
   role TEXT NOT NULL CHECK (role IN ('reader','author','admin')),
   active INTEGER NOT NULL DEFAULT 1,
   auth_provider TEXT NOT NULL DEFAULT 'local',
@@ -94,6 +96,8 @@ CREATE INDEX IF NOT EXISTS idx_audit_at ON audit_log(at);
 // pas une table existante).
 const COLUMN_MIGRATIONS: { table: string; column: string; ddl: string }[] = [
   { table: "users", column: "auth_provider", ddl: "TEXT NOT NULL DEFAULT 'local'" },
+  { table: "users", column: "first_name", ddl: "TEXT NOT NULL DEFAULT ''" },
+  { table: "users", column: "last_name", ddl: "TEXT NOT NULL DEFAULT ''" },
   { table: "users", column: "active", ddl: "INTEGER NOT NULL DEFAULT 1" },
   { table: "sessions", column: "expires_at", ddl: "TEXT" },
   { table: "workflows", column: "family", ddl: "TEXT NOT NULL DEFAULT ''" },

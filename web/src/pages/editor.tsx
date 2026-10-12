@@ -126,6 +126,16 @@ export default function EditorPage() {
   }, [showPictos]);
 
   const isNew = id === "new";
+  // C-45 : liste des comptes actifs pour le sélecteur de responsable
+  const [accounts, setAccounts] = useState<{ id: number; email: string; first_name?: string; last_name?: string; role: string }[]>([]);
+  useEffect(() => {
+    if (isNew) return;
+    fetch("/api/admin/users")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: { id: number; email: string; first_name: string; last_name: string; role: string; active: number }[]) =>
+        setAccounts(list.filter((u) => u.active === 1)))
+      .catch(() => setAccounts([]));
+  }, [isNew]);
 
   useEffect(() => {
     if (isNew) return;
@@ -335,7 +345,15 @@ export default function EditorPage() {
                 <input type="date" value={reviewDue} onChange={(e) => { setReviewDue(e.target.value); setMetaSaved(false); }} style={input} />
               </label>
               <label style={label}>Responsable
-                <input type="email" value={ownerEmail} onChange={(e) => { setOwnerEmail(e.target.value); setMetaSaved(false); }} style={input} placeholder="resp@usine.fr" />
+                <>
+                  <input type="email" list="owner-accounts" value={ownerEmail} onChange={(e) => { setOwnerEmail(e.target.value); setMetaSaved(false); }} style={input} placeholder="Rechercher un responsable…" aria-label="Responsable — rechercher parmi les comptes" />
+                  <datalist id="owner-accounts">
+                    {accounts.map((u) => {
+                      const name = [u.first_name, u.last_name].filter(Boolean).join(" ");
+                      return <option key={u.id} value={u.email} label={name ? `${name} (${u.role})` : u.role} />;
+                    })}
+                  </datalist>
+                </>
               </label>
             </div>
           </div>

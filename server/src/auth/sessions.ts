@@ -5,6 +5,8 @@ export interface SessionUser {
   id: number;
   email: string;
   role: "reader" | "author" | "admin";
+  first_name?: string;
+  last_name?: string;
 }
 
 const SESSION_TTL_HOURS = Number(process.env.MODOP_SESSION_TTL_HOURS ?? 24);
@@ -25,7 +27,7 @@ export function destroySession(db: Database.Database, token: string): void {
 export function getUserByToken(db: Database.Database, token: string): SessionUser | null {
   const row = db
     .prepare(
-      `SELECT u.id, u.email, u.role FROM sessions s
+      `SELECT u.id, u.email, u.role, u.first_name, u.last_name FROM sessions s
        JOIN users u ON u.id = s.user_id
        WHERE s.token = ? AND s.expires_at > datetime('now')`
     )

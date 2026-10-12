@@ -28,7 +28,7 @@ export function adminRouter(db: Database.Database): Router {
   });
 
   r.post("/users", (req, res) => {
-    const { email, password, role } = req.body ?? {};
+    const { email, password, role, first_name, last_name } = req.body ?? {};
     if (
       typeof email !== "string" ||
       !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ||
@@ -50,11 +50,11 @@ export function adminRouter(db: Database.Database): Router {
     const actor = (req as { user?: { id: number; email: string } }).user!;
     const info = db
       .prepare(
-        "INSERT INTO users (email, password_hash, role, auth_provider) VALUES (?, ?, ?, 'local')"
+        "INSERT INTO users (email, password_hash, role, auth_provider, first_name, last_name) VALUES (?, ?, ?, 'local', ?, ?)"
       )
-      .run(normalized, bcrypt.hashSync(password, 10), role);
+      .run(normalized, bcrypt.hashSync(password, 10), role, typeof first_name === "string" ? first_name.trim().slice(0, 60) : "", typeof last_name === "string" ? last_name.trim().slice(0, 60) : "");
     auditLog(db, actor.email, "create_user", `user:${normalized}`, `role=${role}`);
-    res.status(201).json({ id: info.lastInsertRowid, email: normalized, role });
+    res.status(201).json({ id: info.lastInsertRowid, email: normalized, first_name: typeof first_name === "string" ? first_name.trim() : "", last_name: typeof last_name === "string" ? last_name.trim() : "", role });
   });
 
   r.put("/users/:id", (req, res) => {
@@ -66,7 +66,7 @@ export function adminRouter(db: Database.Database): Router {
       return;
     }
     const actor = (req as { user?: { id: number; email: string } }).user!;
-    const { role, active } = req.body ?? {};
+    const { role, active, first_name, last_name } = req.body ?? {};
 
     if (role !== undefined && !["reader", "author", "admin"].includes(role)) {
       res.status(422).json({ error: "validation", message: "rôle invalide" });
@@ -80,15 +80,27 @@ export function adminRouter(db: Database.Database): Router {
       });
       return;
     }
-    db.prepare("UPDATE users SET role = COALESCE(?, role), active = COALESCE(?, active) WHERE id = ?").run(
+    db.prepare("UPDATE users SET role = COALESCE(?, role), active = COALESCE(?, active), first_name = COALESCE(?, first_name), last_name = COALESCE(?, last_name) WHERE id = ?").run(
       role ?? null,
       typeof active === "number" ? active : null,
+      typeof first_name === "string" ? first_name.trim().slice(0, 60) : null,
+      typeof last_name === "string" ? last_name.trim().slice(0, 60) : null,
       target.id
     );
     // Révocation immédiate des sessions si désactivation ou rétrogradation
     // (S-A1 : un admin rétrogradé ne doit pas garder ses droits 24 h)
     if (active === 0 || (role !== undefined && role !== target.role)) {
       db.prepare("DELETE FROM sessions WHERE user_id = ?").run(target.id);
+    }
+    // C-45 : désactivation du compte -> ses MO n'ont plus de responsable
+    // valide : les marquer À REVOIR (review_due = aujourd'hui) si non déjà marqués.
+    if (active === 0) {
+      const marked = db
+        .prepare("UPDATE workflows SET review_due = date('now') WHERE owner_email = ? AND review_due IS NULL")
+        .run(target.email);
+      if (marked.changes > 0) {
+        auditLog(db, actor.email, "flag_review_no_owner", `user:${target.email}`, `${marked.changes} MO sans responsable valide`);
+      }
     }
     auditLog(
       db,
@@ -98,7 +110,7 @@ export function adminRouter(db: Database.Database): Router {
       `role=${role ?? "inchangé"} active=${active ?? "inchangé"}`
     );
     const updated = db
-      .prepare("SELECT id, email, role, active, auth_provider, created_at FROM users WHERE id = ?")
+      .prepare("SELECT id, email, first_name, last_name, role, active, auth_provider, created_at FROM users WHERE id = ?")
       .get(target.id);
     res.json(updated);
   });

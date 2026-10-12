@@ -2,6 +2,8 @@ export interface User {
   id: number;
   email: string;
   role: "reader" | "author" | "admin";
+  first_name?: string;
+  last_name?: string;
 }
 
 export interface Workflow {
@@ -63,6 +65,8 @@ export interface Step {
 export interface AdminUser {
   id: number;
   email: string;
+  first_name: string;
+  last_name: string;
   role: "reader" | "author" | "admin";
   active: number;
   auth_provider: string;
@@ -239,16 +243,16 @@ export const api = {
   async adminListUsers(): Promise<AdminUser[]> {
     return handle<AdminUser[]>(await fetch("/api/admin/users"));
   },
-  async adminCreateUser(email: string, password: string, role: AdminUser["role"]): Promise<AdminUser> {
+  async adminCreateUser(email: string, password: string, role: AdminUser["role"], firstName?: string, lastName?: string): Promise<AdminUser> {
     return handle<AdminUser>(
       await fetch("/api/admin/users", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, password, role }),
+        body: JSON.stringify({ email, password, role, first_name: firstName ?? "", last_name: lastName ?? "" }),
       })
     );
   },
-  async adminUpdateUser(id: number, data: { role?: AdminUser["role"]; active?: number }): Promise<AdminUser> {
+  async adminUpdateUser(id: number, data: { role?: AdminUser["role"]; active?: number; first_name?: string; last_name?: string }): Promise<AdminUser> {
     return handle<AdminUser>(
       await fetch(`/api/admin/users/${id}`, {
         method: "PUT",

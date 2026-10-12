@@ -17,6 +17,23 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 **Fichiers** : `web/src/step-canvas.tsx`, `web/src/lib/step-canvas-adaptive.test.ts`
 
+## C-45 — Comptes : Prénom/Nom + responsable à sélectionner + garde-fou à revoir (réalisé)
+
+**Problème** : les comptes n'étaient qu'un email ; le « Responsable » d'un MO se tapait à la main sans lien avec les comptes ; et rien ne se passait quand le compte responsable disparaissait.
+
+**Correctif** :
+1. **Prénom/Nom sur les comptes** : colonnes `first_name`/`last_name` (migration idempotente), champs à la création et à l'édition dans la page Comptes (admin), affichage « Prénom Nom (email) ». Le login et `/api/auth/me` renvoient les deux champs ; le SSO OIDC les remplit depuis `given_name`/`family_name`.
+2. **Responsable à sélectionner** : dans les détails d'un MO, le champ Responsable devient un **input avec recherche** (`datalist`) listant les **comptes actifs** — saisir quelques lettres filtre, choisir pose l'email. Plus de saisie manuelle aveugle.
+3. **Garde-fou à la désactivation** : désactiver le compte responsable marque automatiquement **À REVOIR** tous ses MO sans date de revue (`review_due` = aujourd'hui), tracé dans le journal d'audit (`flag_review_no_owner`). Les MO concernés remontent dans le filtre « À revoir » pour réattribution.
+
+**Test** : `security.test.ts` (C-45) — création avec prénom/nom, login les renvoie, MO avec responsable, désactivation → `review_due` posé + action tracée dans l'audit.
+
+**Fichiers** : `server/src/db/schema.ts`, `server/src/auth/sessions.ts`, `server/src/routes/auth.ts`, `server/src/routes/admin.ts`, `web/src/api.ts`, `web/src/pages/admin.tsx`, `web/src/pages/editor.tsx`, `server/test/security.test.ts`
+
+**État** : ✅ livré sur beta — 107/107 tests serveur, tsc + build + tous tests front verts.
+
+---
+
 ## C-46 — Suppression d'un MO : case décochée par défaut + admins uniquement (réalisé)
 
 **Problème** : à la dernière étape de confirmation de suppression, la case « Je comprends… » arrivait **cochée** (le même état servait de flag d'étape et de case), et tout auteur pouvait supprimer définitivement un MO.

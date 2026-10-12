@@ -307,3 +307,43 @@ test("GET /api/admin/audit : admin 200, auteur 403 (D-A3)", async () => {
   assert.equal(forbidden.status, 403);
   db.prepare("DELETE FROM users WHERE email IN ('auditor@modop.local', 'plainauthor@modop.local')").run();
 });
+
+// C-45 : prénom/nom à la création ; désactivation du responsable -> MO à revoir
+test("C-45 : compte avec prénom/nom ; désactivation -> MO à revoir", async () => {
+  db.prepare("INSERT OR IGNORE INTO users (email, password_hash, role) VALUES (?, ?, 'admin')").run(
+    "admin45@modop.local",
+    bcrypt.hashSync("motdepasse1", 4)
+  );
+  const adminLogin = await call("POST", "/api/auth/login", { email: "admin45@modop.local", password: "motdepasse1" });
+  assert.equal(adminLogin.status, 200);
+  // 1) créer un compte avec prénom/nom
+  const created = await call("POST", "/api/admin/users", {
+    email: "marc.dupont@usine.fr", password: "motdepasse1", role: "author",
+    first_name: "Marc", last_name: "Dupont",
+  }, adminLogin.cookie!);
+  assert.equal(created.status, 201);
+  assert.equal((created.json as { first_name: string }).first_name, "Marc");
+  assert.equal((created.json as { last_name: string }).last_name, "Dupont");
+  // le login renvoie prénom/nom
+  const ml = await call("POST", "/api/auth/login", { email: "marc.dupont@usine.fr", password: "motdepasse1" });
+  assert.equal((ml.json as { first_name: string }).first_name, "Marc");
+  // 2) créer un MO dont Marc est responsable
+  const wf = await call("POST", "/api/workflows", { title: "MO de Marc", reference: "C45-1" }, ml.cookie!);
+  assert.equal(wf.status, 201);
+  const wfId = (wf.json as { id: number }).id;
+  const put = await call("PUT", `/api/workflows/${wfId}`, { owner_email: "marc.dupont@usine.fr" }, ml.cookie!);
+  assert.equal(put.status, 200);
+  // review_due doit être NULL avant désactivation
+  const before = db.prepare("SELECT review_due FROM workflows WHERE id = ?").get(wfId) as { review_due: string | null };
+  assert.equal(before.review_due, null);
+  // 3) désactiver Marc -> le MO passe À REVOIR
+  const marcId = (db.prepare("SELECT id FROM users WHERE email = 'marc.dupont@usine.fr'").get() as { id: number }).id;
+  const off = await call("PUT", `/api/admin/users/${marcId}`, { active: 0 }, adminLogin.cookie!);
+  assert.equal(off.status, 200);
+  const after = db.prepare("SELECT review_due FROM workflows WHERE id = ?").get(wfId) as { review_due: string | null };
+  assert.ok(after.review_due, "C-45 : le MO du responsable désactivé doit être marqué à revoir");
+  // et l'action est tracée dans le journal d'audit
+  const log = db.prepare("SELECT action FROM audit_log WHERE action = 'flag_review_no_owner'").get() as { action: string } | undefined;
+  assert.ok(log, "C-45 : flag_review_no_owner tracé dans l'audit");
+  db.prepare("DELETE FROM users WHERE email IN ('admin45@modop.local', 'marc.dupont@usine.fr')").run();
+});
