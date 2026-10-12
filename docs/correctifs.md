@@ -7,6 +7,30 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-38 — Canevas : un clic sur une flèche la déplaçait (réalisé)
+
+**Problème** : cliquer/taper sur une forme déjà posée (flèche, zone) la déplaçait d'environ 1 cm dans la direction du geste. Cause : le drag des formes démarrait au `pointerdown` **sans seuil de tolérance** — au tactile, le micro-glissement naturel du doigt pendant un tap (quelques px) était traité comme un déplacement, et la forme suivait.
+
+**Correctif** : **hystérésis de 6 px** — le déplacement d'une forme (ou photo) ne s'engage qu'après ~6 px de trajet réel depuis le point de départ ; en dessous, c'est un clic : la sélection s'applique mais rien ne bouge, et aucune sauvegarde inutile n'est envoyée (le `PUT canvas`/layout n'est émis que si un vrai déplacement a eu lieu).
+
+**Test** : scénario C-38 dans `step-canvas-adaptive.test.ts` — tap sur le centre d'une flèche avec micro-glissement de 3 px : aucun `PUT /canvas` émis, la flèche ne bouge pas.
+
+**Fichiers** : `web/src/step-canvas.tsx`, `web/src/lib/step-canvas-adaptive.test.ts`
+
+## C-39 — Palette d'outils : persistante pendant l'usage + scroll recalé à l'ouverture (réalisé)
+
+**Problème** : la palette se refermait au premier clic dans le canevas (poser une flèche = rouvrir la palette pour l'outil suivant) ; et à l'ouverture, la palette — posée en absolu sous le bandeau sticky — pouvait dépasser du bas de l'écran sans recalage du scroll.
+
+**Correctif** :
+1. La palette **reste affichée** pendant l'utilisation des outils (pose de formes, sélection, photos…) — fermeture uniquement par le bouton Outils, Échap ou navigation. Les pictos et menus secondaires conservent leur fermeture au clic extérieur (menus contextuels, pas palettes de travail).
+2. À l'ouverture, le scroll est **recalé** : si le bas de la palette dépasse du viewport, la fenêtre défile doucement pour que la palette soit entièrement visible (le bas du bandeau étendu devient la ligne de flottaison).
+
+**Fichiers** : `web/src/pages/editor.tsx`
+
+**État (C-38/C-39)** : ✅ livrés sur beta — tsc + build + tous tests front (dont le scénario C-38) + 106/106 tests serveur verts.
+
+---
+
 ## C-37 — Palette d'édition : les outils « sautaient » d'~1 cm au clic (tactile) (réalisé)
 
 **Problème** : sur écran tactile, sélectionner un outil dans la palette (flèche, zone, texte…) déplaçait les boutons d'environ 1 cm. Cause : la règle `@media (pointer: coarse) { button { min-height: 44px; min-width: 44px } }` s'applique à TOUS les boutons — les outils compacts (~30 px) grandissaient au premier rendu tactile… mais surtout, la palette étant en `flexWrap: wrap`, l'agrandissement des boutons au clic provoquait un **reflow** (passage à la ligne des voisins), déplaçant tout le contenu d'environ une ligne ≈ 1 cm — sous le doigt, juste au moment du tap.

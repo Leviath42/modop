@@ -227,6 +227,33 @@ root.unmount();
   r4.unmount();
 }
 
+// C-38 : un tap AVEC MICRO-MOUVEMENT (< 6 px) sur une forme ne la déplace PAS
+// — au tactile, le doigt glisse naturellement en tapant ; avant, chaque tap
+// déplaçait la flèche dans la direction du geste.
+{
+  const r5 = createRoot(host2());
+  r5.render(React.createElement(StepCanvas, {
+    stepId: 5,
+    photos: [],
+    canvasShapes: [{ type: "arrow", x1: 0.3, y1: 0.3, x2: 0.5, y2: 0.5, color: "#d0021b" }],
+  }));
+  await new Promise((r) => setTimeout(r, 100));
+  const cf = (Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%") as HTMLElement[]).pop()!;
+  // tap sur le centre de la flèche avec micro-glissement de 3 px (sous le seuil 6 px)
+  const rect = { left: 0, top: 0, width: 800 };
+  (cf as unknown as { getBoundingClientRect: () => typeof rect }).getBoundingClientRect = () => rect;
+  const cx = 0.4 * 800, cy = 0.4 * 240;
+  fire(cf, "pointerdown", { clientX: cx, clientY: cy });
+  fire(dom.window, "pointermove", { clientX: cx + 3, clientY: cy + 2 });
+  fire(dom.window, "pointerup", { clientX: cx + 3, clientY: cy + 2 });
+  await new Promise((r) => setTimeout(r, 80));
+  // la flèche ne doit PAS avoir bougé : pas de PUT canvas pendant le geste
+  const put = calls.find((u) => String(u).includes("/canvas"));
+  if (put) throw new Error("un simple tap (sous 6 px) ne doit sauvegarder/déplacer aucune forme (C-38)");
+  console.log("U-CANVAS TAP SANS GLISSEMENT = AUCUN DÉPLACEMENT OK");
+  r5.unmount();
+}
+
 process.exit(0);
 
 function host2() {

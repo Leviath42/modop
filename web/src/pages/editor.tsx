@@ -61,6 +61,22 @@ export default function EditorPage() {
   const [insertColor, setInsertColor] = useState(COLORS[0]);
   const [activeStepId, setActiveStepId] = useState<number | null>(null);
   const [showTools, setShowTools] = useState(false);
+  // C-39 : à l'ouverture de la palette, recaler le scroll — le bas de la
+  // palette (posée en absolu sous le bandeau sticky) devient visible.
+  const toolsOpenRef = useRef(false);
+  useEffect(() => {
+    if (showTools && !toolsOpenRef.current) {
+      toolsOpenRef.current = true;
+      setTimeout(() => {
+        const pal = toolsRef.current;
+        if (!pal) return;
+        const rect = pal.getBoundingClientRect();
+        const below = rect.bottom - window.innerHeight;
+        if (below > 0) window.scrollBy({ top: below + 8, behavior: "smooth" });
+      }, 60);
+    }
+    if (!showTools) toolsOpenRef.current = false;
+  }, [showTools]);
   const [showPictos, setShowPictos] = useState(false);
   const [confirmDeleteStep, setConfirmDeleteStep] = useState<Step | null>(null);
   const [confirmPublish, setConfirmPublish] = useState(false);
@@ -75,11 +91,12 @@ export default function EditorPage() {
   const toolsRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!showTools) return;
-    const onDown = (e: PointerEvent) => {
-      if (toolsRef.current && !toolsRef.current.contains(e.target as Node)) setShowTools(false);
-    };
-    document.addEventListener("pointerdown", onDown);
-    return () => document.removeEventListener("pointerdown", onDown);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setShowTools(false); };
+    // C-39 : la palette reste affichée pendant l'utilisation des outils —
+    // le clic dans le canevas (pose de flèche, sélection…) ne la ferme PLUS.
+    // Fermeture : bouton Outils, Échap ou navigation.
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, [showTools]);
   useEffect(() => {
     if (!showPictos) return;

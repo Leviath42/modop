@@ -91,6 +91,10 @@ export default function StepCanvas({
     | null
   >(null);
   const [overTrash, setOverTrash] = useState(false);
+  // C-38 : un clic/tap ne doit jamais déplacer un objet — au tactile, le doigt
+  // glisse naturellement de quelques px en tapant ; sans seuil, chaque tap
+  // déplaçait la forme saisie (une flèche "sautait" dans la direction du geste).
+  const dragMovedRef = useRef(false);
   const overTrashRef = useRef(false);
   const lastPhotoDownRef = useRef<{ idx: number; at: number } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -201,8 +205,20 @@ export default function StepCanvas({
     const cx = (v: number) => Math.min(1, Math.max(0, v));
     const cy = (v: number) => Math.max(0, v);
     overTrashRef.current = false;
+    dragMovedRef.current = false;
     const move = (e: PointerEvent) => {
       const p = pt(e);
+      // C-38 : hystérésis — le drag photo/shape ne s'engage qu'après ~6 px
+      // de trajet réel ; en dessous, c'est un clic et rien ne bouge.
+      if (!dragMovedRef.current && (drag.kind === "photo" || drag.kind === "shape")) {
+        const r = canvasRef.current?.getBoundingClientRect();
+        if (r) {
+          const dxpx = e.clientX - (r.left + drag.from.x * r.width);
+          const dypx = e.clientY - (r.top + drag.from.y * REF_H);
+          if (Math.hypot(dxpx, dypx) < 6) return;
+        }
+        dragMovedRef.current = true;
+      }
       if (drag.kind === "selrect") {
         setSelRect({ x1: drag.from.x, y1: drag.from.y, x2: p.x, y2: p.y });
         // sélection en direct — SOURIS uniquement (au tactile, le navigateur
@@ -284,18 +300,21 @@ export default function StepCanvas({
           setSelPhotos(new Set());
           onPhotosChanged?.();
         } else {
-          setObjs((arr) => {
-            arr.forEach((o, i) => { if (drag.ids.includes(i)) void savePhotoLayout(o.photo.id, o.x, o.y, o.w); });
-            return arr;
-          });
+          if (dragMovedRef.current) {
+            setObjs((arr) => {
+              arr.forEach((o, i) => { if (drag.ids.includes(i)) void savePhotoLayout(o.photo.id, o.x, o.y, o.w); });
+              return arr;
+            });
+          }
         }
       } else if (drag.kind === "shape") {
         if (trash) {
           void saveShapes(shapes.filter((_, i) => !drag.indices.includes(i)));
           setSelShapes(new Set());
-        } else {
+        } else if (dragMovedRef.current) {
           setShapes((arr) => { void saveShapes(arr); return arr; });
         }
+        // C-38 : sans mouvement réel (simple clic), rien à sauvegarder
       } else if (drag.kind === "resize") {
         setObjs((arr) => {
           const o = arr.find((x) => x.photo.id === drag.photoId);
