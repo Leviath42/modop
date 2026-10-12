@@ -17,6 +17,20 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 **Fichiers** : `web/src/step-canvas.tsx`, `web/src/lib/step-canvas-adaptive.test.ts`
 
+## C-44 — Accueil : groupes Publié/Brouillon et familles repliables (réalisé)
+
+**Problème** : le regroupement C-43 affichait tout déplié — pas moyen de rabattre un état ou une famille pour focaliser la liste.
+
+**Correctif** : les en-têtes **« Publié »/« Brouillon »** et chaque **famille** sont des boutons de repli (chevron ▸ pivotant, compteur toujours visible, `aria-expanded`). Replier un état masque toutes ses familles et cartes ; replier une famille masque ses cartes (l'en-tête et le compteur restent). **Persistance localStorage** (`modop-collapsed-groups`) : les replis survivent aux rechargements et navigations.
+
+**Test** : `list-groups.test.ts` étendu — replier « Publié » masque ses MO et garde le brouillon visible, le repli est persisté (`state:published` dans localStorage), déplier remonte les cartes ; replier la famille « Mécanique » masque ses MO sans toucher aux autres familles, en-tête et compteur conservés.
+
+**Fichiers** : `web/src/pages/list.tsx`, `web/src/lib/list-groups.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front + 106/106 tests serveur verts.
+
+---
+
 ## C-43 — Accueil : MO regroupés par état puis famille (réalisé)
 
 **Problème** : la liste d'accueil était plate — publiés et brouillons mélangés, familles dispersées.

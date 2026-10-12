@@ -15,6 +15,21 @@ export default function ListPage() {
   const [family, setFamily] = useState("");
   const [families, setFamilies] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  // C-44 : groupes repliables (état Publié/Brouillon et familles) — l'état
+  // de repli est persisté en localStorage par MO et par groupe.
+  const COLLAPSE_KEY = "modop-collapsed-groups";
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(COLLAPSE_KEY) ?? "[]") as string[]); }
+    catch { return new Set(); }
+  });
+  const toggleGroup = (key: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...next])); } catch { /* stockage indisponible */ }
+      return next;
+    });
+  };
   const [sort, setSort] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -144,19 +159,46 @@ export default function ListPage() {
               <div>
                 {[...groups.entries()].map(([key, items]) => {
                   const [st, fam] = key.split("|");
+                  const stateLabel = st === "published" ? "Publié" : "Brouillon";
+                  const stateCount = workflows.filter((w) => w.state === st).length;
+                  const stateCollapsed = collapsed.has(`state:${st}`);
+                  const famCollapsed = collapsed.has(`fam:${key}`);
                   const stateHeader = st !== lastState ? (
-                    <h2 key={`h-${st}`} style={{ margin: "0.9rem 0 0.2rem", fontSize: "0.9rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                      {st === "published" ? "Publié" : "Brouillon"} <span style={{ background: st === "published" ? "var(--ok-bg)" : "var(--warn-bg)", color: st === "published" ? "var(--ok-text)" : "var(--warn-text)", borderRadius: "99px", padding: "0 0.5rem", fontSize: "0.75rem", textTransform: "none", letterSpacing: 0 }}>{items !== undefined ? workflows.filter((w) => w.state === st).length : ""}</span>
-                    </h2>
+                    <button
+                      key={`h-${st}`}
+                      onClick={() => toggleGroup(`state:${st}`)}
+                      aria-expanded={!stateCollapsed}
+                      aria-label={`${stateLabel} — ${stateCollapsed ? "déplier" : "replier"}`}
+                      style={{ display: "flex", alignItems: "center", gap: "0.4rem", margin: "0.9rem 0 0.2rem", fontSize: "0.9rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", background: "none", border: "none", cursor: "pointer", padding: 0, width: "100%", textAlign: "left" }}
+                    >
+                      <span aria-hidden="true" style={{ fontSize: "0.8rem", transform: stateCollapsed ? "none" : "rotate(90deg)" }}>▸</span>
+                      {stateLabel}
+                      <span style={{ background: st === "published" ? "var(--ok-bg)" : "var(--warn-bg)", color: st === "published" ? "var(--ok-text)" : "var(--warn-text)", borderRadius: "99px", padding: "0 0.5rem", fontSize: "0.75rem", textTransform: "none", letterSpacing: 0 }}>{stateCount}</span>
+                    </button>
                   ) : null;
                   if (st !== lastState) lastState = st;
                   return (
-                    <section key={key} aria-label={`${st === "published" ? "Publié" : "Brouillon"} — ${fam}`}>
+                    <section key={key} aria-label={`${stateLabel} — ${fam}`}>
                       {stateHeader}
-                      <h3 style={{ margin: "0.2rem 0 0.35rem", fontSize: "0.85rem", fontWeight: 600, color: "var(--text)" }}>{fam}</h3>
-                      <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: "0.4rem" }}>
-                        {items.map(card)}
-                      </ul>
+                      {!stateCollapsed && (
+                        <>
+                          <button
+                            onClick={() => toggleGroup(`fam:${key}`)}
+                            aria-expanded={!famCollapsed}
+                            aria-label={`${fam} — ${famCollapsed ? "déplier" : "replier"}`}
+                            style={{ display: "flex", alignItems: "center", gap: "0.35rem", margin: "0.2rem 0 0.35rem", fontSize: "0.85rem", fontWeight: 600, color: "var(--text)", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}
+                          >
+                            <span aria-hidden="true" style={{ fontSize: "0.75rem", transform: famCollapsed ? "none" : "rotate(90deg)" }}>▸</span>
+                            {fam}
+                            <span style={{ color: "var(--text-muted)", fontWeight: 400, fontSize: "0.75rem" }}>({items.length})</span>
+                          </button>
+                          {!famCollapsed && (
+                            <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: "0.4rem" }}>
+                              {items.map(card)}
+                            </ul>
+                          )}
+                        </>
+                      )}
                     </section>
                   );
                 })}

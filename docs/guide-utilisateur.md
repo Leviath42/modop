@@ -6,7 +6,7 @@
 
 ## Accueil
 
-Les modes opératoires sont regroupés : **Publié** (avec compteur) puis **Brouillon**, et à l'intérieur de chaque état **par famille** (ordre alphabétique, « Sans famille » pour les autres). La recherche, les filtres et le tri s'appliquent avant le regroupement.
+Les modes opératoires sont regroupés : **Publié** (avec compteur) puis **Brouillon**, et à l'intérieur de chaque état **par famille** (ordre alphabétique, « Sans famille » pour les autres). La recherche, les filtres et le tri s'appliquent avant le regroupement. **Cliquez un en-tête d'état ou de famille pour le replier/déplier** (chevron ▸, compteur conservé) — vos replis sont mémorisés entre les visites.
 
 ## Se connecter
 
