@@ -29,7 +29,7 @@ export default function GuidedReaderPage() {
   return (
     <>
       <NavBar />
-      <main style={{ maxWidth: "100%", margin: "0 auto", padding: "0.6rem", display: "grid", gap: "0.6rem", minHeight: "calc(100vh - 8rem)", gridTemplateRows: "auto 1fr auto" }}>
+      <main style={{ maxWidth: "100%", margin: "0 auto", padding: "0.6rem", paddingBottom: "calc(4.6rem + env(safe-area-inset-bottom))", display: "grid", gap: "0.6rem", alignContent: "start", minHeight: "100dvh", gridTemplateRows: "auto 1fr", boxSizing: "border-box" }}>
         <header style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
           <Link to={`/workflow/${id}/read`} aria-label="Lecture classique" style={{ fontSize: "1.2rem", textDecoration: "none" }}>✕</Link>
           <h1 style={{ fontSize: "1rem", margin: 0, flex: 1, minWidth: "6rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -40,7 +40,7 @@ export default function GuidedReaderPage() {
           </span>
         </header>
 
-        <article style={{ background: "var(--surface)", borderRadius: "10px", padding: "1.1rem", boxShadow: "0 1px 4px rgba(0,0,0,0.1)", overflowY: "auto", minHeight: 0 }}>
+        <article style={{ background: "var(--surface)", borderRadius: "10px", padding: "1.1rem", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }}>
           <h2 style={{ marginTop: 0, fontSize: "1.1rem" }}>{idx + 1}. {step.title}</h2>
           {step.body && <p style={{ whiteSpace: "pre-wrap", fontSize: "1rem" }}>{step.body}</p>}
           {step.pictos.length > 0 && (
@@ -55,7 +55,7 @@ export default function GuidedReaderPage() {
           {step.photos.length > 0 && <StepCanvasView photos={step.photos ?? []} shapes={step.canvas ?? []} />}
         </article>
 
-        <nav style={{ display: "flex", gap: "0.6rem", paddingBottom: "max(0.6rem, env(safe-area-inset-bottom))" }} aria-label="Navigation entre étapes">
+        <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200, display: "flex", gap: "0.6rem", padding: "0.6rem max(0.6rem, env(safe-area-inset-left)) max(0.6rem, env(safe-area-inset-bottom)) max(0.6rem, env(safe-area-inset-right))", background: "var(--bg)", borderTop: "1px solid var(--border-soft)", boxShadow: "0 -2px 10px rgba(0,0,0,0.08)" }} aria-label="Navigation entre étapes">
           <button
             onClick={() => setIdx((v) => Math.max(0, v - 1))}
             disabled={idx === 0}

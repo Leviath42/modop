@@ -43,6 +43,14 @@ if (!finish) throw new Error("bouton Terminé introuvable (dernière étape atte
 finish.click();
 await new Promise((r) => setTimeout(r, 100));
 
+// C-36 : la barre de navigation est FIXÉE en bas de l'écran
+const nav = doc.querySelector('nav[aria-label="Navigation entre étapes"]') as HTMLElement | null;
+if (!nav) throw new Error("nav de navigation introuvable");
+if (nav.style.position !== "fixed") throw new Error(`la nav doit être position:fixed, obtenue ${nav.style.position}`);
+if (nav.style.bottom !== "0px") throw new Error(`la nav doit être collée au bas (bottom: 0), obtenue ${nav.style.bottom}`);
+if (!nav.style.background) throw new Error("la nav fixe doit avoir un fond opaque");
+if (!doc.body.textContent?.includes("Précédent")) throw new Error("bouton Précédent absent de la barre");
+
 // le composant doit avoir navigué : plus de boutons de navigation guidée dans le rendu
 const stillGuided = Array.from(doc.querySelectorAll("button")).some((b) => b.textContent?.includes("Suivant"));
 if (stillGuided) throw new Error("le bouton Terminé doit naviguer hors de la lecture guidée (B-A1)");

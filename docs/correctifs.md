@@ -7,6 +7,23 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-36 — Lecture guidée : Précédent/Suivant/Terminé accrochés au bas de l'écran (réalisé)
+
+**Problème** : dans la lecture guidée, la rangée Précédent/Suivant/Terminé était le 3ᵉ rang de la grille du `main` — elle ne « collait » au bas que si l'étape remplissait l'écran ; dès que le contenu était long (grande photo, description détaillée), les boutons défilaient hors de vue, hors de la zone pouce.
+
+**Correctif** :
+1. La barre de navigation devient **`position: fixed` en bas de l'écran** (pleine largeur, fond opaque `var(--bg)`, bordure + ombre légère, `zIndex` 200, safe areas iPhone respectées gauche/droite/bas).
+2. Le `main` passe à `minHeight: 100dvh` (viewport dynamique — barre d'URL mobile incluse) avec un `paddingBottom` réservant la hauteur de la barre : le contenu défile sous la barre sans jamais être masqué.
+3. L'article d'étape perd son `overflowY: auto` interne — c'est la page qui défile (comportement naturel du scroll au doigt), la barre reste immobile.
+
+**Test** : `guided-finish.test.ts` étendu — la nav est rendue `position: fixed` avec `bottom: 0`, fond opaque, bouton Précédent présent (en plus du scénario B-A1 Terminé navigue).
+
+**Fichiers** : `web/src/pages/guided-reader.tsx`, `web/src/lib/guided-finish.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front verts.
+
+---
+
 ## C-35 — Remontées terrain : page dédiée, lecteur allégé (réalisé)
 
 **Problème** : l'historique des signalements terrain (à traiter + résolus, avec actions « Corriger l'étape » et « Résoudre ») s'affichait en pleine page de lecture — un contenu de gestion qui n'a pas sa place dans la consultation atelier, et qui poussait les étapes vers le bas.

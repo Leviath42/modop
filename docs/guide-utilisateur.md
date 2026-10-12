@@ -73,6 +73,7 @@ Le header affiche le **nom de l'étape active**, **Publier**, **▸/▾** (tout 
 - **Clic ou tap ailleurs** (fond du canevas, autre zone de l'éditeur) : **désélectionne** l'image ou la forme sélectionnée.
 - **En lecture** : le sélecteur d'étape suit la même logique que l'éditeur — l'étape active est marquée **▶**, choisir une étape y défile en douceur.
 - **Remontées terrain (auteur)** : le lien **« ⚑ Terrain »** du lecteur ouvre la page dédiée — **À traiter** (avec Corriger l'étape / Résoudre) et l'**historique des signalements traités**. La page de lecture n'affiche plus cet historique.
+- **Lecture guidée** : les boutons **Précédent / Suivant / Terminé** restent accrochés en bas de l'écran pendant le défilement.
 - **En lecture** : cliquez/touchez une photo pour l'ouvrir **plein écran** (Échap ou toucher le fond pour fermer, pincez pour zoomer).
 - **Titre/description/famille…** : enregistrés automatiquement ~1 s après la dernière frappe (badge « Enregistrement… » dans le bandeau).
 - **Envoi de plusieurs photos** : parallèle, avec compteur de progression ; une photo en échec n'interrompt pas les autres.
