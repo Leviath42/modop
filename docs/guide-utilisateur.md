@@ -93,7 +93,7 @@ Le header affiche le **nom de l'étape active**, **Publier**, **▸/▾** (tout 
 - La liste des versions (auteur, date) est consultable ; une version peut être **restaurée** (l'état d'alors remplace le brouillon, l'historique reste intact).
 - **Dupliquer** un mode opératoire : copie complète en brouillon (référence `-COPIE`), photos indépendantes.
 - **Supprimer un mode opératoire** (admin uniquement) : section en bas de l'éditeur, double confirmation avec **case à cocher décochée par défaut**.
-- **Comptes (admin)** : le bouton **✎** à côté de chaque compte édite son Prénom/Nom en place.
+- **Comptes (admin)** : le bouton **✎** à côté de chaque compte ouvre une **fenêtre d'édition complète** — Prénom, Nom, rôle et activation.
 - **Responsable** : champ à recherche dans les détails — tapez quelques lettres, choisissez parmi les comptes actifs (Prénom Nom). Si le compte responsable est désactivé, ses MO passent automatiquement **à revoir** pour réattribution.
 
 ### Supprimer

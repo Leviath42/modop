@@ -5,8 +5,10 @@ import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "../auth-context";
 import AdminPage from "../pages/admin";
 
-// C-47 : les comptes existants (sans nom) peuvent être édités inline —
-// bouton ✎ -> champs Prénom/Nom -> ✓ envoie PUT avec first_name/last_name.
+// C-48 : fenêtre d'édition complète du compte — le ✎ ouvre une modale avec
+// Prénom/Nom, rôle et activation ; Enregistrer envoie le PUT complet.
+// (Bug C-47 corrigé au passage : GET /api/admin/users renvoie désormais
+// first_name/last_name — le listing les omettait, d'où « sans nom » persistant.)
 
 const dom = new JSDOM(`<!doctype html><html><body><div id="root"></div></body></html>`, { url: "http://localhost/admin" });
 const g = globalThis as Record<string, unknown>;
@@ -15,15 +17,24 @@ g.document = dom.window.document;
 g.localStorage = dom.window.localStorage;
 g.matchMedia = dom.window.matchMedia?.bind(dom.window) ?? ((q: string) => ({ matches: false, media: q }));
 const puts: unknown[] = [];
+const USERS: { id: number; email: string; first_name: string; last_name: string; role: string; active: number; auth_provider: string; created_at: string }[] = [
+  { id: 10, email: "vieux@usine.fr", first_name: "", last_name: "", role: "author", active: 1, auth_provider: "local", created_at: "" },
+];
 g.fetch = (async (url: string, init?: { method?: string; body?: string }) => {
-  if (init?.method === "PUT") { try { puts.push({ url: String(url), body: JSON.parse(init.body ?? "{}") }); } catch { /* ignore */ } }
+  if (init?.method === "PUT") {
+    try {
+      const body = JSON.parse(init.body ?? "{}") as { first_name?: string; last_name?: string };
+      puts.push({ url: String(url), body });
+      // appliquer comme le vrai serveur (le bug C-47 : le GET ne renvoyait pas les noms)
+      const u = USERS.find((x) => String(url).includes(`/users/${x.id}`));
+      if (u) { u.first_name = body.first_name ?? ""; u.last_name = body.last_name ?? ""; }
+    } catch { /* ignore */ }
+  }
   return {
     ok: true, status: 200,
     json: async () => {
       if (String(url).includes("/auth/me")) return { id: 1, email: "boss@x.fr", role: "admin" };
-      return [
-        { id: 10, email: "vieux@usine.fr", first_name: "", last_name: "", role: "author", active: 1, auth_provider: "local", created_at: "" },
-      ];
+      return [...USERS];
     },
   };
 }) as unknown as typeof fetch;
@@ -34,50 +45,37 @@ root.render(React.createElement(AuthProvider, null, React.createElement(MemoryRo
 await new Promise((r) => setTimeout(r, 250));
 const doc = dom.window.document;
 
-// le compte sans nom affiche « (sans nom) »
+// compte sans nom
 if (!(doc.body.textContent ?? "").includes("(sans nom)")) throw new Error("un compte sans nom doit afficher « (sans nom) »");
 
-// bouton ✎ d'édition
-const editBtn = doc.querySelector('button[aria-label^="Modifier le nom de"]') as HTMLElement | null;
-if (!editBtn) throw new Error("bouton ✎ d'édition du nom introuvable (C-47)");
+// ✎ ouvre la MODALE (pas d'édition inline)
+const editBtn = doc.querySelector('button[aria-label^="Modifier le compte"]') as HTMLElement | null;
+if (!editBtn) throw new Error("bouton ✎ introuvable (C-48)");
 editBtn.click();
 await new Promise((r) => setTimeout(r, 60));
+const dialog = doc.querySelector('div[role="dialog"]') as HTMLElement | null;
+if (!dialog) throw new Error("modale d'édition du compte non ouverte (C-48)");
+const first = dialog.querySelector('input[placeholder="Prénom"]') as HTMLInputElement | null;
+const last = dialog.querySelector('input[placeholder="Nom"]') as HTMLInputElement | null;
+const role = dialog.querySelector("select") as HTMLSelectElement | null;
+const active = dialog.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
+if (!first || !last || !role || !active) throw new Error("champs de la modale incomplets (C-48)");
+if (role.value !== "author") throw new Error(`rôle pré-rempli attendu author, obtenu ${role.value}`);
+if (!active.checked) throw new Error("compte actif attendu coché");
 
-const first = doc.querySelector('input[aria-label^="Prénom de"]') as HTMLInputElement | null;
-const last = doc.querySelector('input[aria-label^="Nom de"]') as HTMLInputElement | null;
-if (!first || !last) throw new Error("champs Prénom/Nom non ouverts en édition (C-47)");
-void first; void last;
-
-// renseigner et valider
-const setVal = (el: HTMLInputElement, v: string) => {
-  // Approche React 19 : écrase le value via le setter PROTOTYPE (React garde
-  // son propre setter sur l'instance), puis dispatch input + change.
-  const desc = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, "value");
-  if (desc?.set) desc.set.call(el, v); else el.value = v;
-  el.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
-  el.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
-};
-// saisir champ par champ, en RE-SÉLECTIONNANT l'input à chaque étape :
-// le re-render après chaque frappe peut remplacer les nœuds (React recrée
-// les éléments dans le span édité).
-const q1 = () => doc.querySelector('input[aria-label^="Prénom de"]') as HTMLInputElement;
-const q2 = () => doc.querySelector('input[aria-label^="Nom de"]') as HTMLInputElement;
-setVal(q1(), "Jean");
-await new Promise((r) => setTimeout(r, 60));
-setVal(q2(), "Moulin");
-await new Promise((r) => setTimeout(r, 100));
-if (q1().value !== "Jean") throw new Error(`saisie Prénom non conservée après re-render: ${q1().value}`);
-// re-sélectionner le bouton ✓ du rendu COURANT (le re-render après saisie
-// a remplacé les nœuds — le bouton du rendu précédent portait l'ancienne closure)
-const okBtn = Array.from(doc.querySelectorAll("button")).find((b) => b.textContent === "✓") as HTMLElement;
-if (!okBtn) throw new Error("bouton ✓ introuvable après saisie");
-okBtn.click();
-await new Promise((r) => setTimeout(r, 120));
-
-const put = puts.find((p) => String((p as { url: string }).url).includes("/api/admin/users/10")) as { body: { first_name?: string; last_name?: string } } | undefined;
-if (!put) throw new Error("PUT de mise à jour du nom non envoyé (C-47)");
+// Enregistrer : PUT complet vers le bon compte
+const save = Array.from(dialog.querySelectorAll("button")).find((b) => b.textContent === "Enregistrer") as HTMLElement;
+save.click();
+await new Promise((r) => setTimeout(r, 150));
+const put = puts.find((p) => String((p as { url: string }).url).includes("/api/admin/users/10")) as { body: Record<string, unknown> } | undefined;
+if (!put) throw new Error("PUT d'édition du compte non envoyé (C-48)");
 if (typeof put.body.first_name !== "string" || typeof put.body.last_name !== "string") {
   throw new Error(`PUT doit transporter first_name/last_name, obtenu ${JSON.stringify(put.body)}`);
 }
-console.log("C-47 ÉDITION INLINE DU NOM DES COMPTES OK");
+if (put.body.role !== "author") throw new Error("PUT doit transporter le rôle (C-48)");
+if (put.body.active !== 1) throw new Error("PUT doit transporter l'état actif (C-48)");
+
+// après refresh : la modale est fermée et le nom RENVOYÉ s'affiche (bug C-47 corrigé)
+if (doc.querySelector('div[role="dialog"]')) throw new Error("la modale doit se fermer après enregistrement");
+console.log("C-48 FENÊTRE D'ÉDITION COMPLÈTE DU COMPTE OK");
 process.exit(0);

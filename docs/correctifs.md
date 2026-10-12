@@ -34,6 +34,22 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-48 — Comptes : bug « sans nom » persistant + fenêtre d'édition complète (réalisé)
+
+**Problème** : 1) après validation de l'édition, le compte restait « sans nom » ; 2) l'édition inline (C-47) était jugée peu pratique.
+
+**Cause du bug (racine, prouvée en runtime)** : le `GET /api/admin/users` **omettait** `first_name`/`last_name` dans son SELECT — le PUT écrivait correctement, mais le refresh de la liste renvoyait les comptes sans les noms, et l'affichage retombait sur « (sans nom) ». Corrigé : le SELECT du listing renvoie désormais les deux colonnes (prouvé : PUT Jean/Moulin → GET renvoie Jean/Moulin).
+
+**Correctif** : l'édition inline est remplacée par une **fenêtre (modale) d'édition complète du compte** : Prénom, Nom, **Rôle** et **Compte actif** pré-remplis — Enregistrer envoie le PUT complet et rafraîchit ; protections conservées (pas d'auto-rétrogradation/désactivation de soi-même, garde-fou « à revoir » à la désactivation C-45) ; fermeture par Annuler, clic sur le fond ou Échap.
+
+**Test** : `admin-name-edit.test.ts` réécrit — modale ouverte avec les 4 champs pré-remplis, PUT complet (noms + rôle + actif) vers le bon compte, modale fermée après enregistrement ; serveur : le GET renvoie les noms (scénario runtime C-45 étendu implicitement par la correction, 107/107).
+
+**Fichiers** : `server/src/routes/admin.ts` (SELECT du listing corrigé), `web/src/pages/admin.tsx` (modale), `web/src/lib/admin-name-edit.test.ts`
+
+**État** : ✅ livré sur beta — 107/107 tests serveur, tsc + build + tous tests front verts.
+
+---
+
 ## C-47 — Comptes existants : édition inline du Prénom/Nom (réalisé)
 
 **Problème** : les comptes créés avant C-45 n'ont pas de prénom/nom, et la page Comptes n'offrait pas de moyen de les renseigner (seule la création portait les champs).

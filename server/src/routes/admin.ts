@@ -21,7 +21,7 @@ export function adminRouter(db: Database.Database): Router {
   r.get("/users", (_req, res) => {
     const rows = db
       .prepare(
-        `SELECT id, email, role, active, auth_provider, created_at FROM users ORDER BY email`
+        `SELECT id, email, first_name, last_name, role, active, auth_provider, created_at FROM users ORDER BY email`
       )
       .all() as UserRow[];
     res.json(rows);

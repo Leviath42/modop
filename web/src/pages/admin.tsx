@@ -13,10 +13,19 @@ export default function AdminPage() {
   const [newRole, setNewRole] = useState<AdminUser["role"]>("reader");
   const [newFirstName, setNewFirstName] = useState("");
   const [newLastName, setNewLastName] = useState("");
-  // C-47 : édition inline du Prénom/Nom des comptes existants
-  const [editNameId, setEditNameId] = useState<number | null>(null);
+  // C-48 : fenêtre d'édition complète d'un compte (Prénom/Nom + rôle + actif)
+  const [editUser, setEditUser] = useState<AdminUser | null>(null);
   const [editFirstName, setEditFirstName] = useState("");
   const [editLastName, setEditLastName] = useState("");
+  const [editRole, setEditRole] = useState<AdminUser["role"]>("reader");
+  const [editActive, setEditActive] = useState(1);
+  // fermeture Échap de la modale
+  useEffect(() => {
+    if (!editUser) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setEditUser(null); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [editUser]);
 
   const [tempPassword, setTempPassword] = useState<{ email: string; password: string } | null>(null);
 
@@ -47,12 +56,18 @@ export default function AdminPage() {
     }
   }
 
-  async function saveName(u: AdminUser) {
+  async function saveEdit() {
+    if (!editUser) return;
     setError(null);
     try {
-      await updateUser(u, { first_name: editFirstName.trim(), last_name: editLastName.trim() });
-      setEditNameId(null);
-      setNotice("Nom mis à jour");
+      await updateUser(editUser, {
+        first_name: editFirstName.trim(),
+        last_name: editLastName.trim(),
+        role: editRole,
+        ...(editUser.id !== user?.id ? { active: editActive } : {}),
+      });
+      setEditUser(null);
+      setNotice(`Compte mis à jour : ${editFirstName.trim() || editLastName.trim() ? `${editFirstName.trim()} ${editLastName.trim()}`.trim() : editUser.email}`);
       await refresh();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Mise à jour impossible");
@@ -126,25 +141,22 @@ export default function AdminPage() {
         <section style={{ display: "grid", gap: "0.5rem" }}>
           {users.map((u) => (
             <div key={u.id} style={{ background: "var(--surface)", borderRadius: "10px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", opacity: u.active === 0 ? 0.55 : 1 }}>
-              {editNameId === u.id ? (
-                <span style={{ display: "flex", gap: "0.35rem", flex: "1 1 12rem", minWidth: 0, alignItems: "center" }}>
-                  <input value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} placeholder="Prénom" aria-label={`Prénom de ${u.email}`} style={{ ...input, flex: "1 1 5rem", minWidth: 0 }} />
-                  <input value={editLastName} onChange={(e) => setEditLastName(e.target.value)} placeholder="Nom" aria-label={`Nom de ${u.email}`} style={{ ...input, flex: "1 1 5rem", minWidth: 0 }} />
-                  <button onClick={() => void saveName(u)} style={primaryBtn}>✓</button>
-                  <button onClick={() => setEditNameId(null)} style={secondaryBtn}>Annuler</button>
-                </span>
-              ) : (
-                <span style={{ fontWeight: 600, flex: "1 1 10rem", overflowWrap: "anywhere", display: "flex", gap: "0.4rem", alignItems: "baseline", minWidth: 0 }}>
-                  <span style={{ overflowWrap: "anywhere" }}>{[u.first_name, u.last_name].filter(Boolean).join(" ") || <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(sans nom)</span>}</span>
-                  <span style={{ color: "var(--text-muted)", fontWeight: 400, fontSize: "0.8rem" }}>({u.email})</span>
-                  <button
-                    onClick={() => { setEditNameId(u.id); setEditFirstName(u.first_name ?? ""); setEditLastName(u.last_name ?? ""); }}
-                    aria-label={`Modifier le nom de ${u.email}`}
-                    title="Modifier le Prénom / Nom"
-                    style={{ border: "none", background: "none", color: "var(--accent)", cursor: "pointer", padding: "0 0.2rem", fontSize: "0.9rem", flexShrink: 0 }}
-                  >✎</button>
-                </span>
-              )}
+              <span style={{ fontWeight: 600, flex: "1 1 10rem", overflowWrap: "anywhere", display: "flex", gap: "0.4rem", alignItems: "baseline", minWidth: 0 }}>
+                <span style={{ overflowWrap: "anywhere" }}>{[u.first_name, u.last_name].filter(Boolean).join(" ") || <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(sans nom)</span>}</span>
+                <span style={{ color: "var(--text-muted)", fontWeight: 400, fontSize: "0.8rem" }}>({u.email})</span>
+                <button
+                  onClick={() => {
+                    setEditUser(u);
+                    setEditFirstName(u.first_name ?? "");
+                    setEditLastName(u.last_name ?? "");
+                    setEditRole(u.role);
+                    setEditActive(u.active);
+                  }}
+                  aria-label={`Modifier le compte ${u.email}`}
+                  title="Modifier le compte (Prénom, Nom, rôle, activation)"
+                  style={{ border: "none", background: "none", color: "var(--accent)", cursor: "pointer", padding: "0 0.2rem", fontSize: "0.9rem", flexShrink: 0 }}
+                >✎</button>
+              </span>
               <select
                 value={u.role}
                 onChange={(e) => updateUser(u, { role: e.target.value as AdminUser["role"] })}
@@ -172,6 +184,53 @@ export default function AdminPage() {
           ))}
         </section>
 
+        {/* C-48 : fenêtre d'édition complète du compte */}
+        {editUser && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Modifier le compte ${editUser.email}`}
+            onClick={() => setEditUser(null)}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{ background: "var(--surface)", borderRadius: "12px", boxShadow: "0 10px 40px rgba(0,0,0,0.3)", padding: "1.2rem", width: "100%", maxWidth: "26rem", display: "grid", gap: "0.7rem" }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <h2 style={{ margin: 0, fontSize: "1.05rem", flex: 1 }}>Modifier le compte</h2>
+                <span style={{ color: "var(--text-muted)", fontSize: "0.85rem", overflowWrap: "anywhere" }}>{editUser.email}</span>
+              </div>
+              <label style={{ display: "grid", gap: "0.25rem", fontSize: "0.85rem" }}>
+                Prénom
+                <input value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} style={input} placeholder="Prénom" />
+              </label>
+              <label style={{ display: "grid", gap: "0.25rem", fontSize: "0.85rem" }}>
+                Nom
+                <input value={editLastName} onChange={(e) => setEditLastName(e.target.value)} style={input} placeholder="Nom" />
+              </label>
+              <label style={{ display: "grid", gap: "0.25rem", fontSize: "0.85rem" }}>
+                Rôle
+                <select value={editRole} onChange={(e) => setEditRole(e.target.value as AdminUser["role"])} style={input} disabled={editUser.id === user?.id}>
+                  <option value="reader">Lecteur</option>
+                  <option value="author">Auteur</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </label>
+              {editUser.id !== user?.id && (
+                <label style={{ display: "flex", gap: "0.4rem", alignItems: "center", fontSize: "0.85rem" }}>
+                  <input type="checkbox" checked={editActive === 1} onChange={(e) => setEditActive(e.target.checked ? 1 : 0)} />
+                  Compte actif
+                </label>
+              )}
+              {error && <p role="alert" style={{ margin: 0, color: "var(--error-text)", background: "var(--error-bg)", padding: "0.4rem 0.6rem", borderRadius: "6px", fontSize: "0.85rem" }}>{error}</p>}
+              <div style={{ display: "flex", gap: "0.5rem", justifyContent: "end" }}>
+                <button onClick={() => setEditUser(null)} style={secondaryBtn}>Annuler</button>
+                <button onClick={() => void saveEdit()} style={primaryBtn}>Enregistrer</button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </>
   );
