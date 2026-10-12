@@ -42,6 +42,7 @@ export default function StepCanvas({
   onToolDone,
   onSelectionChange,
   deleteActionRef,
+  onInteract,
 }: {
   stepId: number;
   photos: CanvasPhoto[];
@@ -52,6 +53,7 @@ export default function StepCanvas({
   onToolDone?: () => void;
   onSelectionChange?: (count: number) => void;
   deleteActionRef?: (fn: () => void) => void;
+  onInteract?: () => void;
 }) {
   const [objs, setObjs] = useState<CanvasPhoto[]>(photos);
   const [shapes, setShapes] = useState<Shape[]>(parseShapes(canvasShapes));
@@ -349,6 +351,7 @@ export default function StepCanvas({
 
   function onPointerDown(e: React.PointerEvent) {
     if (e.pointerType === "mouse" && e.button !== 0) return;
+    onInteract?.();               // C-41 : toute interaction rend l'étape active côté éditeur
     if (tool) return;            // les outils agissent au clic (le click part aussi au tactile)
     const p = pt(e);
     // C-26 : les formes sont rendues AU-DESSUS des photos (SVG après les <img>)
@@ -433,6 +436,7 @@ export default function StepCanvas({
 
   function onToolPointerUp(e: React.PointerEvent) {
     if (!tool) return;
+    onInteract?.();               // C-41 : poser un outil rend l'étape active
     const p = pt(e);
     if (tool === "text") {
       setTextDraft({ x: p.x, y: p.y, value: "" });
@@ -560,11 +564,29 @@ export default function StepCanvas({
           }}>{s.text}</span>
         ) : null)}
         {textDraft && (
-          <span style={{
-            position: "absolute", left: `${textDraft.x * 100}%`, top: `${textDraft.y * REF_H}px`, transform: "translate(-50%, -50%)",
-            background: color, color: "white", padding: "0.15rem 0.4rem", borderRadius: "4px",
-            fontSize: "0.8rem", fontWeight: 600, pointerEvents: "none",
-          }}>{textDraft.value || "…"}</span>
+          <input autoFocus value={textDraft.value}
+            onChange={(e) => setTextDraft({ ...textDraft, value: e.target.value })}
+            placeholder="Texte…"
+            aria-label="Texte à afficher sur l'étape"
+            style={{
+              position: "absolute", left: `${textDraft.x * 100}%`, top: `${textDraft.y * REF_H}px`, transform: "translate(-50%, -50%)",
+              background: color, color: "white", padding: "0.15rem 0.4rem", borderRadius: "4px",
+              fontSize: "0.8rem", fontWeight: 600, border: "2px solid white", outline: "none",
+              minWidth: "5rem", maxWidth: "60%", boxShadow: "0 2px 8px rgba(0,0,0,0.35)",
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && textDraft.value.trim()) {
+                void saveShapes([...shapes, { type: "text", x1: textDraft.x, y1: textDraft.y, text: textDraft.value.trim(), color }]);
+                setTextDraft(null); setTool(null);
+              }
+              if (e.key === "Escape") { setTextDraft(null); setTool(null); }
+            }}
+            onBlur={() => {
+              if (textDraft.value.trim()) {
+                void saveShapes([...shapes, { type: "text", x1: textDraft.x, y1: textDraft.y, text: textDraft.value.trim(), color }]);
+              }
+              setTextDraft(null); setTool(null);
+            }} />
         )}
 
         {/* carré de suppression pendant un drag — en haut à gauche (C-27) */}
@@ -580,26 +602,7 @@ export default function StepCanvas({
         )}
       </div>
 
-      {textDraft && (
-        <div style={{ display: "flex", gap: "0.4rem" }}>
-          <input autoFocus value={textDraft.value}
-            onChange={(e) => setTextDraft({ ...textDraft, value: e.target.value })}
-            placeholder="Texte à afficher"
-            style={{ flex: 1, padding: "0.4rem", borderRadius: "4px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)" }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && textDraft.value.trim()) {
-                void saveShapes([...shapes, { type: "text", x1: textDraft.x, y1: textDraft.y, text: textDraft.value.trim(), color }]);
-                setTextDraft(null); setTool(null);
-              }
-              if (e.key === "Escape") { setTextDraft(null); setTool(null); }
-            }} />
-          <button onClick={() => {
-            if (textDraft.value.trim()) void saveShapes([...shapes, { type: "text", x1: textDraft.x, y1: textDraft.y, text: textDraft.value.trim(), color }]);
-            setTextDraft(null); setTool(null);
-            onToolDone?.();
-          }} style={{ padding: "0.4rem 1rem", borderRadius: "6px", border: "none", background: "var(--accent)", color: "#fff", fontWeight: 600 }}>OK</button>
-        </div>
-      )}
+
     </div>
   );
 }

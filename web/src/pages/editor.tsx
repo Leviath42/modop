@@ -532,7 +532,7 @@ export default function EditorPage() {
                     <span aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "1.5rem", height: "1.5rem", borderRadius: "50%", background: "var(--accent-bg)", color: "var(--accent)", fontSize: "0.8rem", fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
                     <input
                       value={step.title}
-                      onChange={(e) => setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, title: e.target.value } : s)))}
+                      onChange={(e) => { setActiveStepId(step.id); setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, title: e.target.value } : s))); }}
                       onBlur={() => patchStep(step, { title: step.title })}
                       style={{ ...input, fontWeight: 600, flex: "1 1 8rem" }}
                       aria-label={`Titre étape ${i + 1}`}
@@ -554,7 +554,7 @@ export default function EditorPage() {
                     value={step.body}
                     rows={2}
                     placeholder="Description de l'opération…"
-                    onChange={(e) => setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, body: e.target.value } : s)))}
+                    onChange={(e) => { setActiveStepId(step.id); setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, body: e.target.value } : s))); }}
                     onBlur={() => patchStep(step, { body: step.body })}
                     style={input}
                     aria-label={`Description étape ${i + 1}`}
@@ -587,6 +587,7 @@ export default function EditorPage() {
                         };
                       })}
                       canvasShapes={step.canvas ?? []}
+                      onInteract={() => { if (activeStepId !== step.id) setActiveStepId(step.id); }}
                       onPhotosChanged={async () => { const w = await api.getWorkflow(id!); setSteps(w.steps); }}
                     />
                     <div>

@@ -17,6 +17,22 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 **Fichiers** : `web/src/step-canvas.tsx`, `web/src/lib/step-canvas-adaptive.test.ts`
 
+## C-41 — Étape active dynamique + saisie du texte sur place (réalisé)
+
+**Problème** : l'étape active du sélecteur ne changeait que si on la choisissait explicitement ou cliquait son titre — éditer une autre étape (poser un outil, cliquer le canevas, taper la description) ne la rendait pas active : la palette et le bouton Supprimer continuaient de cibler l'ancienne étape, source d'erreurs. Et l'outil Texte affichait son champ de saisie en **bas de l'étape**, loin du point cliqué.
+
+**Correctif** :
+1. **Étape active automatique** : le `StepCanvas` émet `onInteract` à toute interaction (pointerdown dans le canevas, pose d'outil) ; l'éditeur rend l'étape active. La frappe dans le titre ou la description d'une étape la rend aussi active. Le sélecteur, la palette et les actions suivent l'étape réellement travaillée — plus besoin de sélectionner avant d'agir.
+2. **Texte saisi sur place** : l'input de l'outil Texte apparaît **dans le canevas, au point cliqué** (style du futur texte : fond de la couleur choisie, texte blanc, bordure blanche) — plus de bloc en bas d'étape. Entrée valide, Échap annule, et la perte de focus (tap ailleurs) valide aussi.
+
+**Test** : `web/src/lib/active-step.test.ts` — déplier l'étape 2, revenir à l'étape 1 via le sélecteur, cliquer dans le canevas de l'étape 2 : le sélecteur passe à l'étape 2 (marqueur ▶).
+
+**Fichiers** : `web/src/step-canvas.tsx` (onInteract, input texte in-canvas), `web/src/pages/editor.tsx` (branchement onInteract, titre/description activent l'étape), `web/src/lib/active-step.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front (dont le nouveau) + 106/106 tests serveur verts.
+
+---
+
 ## C-40 — Le VRAI bug des flèches : bond au premier déplacement (réalisé)
 
 **Problème** ( уточнение de C-38) : une flèche sélectionnée sautait **d'un bond** non pas au clic, mais **au moindre déplacement** — le bond valait la moitié de la longueur de la flèche, dans la direction du geste.
