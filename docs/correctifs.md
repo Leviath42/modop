@@ -34,6 +34,24 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-50 — Barre d'outils : sortie du bandeau, rangée indépendante + labels (réalisé)
+
+**Problème** : après C-49, la barre vivait DANS le bandeau sticky — l'ensemble (titre, Publier, replier, sélecteur d'étape, + 12 boutons d'outils) formait une masse compacte illisible, et le header n'était « plus du tout compréhensible ».
+
+**Correctif** :
+1. **Le bandeau redevient léger** : titre + Enregistrement…, Détails, Publier, replier, sélecteur d'étape active. Rien d'autre.
+2. **La barre d'outils est une rangée indépendante juste sous le bandeau** (carte surface avec bordure, comme le reste de la page) — groupes conservés : Étape | Insertion | Indications | Actions.
+3. **Labels sur les boutons** : Photos, Flèche, Zone, Texte, Couleur, Indications portent leur nom en toutes lettres à côté de l'icône (0.75 rem) — plus besoin de survoler pour comprendre. Compteur conservé sur Indications.
+4. Popovers inchangés (galerie/appareil, couleurs, pictos) ; fermetures Échap/clic extérieur conservées.
+
+**Tests** : `header-tools` (barre + labels + popover couleurs), `empty-tools`, `photo-source` — tous passent sans modification supplémentaire ; 107/107 serveur.
+
+**Fichiers** : `web/src/pages/editor.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front + 107/107 tests serveur verts.
+
+---
+
 ## C-49 — Palette d'édition refondue : barre d'outils permanente (réalisé)
 
 **Problème** : la palette exigeait un clic sur « Outils » pour apparaître, s'étalait en une rangée dense sans hiérarchie (photos, 3 formes, 4 pastilles couleur, pictos, suppressions tout au même niveau), et disparaissait à chaque erreur de manipulation.
