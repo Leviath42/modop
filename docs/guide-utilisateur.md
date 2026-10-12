@@ -71,6 +71,7 @@ Le header affiche le **nom de l'étape active**, **Publier**, **▸/▾** (tout 
 - **Clic sur une image ou une forme** : sélectionne cet objet (Maj-clic pour ajouter à la sélection).
 - **Glisser sur le fond** : dessine un **rectangle de sélection** (appliqué au relâchement).
 - **Clic ou tap ailleurs** (fond du canevas, autre zone de l'éditeur) : **désélectionne** l'image ou la forme sélectionnée.
+- **En lecture** : le sélecteur d'étape suit la même logique que l'éditeur — l'étape active est marquée **▶**, choisir une étape y défile en douceur.
 - **En lecture** : cliquez/touchez une photo pour l'ouvrir **plein écran** (Échap ou toucher le fond pour fermer, pincez pour zoomer).
 - **Titre/description/famille…** : enregistrés automatiquement ~1 s après la dernière frappe (badge « Enregistrement… » dans le bandeau).
 - **Envoi de plusieurs photos** : parallèle, avec compteur de progression ; une photo en échec n'interrompt pas les autres.

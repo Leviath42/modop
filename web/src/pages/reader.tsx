@@ -17,6 +17,8 @@ export default function ReaderPage() {
   const [feedbackOpenStep, setFeedbackOpenStep] = useState<number | null>(null);
   const [feedbackMsg, setFeedbackMsg] = useState("");
   const [feedbackNotice, setFeedbackNotice] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  // C-34 : même logique que l'éditeur — le sélecteur suit l'étape active
+  const [activeStep, setActiveStep] = useState(0);
   const [feedbacks, setFeedbacks] = useState<{ id: number; by: string; step_id: number; message: string; status: "open" | "resolved"; resolved_by: string | null; resolved_at: string | null; at: string }[]>([]);
 
   useEffect(() => {
@@ -49,19 +51,24 @@ export default function ReaderPage() {
       <NavBar />
       <main style={{ maxWidth: isMobile ? "100%" : "800px", margin: "0 auto", padding: "1rem" }}>
         <header style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.6rem", flexWrap: "wrap", position: "sticky", top: "var(--nav-h, 2.9rem)", background: "var(--bg)", padding: "0.5rem 0", zIndex: 20 }}>
-          <Link to="/" aria-label="Retour à la liste" style={{ fontSize: "1.3rem", textDecoration: "none" }}>←</Link>
-          <h1 style={{ fontSize: isMobile ? "0.95rem" : "1.05rem", margin: 0, flex: 1, minWidth: "120px" }}>
-            {wf.title} <code style={{ fontSize: "0.75em", background: "var(--surface-2)", padding: "0.1rem 0.4rem", borderRadius: "4px" }}>{wf.reference}</code>
+          <Link to="/" aria-label="Retour à la liste" style={{ fontSize: "1.1rem", textDecoration: "none" }}>←</Link>
+          <h1 style={{ fontSize: "1rem", margin: 0, flex: 1, minWidth: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {wf.title} <code style={{ fontSize: "0.8em", background: "var(--surface-2)", padding: "0.1rem 0.4rem", borderRadius: "4px" }}>{wf.reference}</code>
           </h1>
           <select
-            value=""
-            onChange={(e) => { const el = document.getElementById(`etape-${e.target.value}`); el?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
-            aria-label="Aller à l'étape"
-            style={{ padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", fontSize: "0.9rem" }}
+            value={String(activeStep)}
+            onChange={(e) => {
+              const i = Number(e.target.value);
+              if (Number.isNaN(i)) return;
+              setActiveStep(i);
+              setTimeout(() => { document.getElementById(`etape-${i}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 80);
+            }}
+            aria-label="Étape affichée — choisir pour y aller"
+            title="Étape active — choisir pour y aller"
+            style={{ margin: 0, fontSize: "0.85rem", fontWeight: 600, flex: "0 1 8rem", maxWidth: "40vw", minWidth: 0, padding: "0.25rem 0.35rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)" }}
           >
-            <option value="">Aller à l'étape…</option>
             {wf.steps.map((s, i) => (
-              <option key={s.id} value={i}>{i + 1}. {s.title}</option>
+              <option key={s.id} value={i}>{i === activeStep ? "▶ " : ""}{i + 1}. {s.title}</option>
             ))}
           </select>
           {versions.length > 0 && (
@@ -73,7 +80,7 @@ export default function ReaderPage() {
                 window.scrollTo({ top: 0 });
               }}
               aria-label="Consulter une version publiée"
-              style={{ padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", fontSize: "0.9rem", maxWidth: "40vw" }}
+              style={{ margin: 0, fontSize: "0.85rem", fontWeight: 600, padding: "0.25rem 0.35rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", maxWidth: "40vw", minWidth: 0 }}
             >
               <option value="">Dernier état</option>
               {versions.map((v) => (
@@ -86,8 +93,8 @@ export default function ReaderPage() {
               V{versionParam} (publiée)
             </span>
           )}
-          <Link to={`/workflow/${wf.id}/guided`} aria-label="Mode lecture guidée" title="Lecture guidée : une étape par écran" style={{ fontSize: "0.85rem", color: "var(--accent)", textDecoration: "none" }}>⇥ Guidé</Link>
-          <Link to={`/workflow/${wf.id}/qr`} aria-label="Vignette QR imprimable" title="Vignette QR imprimable" style={{ fontSize: "0.85rem", color: "var(--accent)", textDecoration: "none" }}>QR</Link>
+          <Link to={`/workflow/${wf.id}/guided`} aria-label="Mode lecture guidée" title="Lecture guidée : une étape par écran" style={{ fontSize: "0.8rem", color: "var(--accent)", textDecoration: "none" }}>⇥ Guidé</Link>
+          <Link to={`/workflow/${wf.id}/qr`} aria-label="Vignette QR imprimable" title="Vignette QR imprimable" style={{ fontSize: "0.8rem", color: "var(--accent)", textDecoration: "none" }}>QR</Link>
         </header>
         {wf.state === "published" && (
           <p style={{ margin: "0 0 0.8rem", color: "var(--text-muted)", fontSize: "0.85rem", display: "flex", gap: "0.4rem", alignItems: "center", flexWrap: "wrap" }}>
@@ -144,7 +151,7 @@ export default function ReaderPage() {
         )}
         {wf.steps.map((step, i) => (
           <article key={step.id} id={`etape-${i}`} style={{ background: "var(--surface)", borderRadius: "10px", padding: "1.2rem", boxShadow: "0 1px 4px rgba(0,0,0,0.1)", marginBottom: "0.8rem", scrollMarginTop: "8rem" }}>
-            <h2 style={{ marginTop: 0 }}>{i + 1}. {step.title}</h2>
+            <h2 style={{ marginTop: 0, fontSize: "1rem", fontWeight: 600 }}>{i + 1}. {step.title}</h2>
             {step.body && <p style={{ whiteSpace: "pre-wrap" }}>{step.body}</p>}
             {step.pictos.length > 0 && (
               <p style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap" }}>

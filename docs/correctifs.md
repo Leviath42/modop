@@ -7,6 +7,22 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-34 — Lecteur : sélecteur « Aller à » aligné sur l'éditeur + tailles rationalisées (réalisé)
+
+**Problème** : dans la page de lecture, le sélecteur « Aller à l'étape… » était un sélecteur **jetable** (`value=""` réinitialisée à chaque rendu) : pas de repère de l'étape courante, re-choisir la même étape ne scrollait pas, libellé différent de l'éditeur. Les titres et champs du lecteur suivaient des tailles disparates (h1 1.05/0.95 rem selon la largeur, h2 par défaut ~1.5 rem, selects 0.9 rem avec padding 0.45 rem — contre 0.85 rem/0.25 rem dans l'éditeur compact).
+
+**Correctif** :
+1. Le sélecteur reprend la **logique de l'éditeur** : état contrôlé `activeStep`, option active marquée **▶**, scroll fluide **différé de 80 ms** (le temps du re-rendu), aria-label et title identiques (« Étape affichée — choisir pour y aller »). Re-sélectionner la même étape fonctionne désormais.
+2. Tailles rationalisées aux conventions compactes de l'éditeur : h1 du document 1 rem (+ ellipsis), h2 d'étape 1 rem/600 (au lieu du ~1.5 rem par défaut), les deux sélecteurs (étape + version) en 0.85 rem/600 avec padding 0.25 rem, liens Guidé/QR 0.8 rem.
+
+**Test** : `web/src/lib/reader-goto.test.ts` — sélecteur contrôlé prouvé : valeur initiale 0, marqueur ▶ sur l'option active, choix de l'étape 2 → valeur synchronisée et ▶ déplacé (l'ancienne étape ne le porte plus).
+
+**Fichiers** : `web/src/pages/reader.tsx`, `web/src/lib/reader-goto.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front (dont le nouveau) + 106/106 tests serveur verts.
+
+---
+
 ## C-33 — Suite de tests rationalisée : 32 s + 55 s → 9 s + 16 s (réalisé)
 
 **Problème** : les tests prenaient ~87 s au total. Mesures : côté serveur, chaque fichier de test traînait ~3,5 s APRÈS ses tests — les connexions keep-alive d'undici (`fetch`) maintenaient l'event loop en vie ; `server.unref()` et `process.on("exit")` ne suffisaient pas (le handler exit arrive après l'attente). Côté front, chaque fichier est un process tsx séparé (~1,1 s de boot + ~1,6 s d'import jsdom) exécuté en séquentiel.
