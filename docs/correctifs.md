@@ -34,6 +34,24 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-49 — Palette d'édition refondue : barre d'outils permanente (réalisé)
+
+**Problème** : la palette exigeait un clic sur « Outils » pour apparaître, s'étalait en une rangée dense sans hiérarchie (photos, 3 formes, 4 pastilles couleur, pictos, suppressions tout au même niveau), et disparaissait à chaque erreur de manipulation.
+
+**Refonte (inspiration Figma / Google Docs / Procreate)** :
+1. **Barre permanente** : plus de bouton « Outils » — la barre est visible en permanence sous le bandeau (une ligne, wrap sur mobile), tous les outils à un clic.
+2. **Groupes sémantiques** séparés par des séparateurs fins : **Étape** (+ étape) | **Insertion** (photos, flèche, zone, texte, couleur) | **Indications** (pictos) | **Actions** (suppression étape, objets sélectionnés — en rouge, uniquement contextuelles).
+3. **Couleur compacte** : les 4 pastilles ne sont plus étalées — un bouton pastille affiche la **couleur courante**, le clic ouvre un popover de choix (fermeture Échap/clic extérieur). Un seul bouton au lieu de quatre.
+4. État actif marqué (fond accent) sur l'outil et le picto en cours ; les menus contextuels (photos galerie/appareil, pictos, couleurs) restent des popovers.
+
+**Tests** : `header-tools` réécrit (barre visible sans clic, bouton Outils disparu, groupes présents, 4 couleurs dans le popover) ; `empty-tools` (+ étape visible sans clic sur un MO vide) ; `photo-source` (menu Photos accessible directement).
+
+**Fichiers** : `web/src/pages/editor.tsx`, `web/src/lib/header-tools.test.ts`, `web/src/lib/empty-tools.test.tsx`, `web/src/lib/photo-source.test.ts`
+
+**État** : ✅ livré sur beta — 107/107 tests serveur, tsc + build + tous tests front verts.
+
+---
+
 ## C-48 — Comptes : bug « sans nom » persistant + fenêtre d'édition complète (réalisé)
 
 **Problème** : 1) après validation de l'édition, le compte restait « sans nom » ; 2) l'édition inline (C-47) était jugée peu pratique.

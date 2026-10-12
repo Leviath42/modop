@@ -40,11 +40,7 @@ if (!toggle) throw new Error("bouton d'ouverture d'étape introuvable");
 toggle.click();
 await new Promise((r) => setTimeout(r, 100));
 
-// ouvrir la palette Outils puis le menu Photos
-const toolsBtn = doc.querySelector('button[aria-label="Outils"]') as HTMLElement | null;
-if (!toolsBtn) throw new Error("bouton Outils introuvable");
-toolsBtn.click();
-await new Promise((r) => setTimeout(r, 80));
+// C-49 : la barre est permanente — le bouton Photos est visible sans ouvrir quoi que ce soit
 const photoBtn = doc.querySelector('button[aria-label="Photos"]') as HTMLElement | null;
 if (!photoBtn) throw new Error("bouton Photos introuvable");
 photoBtn.click();

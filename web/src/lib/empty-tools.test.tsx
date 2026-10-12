@@ -45,16 +45,11 @@ await new Promise((r) => setTimeout(r, 400));
 
 const doc = dom.window.document;
 const html = doc.body.innerHTML;
-// 1. le bouton Outils existe et la rangée est affichée
-const toolsBtn = [...doc.querySelectorAll("button")].find((b) => b.textContent === "Outils");
-if (!toolsBtn) throw new Error("bouton Outils introuvable sur un MO sans étape");
-// 2. clic : la palette s'ouvre
-(toolsBtn as HTMLElement).click();
-await new Promise((r) => setTimeout(r, 200));
-const open = doc.body.innerHTML;
-if (!open.includes("Créez d'abord une étape")) throw new Error("palette sans message d'accueil");
-// 3. le bouton + étape est là
+// C-49 : barre PERMANENTE — le bouton + étape est visible sans aucun clic
 const addBtn = [...doc.querySelectorAll("button")].find((b) => b.getAttribute("aria-label") === "Ajouter une étape");
-if (!addBtn) throw new Error("bouton + étape absent de la palette");
-console.log("OUTILS SANS ÉTAPE OK (palette ouvre, + étape présent)");
+if (!addBtn) throw new Error("bouton + étape absent de la barre permanente (C-49)");
+if ([...doc.querySelectorAll("button")].some((b) => b.textContent === "Outils")) {
+  throw new Error("le bouton Outils n'existe plus (barre permanente, C-49)");
+}
+console.log("BARRE SANS ÉTAPE OK (+ étape visible sans clic)");
 process.exit(0);

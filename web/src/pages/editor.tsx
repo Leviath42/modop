@@ -61,24 +61,9 @@ export default function EditorPage() {
   const [insertColor, setInsertColor] = useState(COLORS[0]);
   const [activeStepId, setActiveStepId] = useState<number | null>(null);
   const [showTools, setShowTools] = useState(false);
-  // C-39 : à l'ouverture de la palette, recaler le scroll — le bas de la
-  // palette (posée en absolu sous le bandeau sticky) devient visible.
-  const toolsOpenRef = useRef(false);
-  useEffect(() => {
-    if (showTools && !toolsOpenRef.current) {
-      toolsOpenRef.current = true;
-      setTimeout(() => {
-        const pal = toolsRef.current;
-        if (!pal) return;
-        const rect = pal.getBoundingClientRect();
-        const below = rect.bottom - window.innerHeight;
-        if (below > 0) window.scrollBy({ top: below + 8, behavior: "smooth" });
-      }, 60);
-    }
-    if (!showTools) toolsOpenRef.current = false;
-  }, [showTools]);
   const [showPictos, setShowPictos] = useState(false);
   const [showPhotoMenu, setShowPhotoMenu] = useState(false);
+  const [showColors, setShowColors] = useState(false);
   const photoMenuRef = useRef<HTMLSpanElement | null>(null);
   const [confirmDeleteStep, setConfirmDeleteStep] = useState<Step | null>(null);
   const [confirmPublish, setConfirmPublish] = useState(false);
@@ -114,6 +99,16 @@ export default function EditorPage() {
     document.addEventListener("keydown", onKey);
     return () => { document.removeEventListener("pointerdown", onDown); document.removeEventListener("keydown", onKey); };
   }, [showPhotoMenu]);
+  useEffect(() => {
+    if (!showColors) return;
+    const onDown = (e: PointerEvent) => {
+      if (!(e.target as Element).closest?.("[data-color-pop]")) setShowColors(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setShowColors(false); };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("pointerdown", onDown); document.removeEventListener("keydown", onKey); };
+  }, [showColors]);
   useEffect(() => {
     if (!showPictos) return;
     const onDown = (e: PointerEvent) => {
@@ -393,110 +388,133 @@ export default function EditorPage() {
                 title={openSteps.size === steps.length && steps.length > 0 ? "Tout replier" : "Tout ouvrir"}
                 aria-label="Tout replier ou ouvrir"
               >{openSteps.size === steps.length && steps.length > 0 ? <CollapseIcon /> : <ExpandIcon />}</button>
-              <button
-                onClick={() => { setShowTools((v) => !v); const target = activeStepId ?? steps[0]?.id; if (steps.length > 0 && !openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); } }}
-                style={{ ...iconBtn, background: showTools || insertTool ? "var(--accent-bg)" : "var(--surface)", borderColor: showTools || insertTool ? "var(--accent)" : "var(--border)" }}
-                aria-expanded={showTools}
-                title="Outils : photos, flèches, zones, textes, pictogrammes, indications"
-                aria-label="Outils"
-              >Outils</button>
+              {/* C-49 : barre d'outils PERMANENTE (inspiration Figma/Docs) —
+                  groupes sémantiques : Étape | Insertion | Indications | Actions */}
+              <div ref={toolsRef} style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap", alignItems: "center", paddingTop: "0.4rem", borderTop: "1px solid var(--border-soft)", overflow: "visible", minWidth: 0 }}>
+                {/* — groupe Étape — */}
+                <button onClick={addStep} style={{ ...toolLabelBtn }} title="Ajouter une étape" aria-label="Ajouter une étape">
+                  <PlusIcon /><span>Étape</span>
+                </button>
 
-              {showTools && (
-                <div ref={toolsRef} style={{ position: "absolute", left: 0, right: 0, top: "calc(100% + 0.25rem)", zIndex: 130, display: "flex", gap: "0.25rem", flexWrap: "wrap", alignItems: "center", minWidth: 0, padding: "0.4rem 0.5rem", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", boxShadow: "0 6px 24px rgba(0,0,0,0.18)" }}>
-                  {steps.length === 0 && (
-                    <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Créez d'abord une étape :</span>
+                <span style={toolSep} aria-hidden="true" />
+
+                {/* — groupe Insertion — */}
+                <span ref={photoMenuRef} style={{ position: "relative", display: "inline-flex" }}>
+                  <button
+                    onClick={() => setShowPhotoMenu((v) => !v)}
+                    className="tool-icon-btn" style={{ ...iconBtn }} title="Photos : galerie ou appareil photo" aria-label="Photos" aria-expanded={showPhotoMenu} aria-haspopup="menu"
+                  ><PhotoIcon /></button>
+                  {showPhotoMenu && (() => {
+                    const target = activeStepId ?? steps[0]?.id;
+                    const openIt = (which: "gallery" | "camera") => {
+                      if (target == null) return;
+                      if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); }
+                      (which === "gallery" ? fileRefs : cameraRefs).current[target]?.click();
+                      setShowPhotoMenu(false);
+                    };
+                    return (
+                      <div role="menu" aria-label="Source de la photo" style={{ position: "absolute", left: 0, top: "calc(100% + 0.35rem)", zIndex: 135, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", boxShadow: "0 6px 24px rgba(0,0,0,0.2)", padding: "0.3rem", display: "grid", gap: "0.15rem", minWidth: "11rem" }}>
+                        <button role="menuitem" onClick={() => openIt("gallery")} style={{ padding: "0.4rem 0.55rem", borderRadius: "6px", border: "1px solid transparent", background: "transparent", color: "var(--text)", fontSize: "0.85rem", textAlign: "left", cursor: "pointer", display: "flex", gap: "0.45rem", alignItems: "center" }}>
+                          <span aria-hidden="true">🖼</span> Depuis la galerie
+                        </button>
+                        <button role="menuitem" onClick={() => openIt("camera")} style={{ padding: "0.4rem 0.55rem", borderRadius: "6px", border: "1px solid transparent", background: "transparent", color: "var(--text)", fontSize: "0.85rem", textAlign: "left", cursor: "pointer", display: "flex", gap: "0.45rem", alignItems: "center" }}>
+                          <span aria-hidden="true">📷</span> Prendre une photo
+                        </button>
+                      </div>
+                    );
+                  })()}
+                </span>
+                {TOOLS.map((t) => (
+                  <button
+                    key={t.kind}
+                    onClick={() => { setInsertTool(insertTool === t.kind ? null : t.kind); const target = activeStepId ?? steps[0]?.id; if (target != null && !openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); } }}
+                    className="tool-icon-btn" style={{ ...iconBtn, background: insertTool === t.kind ? "var(--accent-bg)" : "var(--surface)", borderColor: insertTool === t.kind ? "var(--accent)" : "var(--border)" }}
+                    aria-pressed={insertTool === t.kind}
+                    title={t.label}
+                  >{t.kind === "arrow" ? <ArrowIcon /> : t.kind === "rect" ? <RectIcon /> : <TextIcon />}</button>
+                ))}
+                {/* sélecteur de couleur compact : pastille de la couleur courante -> popover */}
+                <span data-color-pop style={{ position: "relative", display: "inline-flex" }}>
+                  <button
+                    onClick={() => setShowColors((v) => !v)}
+                    className="tool-icon-btn"
+                    aria-label={`Couleur : ${insertColor} — choisir`}
+                    aria-expanded={showColors}
+                    aria-haspopup="menu"
+                    title="Couleur des formes"
+                    style={{ ...iconBtn, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0, width: "2.2rem", height: "2.2rem" }}
+                  >
+                    <span style={{ width: "14px", height: "14px", borderRadius: "50%", background: insertColor, border: "2px solid var(--surface)", boxShadow: "0 0 0 1px var(--border)" }} aria-hidden="true" />
+                    <span aria-hidden="true" style={{ fontSize: "0.6rem", color: "var(--text-muted)", lineHeight: 1 }}>▾</span>
+                  </button>
+                  {showColors && (
+                    <div role="menu" aria-label="Couleurs" style={{ position: "absolute", left: 0, top: "calc(100% + 0.35rem)", zIndex: 135, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", boxShadow: "0 6px 24px rgba(0,0,0,0.2)", padding: "0.4rem", display: "flex", gap: "0.35rem" }}>
+                      {COLORS.map((c) => (
+                        <button key={c} onClick={() => { setInsertColor(c); setShowColors(false); }} aria-label={`Couleur ${c}`} aria-pressed={insertColor === c}
+                          style={{ width: "22px", height: "22px", borderRadius: "50%", background: c, border: insertColor === c ? "2px solid var(--text)" : "1px solid var(--border)", padding: 0, cursor: "pointer", boxSizing: "border-box" }} />
+                      ))}
+                    </div>
                   )}
-                  <button onClick={addStep} style={iconBtn} title="Ajouter une étape" aria-label="Ajouter une étape"><PlusIcon /><span style={{ fontSize: "0.75rem" }}>étape</span></button>
-                  <span style={{ width: "1px", height: "20px", background: "var(--border)" }} aria-hidden="true" />
-                  {steps.length > 0 && (
-                  <>
-                  <span ref={photoMenuRef} style={{ position: "relative", display: "inline-flex" }}>
-                    <button
-                      onClick={() => setShowPhotoMenu((v) => !v)}
-                      className="tool-icon-btn" style={iconBtn} title="Photos : galerie ou appareil photo" aria-label="Photos" aria-expanded={showPhotoMenu} aria-haspopup="menu"
-                    ><PhotoIcon /></button>
-                    {showPhotoMenu && (() => {
-                      const target = activeStepId ?? steps[0]?.id;
-                      const openIt = (which: "gallery" | "camera") => {
-                        if (target == null) return;
-                        if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); }
-                        (which === "gallery" ? fileRefs : cameraRefs).current[target]?.click();
-                        setShowPhotoMenu(false);
-                      };
-                      return (
-                        <div role="menu" aria-label="Source de la photo" style={{ position: "absolute", left: 0, top: "calc(100% + 0.35rem)", zIndex: 135, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", boxShadow: "0 6px 24px rgba(0,0,0,0.2)", padding: "0.3rem", display: "grid", gap: "0.15rem", minWidth: "11rem" }}>
-                          <button role="menuitem" onClick={() => openIt("gallery")} style={{ padding: "0.4rem 0.55rem", borderRadius: "6px", border: "1px solid transparent", background: "transparent", color: "var(--text)", fontSize: "0.85rem", textAlign: "left", cursor: "pointer", display: "flex", gap: "0.45rem", alignItems: "center" }}>
-                            <span aria-hidden="true">🖼</span> Depuis la galerie
-                          </button>
-                          <button role="menuitem" onClick={() => openIt("camera")} style={{ padding: "0.4rem 0.55rem", borderRadius: "6px", border: "1px solid transparent", background: "transparent", color: "var(--text)", fontSize: "0.85rem", textAlign: "left", cursor: "pointer", display: "flex", gap: "0.45rem", alignItems: "center" }}>
-                            <span aria-hidden="true">📷</span> Prendre une photo
-                          </button>
-                        </div>
-                      );
-                    })()}
-                  </span>
-                  {TOOLS.map((t) => (
-                    <button
-                      key={t.kind}
-                      onClick={() => { setInsertTool(insertTool === t.kind ? null : t.kind); const target = activeStepId ?? steps[0].id; if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); } }}
-                      className="tool-icon-btn" style={{ ...iconBtn, background: insertTool === t.kind ? "var(--accent-bg)" : "var(--surface)", borderColor: insertTool === t.kind ? "var(--accent)" : "var(--border)" }}
-                      aria-pressed={insertTool === t.kind}
-                      title={t.label}
-                    >{t.kind === "arrow" ? <ArrowIcon /> : t.kind === "rect" ? <RectIcon /> : <TextIcon />}</button>
-                  ))}
-                  {insertTool && insertTool !== "text" && COLORS.map((c) => (
-                    <button key={c} onClick={() => setInsertColor(c)} className="tool-icon-btn" aria-label={`Couleur ${c}`}
-                      style={{ width: "18px", height: "18px", borderRadius: "50%", background: c, border: insertColor === c ? "2px solid var(--text)" : "1px solid var(--border)", padding: 0, cursor: "pointer", boxSizing: "border-box" }} />
-                  ))}
-                  <span ref={pictosMenuRef} style={{ position: "relative" }}>
-                    {(() => {
-                      const st = steps.find((x) => x.id === (activeStepId ?? steps[0].id));
-                      const activeCount = st ? st.pictos.length : 0;
-                      return (
-                        <>
-                          <button
-                            onClick={() => setShowPictos((v) => !v)}
-                            aria-expanded={showPictos}
-                            aria-haspopup="menu"
-                            title="Indications de l'étape (attention, danger, EPI…)"
-                            style={{ ...iconBtn, background: showPictos || activeCount > 0 ? "var(--accent-bg)" : "var(--surface)", borderColor: showPictos || activeCount > 0 ? "var(--accent)" : "var(--border)" }}
-                          >⚠{activeCount > 0 ? ` (${activeCount})` : ""}</button>
-                          {showPictos && (
-                            <div role="menu" aria-label="Indications" style={{ position: "absolute", left: 0, top: "calc(100% + 0.35rem)", zIndex: 120, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", boxShadow: "0 6px 24px rgba(0,0,0,0.2)", padding: "0.3rem", display: "grid", gap: "0.15rem", minWidth: "10rem" }}>
-                              {PICTO_PRESETS.map((preset) => {
-                                const on = st ? st.pictos.some((x) => x.kind === preset.kind) : false;
-                                return (
-                                  <button
-                                    key={preset.kind}
-                                    role="menuitemcheckbox"
-                                    aria-checked={on}
-                                    onClick={() => {
-                                      const target = activeStepId ?? steps[0].id;
-                                      const stp = steps.find((x) => x.id === target);
-                                      if (!stp) return;
-                                      if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); }
-                                      const idx = stp.pictos.findIndex((x) => x.kind === preset.kind);
-                                      void patchStep(stp, { pictos: idx >= 0 ? stp.pictos.filter((_, k) => k !== idx) : [...stp.pictos, { kind: preset.kind, label: preset.label, color: preset.color }] });
-                                    }}
-                                    style={{ display: "flex", alignItems: "center", gap: "0.45rem", width: "100%", padding: "0.35rem 0.55rem", borderRadius: "6px", border: "1px solid transparent", background: on ? `${preset.color}22` : "transparent", color: "var(--text)", fontSize: "0.8rem", textAlign: "left", cursor: "pointer" }}
-                                  >
-                                    <span aria-hidden="true" style={{ width: "0.7rem", height: "0.7rem", borderRadius: "50%", background: preset.color, flexShrink: 0 }} />
-                                    {preset.label}
-                                    {on && <span aria-hidden="true" style={{ marginLeft: "auto", color: "var(--ok-text)" }}>✓</span>}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </span>
-                  <span style={{ width: "1px", height: "20px", background: "var(--border)" }} aria-hidden="true" />
-                  {steps.length > 1 && (
+                </span>
+
+                <span style={toolSep} aria-hidden="true" />
+
+                {/* — groupe Indications — */}
+                <span ref={pictosMenuRef} style={{ position: "relative", display: "inline-flex" }}>
+                  {(() => {
+                    const st = steps.find((x) => x.id === (activeStepId ?? steps[0]?.id));
+                    const activeCount = st ? st.pictos.length : 0;
+                    return (
+                      <>
+                        <button
+                          onClick={() => setShowPictos((v) => !v)}
+                          className="tool-icon-btn"
+                          aria-expanded={showPictos}
+                          aria-haspopup="menu"
+                          title="Indications de l'étape (attention, danger, EPI…)"
+                          style={{ ...iconBtn, background: showPictos || activeCount > 0 ? "var(--accent-bg)" : "var(--surface)", borderColor: showPictos || activeCount > 0 ? "var(--accent)" : "var(--border)" }}
+                        >⚠{activeCount > 0 ? ` (${activeCount})` : ""}</button>
+                        {showPictos && (
+                          <div role="menu" aria-label="Indications" style={{ position: "absolute", left: 0, top: "calc(100% + 0.35rem)", zIndex: 120, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", boxShadow: "0 6px 24px rgba(0,0,0,0.2)", padding: "0.3rem", display: "grid", gap: "0.15rem", minWidth: "10rem" }}>
+                            {PICTO_PRESETS.map((preset) => {
+                              const on = st ? st.pictos.some((x) => x.kind === preset.kind) : false;
+                              return (
+                                <button
+                                  key={preset.kind}
+                                  role="menuitemcheckbox"
+                                  aria-checked={on}
+                                  onClick={() => {
+                                    const target = activeStepId ?? steps[0]?.id;
+                                    if (target == null) return;
+                                    const stp = steps.find((x) => x.id === target);
+                                    if (!stp) return;
+                                    if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); }
+                                    const idx = stp.pictos.findIndex((x) => x.kind === preset.kind);
+                                    void patchStep(stp, { pictos: idx >= 0 ? stp.pictos.filter((_, k) => k !== idx) : [...stp.pictos, { kind: preset.kind, label: preset.label, color: preset.color }] });
+                                  }}
+                                  style={{ display: "flex", alignItems: "center", gap: "0.45rem", width: "100%", padding: "0.35rem 0.55rem", borderRadius: "6px", border: "1px solid transparent", background: on ? `${preset.color}22` : "transparent", color: "var(--text)", fontSize: "0.8rem", textAlign: "left", cursor: "pointer" }}
+                                >
+                                  <span aria-hidden="true" style={{ width: "0.7rem", height: "0.7rem", borderRadius: "50%", background: preset.color, flexShrink: 0 }} />
+                                  {preset.label}
+                                  {on && <span aria-hidden="true" style={{ marginLeft: "auto", color: "var(--ok-text)" }}>✓</span>}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </span>
+
+                <span style={toolSep} aria-hidden="true" />
+
+                {/* — groupe Actions — */}
+                {steps.length > 1 && (
                   <button
                     onClick={() => {
-                      const target = activeStepId ?? steps[0].id;
+                      const target = activeStepId ?? steps[0]?.id;
+                      if (target == null) return;
                       const stp = steps.find((x) => x.id === target);
                       if (stp) setConfirmDeleteStep(stp);
                     }}
@@ -505,22 +523,19 @@ export default function EditorPage() {
                     aria-label="Supprimer l'étape affichée"
                     disabled={steps.length <= 1}
                   >Supprimer l'étape</button>
-                  )}
-                  {canvasSelection > 0 && (
-                    <button
-                      onClick={() => canvasDeleteRef.current?.()}
+                )}
+                {canvasSelection > 0 && (
+                  <button
+                    onClick={() => canvasDeleteRef.current?.()}
                     data-keep-canvas-selection="1"
-                      style={{ ...iconBtn, borderColor: "var(--danger-border)", background: "var(--danger-bg)", color: "var(--error-text)" }}
-                      title="Supprimer les objets sélectionnés du canevas de l'étape affichée"
-                      aria-label="Supprimer les objets sélectionnés"
-                    >🗑 Objets ({canvasSelection})</button>
-                  )}
-                  </>
-                  )}
-                </div>
-              )}
+                    style={{ ...iconBtn, borderColor: "var(--danger-border)", background: "var(--danger-bg)", color: "var(--error-text)" }}
+                    title="Supprimer les objets sélectionnés du canevas de l'étape affichée"
+                    aria-label="Supprimer les objets sélectionnés"
+                  >🗑 Objets ({canvasSelection})</button>
+                )}
+              </div>
             </div>
-          )}
+            )}
         </section>
         {!isNew && (
         <>
@@ -765,6 +780,8 @@ const label: React.CSSProperties = { display: "grid", gap: "0.25rem", fontSize: 
 const input: React.CSSProperties = { padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border)", fontSize: "1rem", fontFamily: "inherit", width: "100%", minWidth: 0, boxSizing: "border-box", maxWidth: "100%" };
 const primaryBtn: React.CSSProperties = { padding: "0.35rem 0.7rem", borderRadius: "6px", border: "none", background: "var(--accent)", color: "white", fontSize: "0.85rem" };
 const secondaryBtn: React.CSSProperties = { padding: "0.35rem 0.7rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.85rem" };
+const toolLabelBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.3rem 0.5rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.8rem", lineHeight: 1.2, minWidth: 0, cursor: "pointer" };
+const toolSep: React.CSSProperties = { width: "1px", height: "20px", background: "var(--border)", flexShrink: 0 };
 const iconBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.3rem 0.5rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.8rem", lineHeight: 1.2, minWidth: 0, cursor: "pointer" };
 const toolBtn: React.CSSProperties = { padding: "0.25rem 0.55rem", borderRadius: "5px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.85rem", lineHeight: 1.2, minWidth: 0 };
 const dangerBtn: React.CSSProperties = { padding: "0.3rem 0.5rem", borderRadius: "6px", border: "1px solid var(--danger-border)", background: "var(--danger-bg)", color: "var(--text)", fontSize: "0.9rem" };

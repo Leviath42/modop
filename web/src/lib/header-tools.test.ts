@@ -45,36 +45,42 @@ root.render(
 await new Promise((r) => setTimeout(r, 250));
 const html = dom.window.document.getElementById("root")!.innerHTML;
 
-// 0. le header contient : nom de l'étape, Publier, réduire/développer, Insertion(+)
+// C-49 : barre d'outils PERMANENTE — groupes Étape | Insertion | Indications | Actions
+// 0. le header contient : nom de l'étape, Publier, réduire/développer
 if (!html.includes("Dévisser")) throw new Error("nom de l'étape active absent du header");
 if (!/Publier( V\d)?</.test(html)) throw new Error("bouton Publier absent du header");
 if (!/(▾|▸)</.test(html)) throw new Error("bouton réduire/développer absent du header");
-const plusBtns = (html.match(/aria-expanded="(true|false)"/g) || []).length;
-if (plusBtns < 1) throw new Error("bouton d'insertion (palette) absent du header");
-
-// le header doit être sticky (il défile avec la page)
 if (!/position: sticky/.test(html)) throw new Error("header non sticky");
 
-// 1. la palette est fermée par défaut : pas d'outils visibles
-if (html.includes('aria-label="Photos"')) throw new Error("palette d'outils ouverte par défaut (attendu fermée)");
-
-// 2. ouverture de la palette par le bouton + : outils présents
+// 1. la barre d'outils est VISIBLE SANS clic (plus de bouton « Outils »)
+if (!html.includes('aria-label="Photos"')) throw new Error("bouton Photos absent (barre permanente attendue, C-49)");
+if (!/title="Flèche"/.test(html)) throw new Error("outil flèche absent (barre permanente)");
+if (!/title="Zone"/.test(html)) throw new Error("outil zone absent (barre permanente)");
+if (!/title="Texte"/.test(html)) throw new Error("outil texte absent (barre permanente)");
+if (!/title="Indications de l'étape/.test(html)) throw new Error("bouton pictos absent (barre permanente)");
+if (!/aria-label="Ajouter une étape"/.test(html)) throw new Error("bouton + Étape absent (barre permanente)");
+// le sélecteur de couleur compact est présent (pastille courante + chevron)
+if (!/Couleur : /.test(html)) throw new Error("sélecteur de couleur compact absent (C-49)");
+// plus de bouton « Outils » qui ouvre/ferme
 const btns = Array.from(dom.window.document.querySelectorAll("button"));
-const plusBtn = btns.find((b) => b.getAttribute("aria-label") === "Outils") as HTMLElement;
-if (!plusBtn) throw new Error("bouton palette introuvable");
-plusBtn.click();
-await new Promise((r) => setTimeout(r, 60));
-const html2 = dom.window.document.getElementById("root")!.innerHTML;
-if (!html2.includes('aria-label="Photos"')) throw new Error("bouton photo absent de la palette");
-if (!/title="Flèche"/.test(html2)) throw new Error("outil flèche absent de la palette");
-if (!/title="Zone"/.test(html2)) throw new Error("outil zone absent de la palette");
-if (!/title="Texte"/.test(html2)) throw new Error("outil texte absent de la palette");
-// C-16 : les pictos sont regroupés derrière un bouton unique ⚠ dans la palette.
-if (!/title="Indications de l'étape/.test(html2)) throw new Error("bouton pictos (⚠) absent de la palette");
+if (btns.some((b) => b.getAttribute("aria-label") === "Outils")) throw new Error("le bouton Outils doit disparaître (barre permanente, C-49)");
+
+// 2. les 4 couleurs ne sont PAS étalées (elles sont dans le popover)
+const colorSwatches = (html.match(/aria-label="Couleur #/g) || []).length;
+if (colorSwatches !== 0) throw new Error(`les pastilles couleur doivent être dans le popover, pas étalées (${colorSwatches})`);
 
 // 3. zone d'étape : plus de bouton "Photo(s)…"
-const photoBtnCount = (html2.match(/Photo\(s\)…/g) || []).length;
+const photoBtnCount = (html.match(/Photo\(s\)…/g) || []).length;
 if (photoBtnCount !== 0) throw new Error(`bouton photo encore présent dans la zone d'étape (${photoBtnCount})`);
 
-console.log("U-OUTILS DANS LE BANDEAU OK");
+// 4. ouvrir le popover couleurs : les 4 pastilles y apparaissent
+const colorBtn = btns.find((b) => (b.getAttribute("aria-label") ?? "").startsWith("Couleur :")) as HTMLElement;
+if (!colorBtn) throw new Error("bouton couleur introuvable");
+colorBtn.click();
+await new Promise((r) => setTimeout(r, 60));
+const html2 = dom.window.document.getElementById("root")!.innerHTML;
+const inPopover = (html2.match(/aria-label="Couleur #/g) || []).length;
+if (inPopover < 4) throw new Error(`les 4 couleurs doivent être dans le popover ouvert (${inPopover})`);
+
+console.log("C-49 BARRE D'OUTILS PERMANENTE (groupes, popover couleurs) OK");
 process.exit(0);
