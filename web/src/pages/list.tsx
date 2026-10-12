@@ -118,8 +118,15 @@ export default function ListPage() {
         ) : workflows.length === 0 ? (
           <p>Aucun mode opératoire.</p>
         ) : (
-          <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: "0.5rem" }}>
-            {workflows.map((wf) => (
+          (() => {
+            // C-43 : regroupement — état (publiés d'abord) puis famille
+            const groups = new Map<string, typeof workflows>();
+            for (const st of ["published", "draft"]) {
+              for (const fam of [...new Set(workflows.filter((w) => w.state === st).map((w) => w.family || "Sans famille"))].sort((a, b) => a.localeCompare(b, "fr"))) {
+                groups.set(`${st}|${fam}`, workflows.filter((w) => w.state === st && (w.family || "Sans famille") === fam));
+              }
+            }
+            const card = (wf: (typeof workflows)[number]) => (
               <li key={wf.id} style={{ background: "var(--surface)", borderRadius: "8px", padding: "0.45rem 0.7rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                   <Link to={`/workflow/${wf.id}/read`} title={wf.title} style={{ fontWeight: 600, color: "var(--accent)", textDecoration: "none", fontSize: "0.95rem", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", flex: 1, minWidth: 0 }}>
@@ -131,8 +138,31 @@ export default function ListPage() {
                   )}
                 </div>
               </li>
-            ))}
-          </ul>
+            );
+            let lastState = "";
+            return (
+              <div>
+                {[...groups.entries()].map(([key, items]) => {
+                  const [st, fam] = key.split("|");
+                  const stateHeader = st !== lastState ? (
+                    <h2 key={`h-${st}`} style={{ margin: "0.9rem 0 0.2rem", fontSize: "0.9rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                      {st === "published" ? "Publié" : "Brouillon"} <span style={{ background: st === "published" ? "var(--ok-bg)" : "var(--warn-bg)", color: st === "published" ? "var(--ok-text)" : "var(--warn-text)", borderRadius: "99px", padding: "0 0.5rem", fontSize: "0.75rem", textTransform: "none", letterSpacing: 0 }}>{items !== undefined ? workflows.filter((w) => w.state === st).length : ""}</span>
+                    </h2>
+                  ) : null;
+                  if (st !== lastState) lastState = st;
+                  return (
+                    <section key={key} aria-label={`${st === "published" ? "Publié" : "Brouillon"} — ${fam}`}>
+                      {stateHeader}
+                      <h3 style={{ margin: "0.2rem 0 0.35rem", fontSize: "0.85rem", fontWeight: 600, color: "var(--text)" }}>{fam}</h3>
+                      <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: "0.4rem" }}>
+                        {items.map(card)}
+                      </ul>
+                    </section>
+                  );
+                })}
+              </div>
+            );
+          })()
         )}
       </main>
     </>

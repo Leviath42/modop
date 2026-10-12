@@ -4,6 +4,10 @@
 
 ---
 
+## Accueil
+
+Les modes opératoires sont regroupés : **Publié** (avec compteur) puis **Brouillon**, et à l'intérieur de chaque état **par famille** (ordre alphabétique, « Sans famille » pour les autres). La recherche, les filtres et le tri s'appliquent avant le regroupement.
+
 ## Se connecter
 
 1. Ouvrez l'URL de votre Modop (ex. `http://192.168.1.56:3000` ou l'adresse du tunnel).

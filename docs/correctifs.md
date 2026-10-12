@@ -17,6 +17,20 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 **Fichiers** : `web/src/step-canvas.tsx`, `web/src/lib/step-canvas-adaptive.test.ts`
 
+## C-43 — Accueil : MO regroupés par état puis famille (réalisé)
+
+**Problème** : la liste d'accueil était plate — publiés et brouillons mélangés, familles dispersées.
+
+**Correctif** : la liste regroupe désormais les MO par **état** (« Publié » en tête, avec compteur ; « Brouillon » ensuite) puis par **famille** (tri alphabétique, « Sans famille » pour les MO sans famille renseignée). Chaque groupe : en-tête d'état avec compteur-badge, nom de famille, cartes compactes inchangées (titre, référence, ✎). Les filtres et le tri existants continuent de s'appliquer avant le regroupement.
+
+**Test** : `web/src/lib/list-groups.test.ts` — 4 MO (brouillon méca, publié élec, publié méca, publié sans famille) : en-têtes Publié AVANT Brouillon, familles dans l'ordre attendu (Électrique, Mécanique, Sans famille, puis Mécanique en brouillon), sections peuplées correctement.
+
+**Fichiers** : `web/src/pages/list.tsx`, `web/src/lib/list-groups.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front (dont le nouveau) + 106/106 tests serveur verts.
+
+---
+
 ## C-42 — Photos : galerie OU appareil photo au choix + bandeau d'action (réalisé)
 
 **Problème** : le bouton Photos n'offrait que le sélecteur de fichiers unique — sur mobile, pas de choix direct entre la galerie et l'appareil photo (l'OS propose parfois les deux, pas toujours) ; et le bandeau « cette étape n'a pas de photo » était un simple texte sans action.
