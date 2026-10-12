@@ -7,6 +7,23 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-35 — Remontées terrain : page dédiée, lecteur allégé (réalisé)
+
+**Problème** : l'historique des signalements terrain (à traiter + résolus, avec actions « Corriger l'étape » et « Résoudre ») s'affichait en pleine page de lecture — un contenu de gestion qui n'a pas sa place dans la consultation atelier, et qui poussait les étapes vers le bas.
+
+**Correctif** :
+1. Nouvelle page dédiée **`/workflow/:id/feedbacks`** (auteur+) : section **« À traiter »** (compteur, actions Corriger l'étape / Résoudre) puis **« Traitées »** (historique des signalements résolus avec résolveur et date, opacité réduite). Cartes individuelles, compteurs en badges, mêmes conventions compactes que le reste (C-34).
+2. Le **lecteur n'affiche plus la section** — seul un lien discret **« ⚑ Terrain »** (auteur+) dans le header y renvoie. Le formulaire « Signaler un problème sur cette étape » reste bien sûr en lecture : c'est l'entrée du flux terrain.
+3. La page dédiée charge ses données elle-même ; le lecteur ne fait plus la requête `listFeedback` (une requête en moins pour chaque lecteur).
+
+**Test** : `web/src/lib/feedbacks-page.test.ts` — page dédiée rendue : sections « À traiter »/« Traitées » avec compteurs, signalement ouvert avec bouton Résoudre, signalement résolu dans l'historique avec mention du résolveur, lien Corriger l'étape.
+
+**Fichiers** : `web/src/pages/feedbacks.tsx` (nouveau), `web/src/pages/reader.tsx` (section retirée, lien ajouté), `web/src/app.tsx` (route), `web/src/lib/feedbacks-page.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front (dont le nouveau) + 106/106 tests serveur verts.
+
+---
+
 ## C-34 — Lecteur : sélecteur « Aller à » aligné sur l'éditeur + tailles rationalisées (réalisé)
 
 **Problème** : dans la page de lecture, le sélecteur « Aller à l'étape… » était un sélecteur **jetable** (`value=""` réinitialisée à chaque rendu) : pas de repère de l'étape courante, re-choisir la même étape ne scrollait pas, libellé différent de l'éditeur. Les titres et champs du lecteur suivaient des tailles disparates (h1 1.05/0.95 rem selon la largeur, h2 par défaut ~1.5 rem, selects 0.9 rem avec padding 0.45 rem — contre 0.85 rem/0.25 rem dans l'éditeur compact).

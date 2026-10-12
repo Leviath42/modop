@@ -13,6 +13,7 @@ import AdminPage from "./pages/admin";
 import ErrorPage from "./pages/error";
 import QrPage from "./pages/qr";
 import GuidedReaderPage from "./pages/guided-reader";
+import FeedbacksPage from "./pages/feedbacks";
 import StatsPage from "./pages/stats";
 
 function RequireAuth({ children, min }: { children: React.ReactNode; min?: "reader" | "author" }) {
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="/workflow/:id/read" element={<RequireAuth><ReaderPage /></RequireAuth>} />
           <Route path="/workflow/:id/qr" element={<RequireAuth><QrPage /></RequireAuth>} />
           <Route path="/workflow/:id/guided" element={<RequireAuth><GuidedReaderPage /></RequireAuth>} />
+          <Route path="/workflow/:id/feedbacks" element={<RequireAuth min="author"><FeedbacksPage /></RequireAuth>} />
           <Route path="/stats" element={<RequireAuth><StatsPage /></RequireAuth>} />
           <Route path="/workflow/:id/edit" element={<RequireAuth min="author"><EditorPage /></RequireAuth>} />
           <Route path="/deploy" element={<RequireAuth><DeployPage /></RequireAuth>} />

@@ -19,7 +19,6 @@ export default function ReaderPage() {
   const [feedbackNotice, setFeedbackNotice] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   // C-34 : même logique que l'éditeur — le sélecteur suit l'étape active
   const [activeStep, setActiveStep] = useState(0);
-  const [feedbacks, setFeedbacks] = useState<{ id: number; by: string; step_id: number; message: string; status: "open" | "resolved"; resolved_by: string | null; resolved_at: string | null; at: string }[]>([]);
 
   useEffect(() => {
     const load = versionParam
@@ -34,12 +33,6 @@ export default function ReaderPage() {
       .then((v) => setVersions(v))
       .catch(() => { /* lecture seule : liste optionnelle */ });
   }, [id]);
-  useEffect(() => {
-    if (user?.role === "reader") return;
-    api.listFeedback(Number(id))
-      .then(setFeedbacks)
-      .catch(() => { /* pas auteur ou pas de signalements */ });
-  }, [id, user]);
 
   if (error) return (<><NavBar /><main style={{ padding: "2rem" }}><p role="alert" style={{ color: "var(--error-text)" }}>{error}</p><Link to="/">Retour</Link></main></>);
   if (!wf) return (<><NavBar /><main style={{ padding: "2rem" }}>Chargement…</main></>);
@@ -95,6 +88,9 @@ export default function ReaderPage() {
           )}
           <Link to={`/workflow/${wf.id}/guided`} aria-label="Mode lecture guidée" title="Lecture guidée : une étape par écran" style={{ fontSize: "0.8rem", color: "var(--accent)", textDecoration: "none" }}>⇥ Guidé</Link>
           <Link to={`/workflow/${wf.id}/qr`} aria-label="Vignette QR imprimable" title="Vignette QR imprimable" style={{ fontSize: "0.8rem", color: "var(--accent)", textDecoration: "none" }}>QR</Link>
+          {user && user.role !== "reader" && (
+            <Link to={`/workflow/${wf.id}/feedbacks`} aria-label="Remontées terrain de ce mode opératoire" title="Remontées terrain : à traiter et historique" style={{ fontSize: "0.8rem", color: "var(--accent)", textDecoration: "none" }}>⚑ Terrain</Link>
+          )}
         </header>
         {wf.state === "published" && (
           <p style={{ margin: "0 0 0.8rem", color: "var(--text-muted)", fontSize: "0.85rem", display: "flex", gap: "0.4rem", alignItems: "center", flexWrap: "wrap" }}>
@@ -106,48 +102,6 @@ export default function ReaderPage() {
         )}
         {feedbackNotice && (
           <p role={feedbackNotice.kind === "ok" ? "status" : "alert"} style={{ position: "fixed", bottom: "1rem", left: "50%", transform: "translateX(-50%)", background: feedbackNotice.kind === "ok" ? "var(--ok-bg)" : "var(--error-bg)", color: feedbackNotice.kind === "ok" ? "var(--ok-text)" : "var(--error-text)", fontWeight: 600, padding: "0.5rem 1rem", borderRadius: "8px", boxShadow: "0 2px 8px rgba(0,0,0,0.2)", zIndex: 100, margin: 0 }}>{feedbackNotice.text}</p>
-        )}
-        {feedbacks.length > 0 && (
-          <section style={{ background: "var(--warn-bg)", border: "1px solid var(--warn-text)", borderRadius: "8px", padding: "0.8rem", marginBottom: "1rem" }} aria-label="Signalements terrain">
-            <h2 style={{ margin: "0 0 0.4rem", fontSize: "0.95rem" }}>
-              Signalements terrain — {feedbacks.filter((f) => f.status === "open").length} à traiter
-            </h2>
-            <ul style={{ margin: 0, paddingLeft: "0", listStyle: "none", display: "grid", gap: "0.5rem", fontSize: "0.9rem" }}>
-              {feedbacks.map((f) => (
-                <li key={f.id} style={{ display: "grid", gap: "0.2rem", opacity: f.status === "resolved" ? 0.6 : 1 }}>
-                  <div>
-                    <strong>Étape {wf.steps.findIndex((s) => s.id === f.step_id) + 1 || "?"}</strong>
-                    {f.status === "open"
-                      ? <span style={{ background: "var(--error-text)", color: "white", fontSize: "0.7rem", padding: "0.05rem 0.4rem", borderRadius: "99px", marginLeft: "0.4rem" }}>à traiter</span>
-                      : <span style={{ background: "var(--ok-bg)", color: "var(--ok-text)", fontSize: "0.7rem", padding: "0.05rem 0.4rem", borderRadius: "99px", marginLeft: "0.4rem" }}>résolu{f.resolved_by ? ` par ${f.resolved_by}` : ""}</span>}
-                  </div>
-                  <div>« {f.message} »</div>
-                  <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
-                    <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>{f.by}, {f.at}</span>
-                    {f.status === "open" && (
-                      <>
-                        <Link to={`/workflow/${wf.id}/edit`} style={{ fontSize: "0.8rem", color: "var(--accent)" }}>Corriger l'étape</Link>
-                        <button
-                          onClick={async () => {
-                            try {
-                              await api.resolveFeedback(wf.id, f.id);
-                              setFeedbacks((arr) => arr.map((x) => (x.id === f.id ? { ...x, status: "resolved" as const, resolved_by: user?.email ?? null, resolved_at: new Date().toISOString() } : x)));
-                              setFeedbackNotice({ kind: "ok", text: "Signalement marqué résolu" });
-                              setTimeout(() => setFeedbackNotice(null), 2500);
-                            } catch (e) {
-                              setFeedbackNotice({ kind: "error", text: e instanceof ApiError ? e.message : "Résolution impossible" });
-                              setTimeout(() => setFeedbackNotice(null), 2500);
-                            }
-                          }}
-                          style={{ fontSize: "0.8rem", padding: "0.15rem 0.6rem", borderRadius: "6px", border: "1px solid var(--ok-text)", background: "var(--surface)", color: "var(--ok-text)", cursor: "pointer" }}
-                        >✓ Résoudre</button>
-                      </>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
         )}
         {wf.steps.map((step, i) => (
           <article key={step.id} id={`etape-${i}`} style={{ background: "var(--surface)", borderRadius: "10px", padding: "1.2rem", boxShadow: "0 1px 4px rgba(0,0,0,0.1)", marginBottom: "0.8rem", scrollMarginTop: "8rem" }}>
