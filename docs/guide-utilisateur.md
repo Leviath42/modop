@@ -51,7 +51,7 @@ Un mode opératoire déjà consulté reste **lisible sans réseau** (PWA) — ut
 Boutons préréglés (Attention, Danger, EPI, Risque électrique, Point chaud, Outillage, Information) — cliquez pour activer/désactiver. Chaque picto accepte une **couleur** (pastilles) et un **texte libre** modifiable.
 
 ### Photos
-1. **« 📷 Photo(s)… »** : depuis l'appareil ou l'appareil photo du téléphone (compression automatique) — **plusieurs images peuvent être sélectionnées d'un coup**.
+1. **« 📷 Photos »** : au choix **« Depuis la galerie »** (plusieurs images d'un coup) ou **« Prendre une photo »** (appareil photo du téléphone, capture directe) — compression automatique. Le bandeau « Cette étape n'a pas de photo » offre aussi ces deux actions.
 2. **Taille** : S (35 %) / M (60 %) / L (85 %) / Plein — appliqué en direct, sauvegardé.
 3. **Position** : ⯇ gauche / ≡ centre / ⯈ droite.
 4. **Annoter** : outil **Flèche**, **Zone** ou **Texte** :

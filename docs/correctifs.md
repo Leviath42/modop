@@ -17,6 +17,23 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 **Fichiers** : `web/src/step-canvas.tsx`, `web/src/lib/step-canvas-adaptive.test.ts`
 
+## C-42 — Photos : galerie OU appareil photo au choix + bandeau d'action (réalisé)
+
+**Problème** : le bouton Photos n'offrait que le sélecteur de fichiers unique — sur mobile, pas de choix direct entre la galerie et l'appareil photo (l'OS propose parfois les deux, pas toujours) ; et le bandeau « cette étape n'a pas de photo » était un simple texte sans action.
+
+**Correctif** :
+1. Le bouton **Photos** de la palette ouvre un menu deux choix : **« 🖼 Depuis la galerie »** (sélecteur de fichiers, multi-sélection) et **« 📷 Prendre une photo »** (input `capture="environment"` — **capture natif du navigateur**, ouvre directement l'appareil photo sur mobile, l'explorateur de fichiers sur desktop — sans couche supplémentaire, comme n'importe quelle application).
+2. Le bandeau **« Cette étape n'a pas de photo »** porte désormais les deux **boutons d'action directs** (Galerie / Prendre une photo) — plus besoin d'ouvrir la palette pour ajouter la première photo d'une étape.
+3. Fermeture du menu au clic extérieur/Échap, même ergonomie que les autres menus ; l'étape ciblée reste l'étape active (C-41).
+
+**Test** : `web/src/lib/photo-source.test.ts` — menu avec les deux options, input `capture="environment"` présent, input galerie `multiple` intact, boutons du bandeau branchés (clic sur « Prendre une photo » → input capture déclenché, prouvé par interception).
+
+**Fichiers** : `web/src/pages/editor.tsx`, `web/src/lib/photo-source.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front (dont le nouveau) + 106/106 tests serveur verts.
+
+---
+
 ## C-41 — Étape active dynamique + saisie du texte sur place (réalisé)
 
 **Problème** : l'étape active du sélecteur ne changeait que si on la choisissait explicitement ou cliquait son titre — éditer une autre étape (poser un outil, cliquer le canevas, taper la description) ne la rendait pas active : la palette et le bouton Supprimer continuaient de cibler l'ancienne étape, source d'erreurs. Et l'outil Texte affichait son champ de saisie en **bas de l'étape**, loin du point cliqué.

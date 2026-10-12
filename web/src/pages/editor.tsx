@@ -78,6 +78,8 @@ export default function EditorPage() {
     if (!showTools) toolsOpenRef.current = false;
   }, [showTools]);
   const [showPictos, setShowPictos] = useState(false);
+  const [showPhotoMenu, setShowPhotoMenu] = useState(false);
+  const photoMenuRef = useRef<HTMLSpanElement | null>(null);
   const [confirmDeleteStep, setConfirmDeleteStep] = useState<Step | null>(null);
   const [confirmPublish, setConfirmPublish] = useState(false);
   const [reviewDue, setReviewDue] = useState("");
@@ -87,6 +89,9 @@ export default function EditorPage() {
   const [confirmDeleteDoc2, setConfirmDeleteDoc2] = useState(false);
   const [metaSaved, setMetaSaved] = useState(true);
   const fileRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  // C-42 : input dédié appareil photo (capture natif du navigateur, sans
+  // couche supplémentaire) à côté de l'input galerie
+  const cameraRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const pictosMenuRef = useRef<HTMLSpanElement | null>(null);
   const toolsRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -98,6 +103,16 @@ export default function EditorPage() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [showTools]);
+  useEffect(() => {
+    if (!showPhotoMenu) return;
+    const onDown = (e: PointerEvent) => {
+      if (photoMenuRef.current && !photoMenuRef.current.contains(e.target as Node)) setShowPhotoMenu(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setShowPhotoMenu(false); };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("pointerdown", onDown); document.removeEventListener("keydown", onKey); };
+  }, [showPhotoMenu]);
   useEffect(() => {
     if (!showPictos) return;
     const onDown = (e: PointerEvent) => {
@@ -376,14 +391,31 @@ export default function EditorPage() {
                   <span style={{ width: "1px", height: "20px", background: "var(--border)" }} aria-hidden="true" />
                   {steps.length > 0 && (
                   <>
-                  <button
-                    onClick={() => {
-                      const target = activeStepId ?? steps[0].id;
-                      if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); }
-                      fileRefs.current[target]?.click();
-                    }}
-                    className="tool-icon-btn" style={iconBtn} title="Photos" aria-label="Photos"
-                  ><PhotoIcon /></button>
+                  <span ref={photoMenuRef} style={{ position: "relative", display: "inline-flex" }}>
+                    <button
+                      onClick={() => setShowPhotoMenu((v) => !v)}
+                      className="tool-icon-btn" style={iconBtn} title="Photos : galerie ou appareil photo" aria-label="Photos" aria-expanded={showPhotoMenu} aria-haspopup="menu"
+                    ><PhotoIcon /></button>
+                    {showPhotoMenu && (() => {
+                      const target = activeStepId ?? steps[0]?.id;
+                      const openIt = (which: "gallery" | "camera") => {
+                        if (target == null) return;
+                        if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); }
+                        (which === "gallery" ? fileRefs : cameraRefs).current[target]?.click();
+                        setShowPhotoMenu(false);
+                      };
+                      return (
+                        <div role="menu" aria-label="Source de la photo" style={{ position: "absolute", left: 0, top: "calc(100% + 0.35rem)", zIndex: 135, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", boxShadow: "0 6px 24px rgba(0,0,0,0.2)", padding: "0.3rem", display: "grid", gap: "0.15rem", minWidth: "11rem" }}>
+                          <button role="menuitem" onClick={() => openIt("gallery")} style={{ padding: "0.4rem 0.55rem", borderRadius: "6px", border: "1px solid transparent", background: "transparent", color: "var(--text)", fontSize: "0.85rem", textAlign: "left", cursor: "pointer", display: "flex", gap: "0.45rem", alignItems: "center" }}>
+                            <span aria-hidden="true">🖼</span> Depuis la galerie
+                          </button>
+                          <button role="menuitem" onClick={() => openIt("camera")} style={{ padding: "0.4rem 0.55rem", borderRadius: "6px", border: "1px solid transparent", background: "transparent", color: "var(--text)", fontSize: "0.85rem", textAlign: "left", cursor: "pointer", display: "flex", gap: "0.45rem", alignItems: "center" }}>
+                            <span aria-hidden="true">📷</span> Prendre une photo
+                          </button>
+                        </div>
+                      );
+                    })()}
+                  </span>
                   {TOOLS.map((t) => (
                     <button
                       key={t.kind}
@@ -565,9 +597,11 @@ export default function EditorPage() {
                     </p>
                   )}
                   {(step.photos ?? []).length === 0 && (
-                      <p role="note" style={{ margin: 0, fontSize: "0.75rem", color: "var(--warn-text)", background: "var(--warn-bg)", padding: "0.15rem 0.45rem", borderRadius: "4px" }}>
-                        Cette étape n'a pas de photo — une photo bien cadrée remplace un paragraphe de texte.
-                      </p>
+                      <div role="note" style={{ margin: 0, fontSize: "0.75rem", color: "var(--warn-text)", background: "var(--warn-bg)", padding: "0.25rem 0.45rem", borderRadius: "4px", display: "flex", gap: "0.4rem", alignItems: "center", flexWrap: "wrap" }}>
+                        <span>Cette étape n'a pas de photo — une photo bien cadrée remplace un paragraphe de texte.</span>
+                        <button onClick={() => fileRefs.current[step.id]?.click()} style={{ fontSize: "0.75rem", padding: "0.2rem 0.55rem", borderRadius: "5px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", cursor: "pointer" }}>🖼 Galerie</button>
+                        <button onClick={() => cameraRefs.current[step.id]?.click()} style={{ fontSize: "0.75rem", padding: "0.2rem 0.55rem", borderRadius: "5px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", cursor: "pointer" }}>📷 Prendre une photo</button>
+                      </div>
                     )}
            <div style={{ display: "grid", gap: "0.4rem" }}>
                     <StepCanvas
@@ -596,6 +630,18 @@ export default function EditorPage() {
                         accept="image/jpeg,image/png,image/webp"
                         multiple
                         ref={(el) => { fileRefs.current[step.id] = el; }}
+                        style={{ display: "none" }}
+                        onChange={async (e) => {
+                          const files = e.target.files;
+                          if (files && files.length > 0) await uploadPhotos(step, files);
+                          e.target.value = "";
+                        }}
+                      />
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        capture="environment"
+                        ref={(el) => { cameraRefs.current[step.id] = el; }}
                         style={{ display: "none" }}
                         onChange={async (e) => {
                           const files = e.target.files;
