@@ -34,6 +34,18 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-53 — Guide utilisateur réécrit (réalisé)
+
+**Problème** : le guide n'était plus à jour — structure cassée par les ajouts successifs (des paragraphes d'édition/lecture mélangés dans « Canevas d'étape », doublons C-41, la section « Header d'édition » décrivait l'ancien bouton « + » remplacé par la barre permanente C-49/50/51), et il manquait : lecture guidée, QR, versions avec changelog, signalements côté lecteur, filtre/statut « à revoir », responsable, stats, journal d'audit, changement de mot de passe.
+
+**Correctif** : guide **réécrit entièrement**, structuré par parcours : Accueil → Connexion (+ changement de mot de passe) → **Consulter** (liste, lecture : sélecteur ▶, versions/changelog, lightbox, signalement, Guidé, QR, hors-ligne, page ⚑ Terrain) → **Créer** (bandeau vs barre d'outils sticky, étape active dynamique, étapes, photos galerie/appareil, annotations avec texte sur place et corbeille, indications, publication avec changelog, revue/responsable, suppression admin) → **Administrer** (comptes avec Prénom/Nom et modale, stats avec audit, déploiement) → Dépannage. Toutes les entrées correspondent à l'état C-51 du code.
+
+**Fichiers** : `docs/guide-utilisateur.md`
+
+**État** : ✅ livré sur beta.
+
+---
+
 ## C-52 — Documentation restructurée : archive des vagues, roadmap courte, README agents (réalisé)
 
 **Problème** : la documentation s'était empilée — la roadmap contenait tout l'historique des vagues (221 lignes), le README mélangeait marketing et technique, et rien n'était optimisé pour un agent IA qui reprend le projet (perte de contexte à chaque session).
