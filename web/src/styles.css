@@ -66,6 +66,21 @@ input, select, textarea { font-size: 16px; }
     min-height: 44px;
     min-width: 44px;
   }
+  /* C-37 : boutons compacts de palette (icônes seules) — la règle 44px ne doit
+     pas s'appliquer SEULEMENT à l'état touché : le bouton grandissait au clic
+     et la palette (flexWrap) reflowait, déplaçant les outils d'~1 cm sous le
+     doigt. Taille tactile fixe dès le rendu : plus aucun déplacement. */
+  .tool-icon-btn {
+    min-height: 2.4rem;
+    min-width: 2.4rem;
+    height: 2.4rem;
+    width: 2.4rem;
+    justify-content: center;
+  }
+  .tool-icon-btn svg {
+    width: 20px;
+    height: 20px;
+  }
 }
 /* Anti-débordement structurel : rien ne peut élargir la page, quoi qu'il
    arrive (champs, pré, SVG, images) ; la page ne scrolle JAMAIS

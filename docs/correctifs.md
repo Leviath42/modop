@@ -7,6 +7,18 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-37 — Palette d'édition : les outils « sautaient » d'~1 cm au clic (tactile) (réalisé)
+
+**Problème** : sur écran tactile, sélectionner un outil dans la palette (flèche, zone, texte…) déplaçait les boutons d'environ 1 cm. Cause : la règle `@media (pointer: coarse) { button { min-height: 44px; min-width: 44px } }` s'applique à TOUS les boutons — les outils compacts (~30 px) grandissaient au premier rendu tactile… mais surtout, la palette étant en `flexWrap: wrap`, l'agrandissement des boutons au clic provoquait un **reflow** (passage à la ligne des voisins), déplaçant tout le contenu d'environ une ligne ≈ 1 cm — sous le doigt, juste au moment du tap.
+
+**Correctif** : classe `.tool-icon-btn` pour les boutons d'icônes de la palette (Photos, Flèche, Zone, Texte, pastilles de couleur) — **taille tactile fixe dès le rendu** (2.4 rem / 38 px, icônes 20 px) au lieu du 44 px général qui ne s'appliquait qu'après le premier toucher. Plus aucun changement de taille au clic → plus de reflow → plus de déplacement. La règle 44 px reste pour les autres boutons (texte, actions).
+
+**Fichiers** : `web/src/styles.css` (règle `.tool-icon-btn` dans le bloc pointer: coarse), `web/src/pages/editor.tsx` (classe appliquée aux 3 groupes de boutons)
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front + 106/106 tests serveur verts.
+
+---
+
 ## C-36 — Lecture guidée : Précédent/Suivant/Terminé accrochés au bas de l'écran (réalisé)
 
 **Problème** : dans la lecture guidée, la rangée Précédent/Suivant/Terminé était le 3ᵉ rang de la grille du `main` — elle ne « collait » au bas que si l'étape remplissait l'écran ; dès que le contenu était long (grande photo, description détaillée), les boutons défilaient hors de vue, hors de la zone pouce.

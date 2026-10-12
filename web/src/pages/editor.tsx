@@ -365,19 +365,19 @@ export default function EditorPage() {
                       if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); }
                       fileRefs.current[target]?.click();
                     }}
-                    style={iconBtn} title="Photos" aria-label="Photos"
+                    className="tool-icon-btn" style={iconBtn} title="Photos" aria-label="Photos"
                   ><PhotoIcon /></button>
                   {TOOLS.map((t) => (
                     <button
                       key={t.kind}
                       onClick={() => { setInsertTool(insertTool === t.kind ? null : t.kind); const target = activeStepId ?? steps[0].id; if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); } }}
-                      style={{ ...iconBtn, background: insertTool === t.kind ? "var(--accent-bg)" : "var(--surface)", borderColor: insertTool === t.kind ? "var(--accent)" : "var(--border)" }}
+                      className="tool-icon-btn" style={{ ...iconBtn, background: insertTool === t.kind ? "var(--accent-bg)" : "var(--surface)", borderColor: insertTool === t.kind ? "var(--accent)" : "var(--border)" }}
                       aria-pressed={insertTool === t.kind}
                       title={t.label}
                     >{t.kind === "arrow" ? <ArrowIcon /> : t.kind === "rect" ? <RectIcon /> : <TextIcon />}</button>
                   ))}
                   {insertTool && insertTool !== "text" && COLORS.map((c) => (
-                    <button key={c} onClick={() => setInsertColor(c)} aria-label={`Couleur ${c}`}
+                    <button key={c} onClick={() => setInsertColor(c)} className="tool-icon-btn" aria-label={`Couleur ${c}`}
                       style={{ width: "18px", height: "18px", borderRadius: "50%", background: c, border: insertColor === c ? "2px solid var(--text)" : "1px solid var(--border)", padding: 0, cursor: "pointer", boxSizing: "border-box" }} />
                   ))}
                   <span ref={pictosMenuRef} style={{ position: "relative" }}>
