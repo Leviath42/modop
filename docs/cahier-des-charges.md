@@ -2,7 +2,7 @@
 
 **Projet :** Application web de création et consultation de modes opératoires, auto-hébergée.
 
-**Statut :** **v1.4** — vagues 0→6 livrées sur `beta` ; intègre la revue de benchmark (voir [docs/revue-cahier-des-charges.md](revue-cahier-des-charges.md)) : socle GED (RF-70 à RF-77), lecture guidée terrain, QR d'accès. Historique : v1.3 (layout photos, annotations, guide utilisateur), v1.2 (gestion comptes, pictos enrichis, familles), v1.1 (durcissement sécurité), v1.0 (MVP).
+**Statut :** **v1.5** — vagues 0→6bis **et correctifs C-01→C-51** livrés sur `beta` : socle GED (RF-70 à RF-77), lecture guidée terrain, QR d'accès, remontées terrain, Prénom/Nom des comptes, responsable à sélectionner, barre d'outils sticky, sécurité durcie. Historique des vagues : [docs/archives/roadmap-v1-a-v6bis.md](archives/roadmap-v1-a-v6bis.md) ; journal des correctifs : [correctifs.md](correctifs.md). Versions précédentes : v1.4 (socle GED), v1.3 (layout photos), v1.2 (comptes, pictos, familles), v1.1 (sécurité), v1.0 (MVP).
 
 ## 1. Présentation du projet
 
@@ -45,20 +45,20 @@ Un mode opératoire se compose de :
 - **RF-54 — Suppression de mode opératoire** : confirmation explicite, suppression en cascade (étapes, photos, versions).
 - **RF-55 — Pictogrammes enrichis** : par étape, pictos avec **couleur** (sélecteur) et **texte libre** ; présents en édition, lecture (bandeau coloré) et export DOCX (texte coloré).
 - **RF-56 — Classement famille/type** : chaque mode opératoire porte une *famille* (ex. Mécanique, Électrique) et un *type* (ex. Maintenance) ; filtre par famille dans la liste, badges en lecture.
-- **RF-62 — Arborescence documentaire paramétrable** : types de documents paramétrables et regroupement sur **plusieurs niveaux** (ex. Famille > Sous-famille > Type) ; l'arborescence structure la navigation et remplace/complète les filtres famille/type actuels. Détails à spécifier (modèle de données, admin des regroupements).
-- **RF-63 — Page de menu** : accueil organisé par arborescence (navigation par regroupements plutôt que liste plate) ; à spécifier (tuiles, recherche, profondeur affichée).
-- **RF-64 — Insertion d'image par glisser-déposer ou presse-papiers** : nouvelle image ajoutée à une étape par **drag & drop** d'un fichier sur le canevas ou **collage** d'une capture (Ctrl+V / presse-papiers) ; compression côté client conservée.
+- **RF-62 — Arborescence documentaire paramétrable** *(restant — vague 8)* : types de documents paramétrables et regroupement sur **plusieurs niveaux** (ex. Famille > Sous-famille > Type) ; l'arborescence structure la navigation et remplace/complète les filtres famille/type actuels. Détails à spécifier (modèle de données, admin des regroupements).
+- **RF-63 — Page de menu** *(restant — vague 8)* : accueil organisé par arborescence (navigation par regroupements plutôt que liste plate) ; à spécifier (tuiles, recherche, profondeur affichée).
+- **RF-64 — Insertion d'image par glisser-déposer ou presse-papiers** *(restant — vague 8)* : nouvelle image ajoutée à une étape par **drag & drop** d'un fichier sur le canevas ou **collage** d'une capture (Ctrl+V / presse-papiers) ; compression côté client conservée.
 - **RF-68 — Import multiple d'images** : le sélecteur de fichiers accepte **plusieurs images à la fois** (téléversées séquentiellement avec la compression existante). Implémenté.
 - **RF-65 — Gestion des versions enrichie** : en plus du numéro/auteur/date, chaque publication porte une **description des modifications apportées** (saisie à la publication, visible dans l'historique).
-- **RF-66 — Documents parents** : un mode opératoire peut être rattaché à un **document parent** (ex. notice machine > modes opératoires associés) ; navigation parent/enfants dans les deux sens.
-- **RF-67 — Gestion de statut** : statut éditorial paramétrable sur le document — valeurs normalisées *brouillon / en relecture / validé / à revoir / obsolète* ; transitions contrôlées par rôle (auteur : brouillon→relecture ; validateur : relecture→validé ; passage automatique à « à revoir » à l'échéance de revue). Filtrage et badge en liste/lecture.
+- **RF-66 — Documents parents** *(restant — vague 8)* : un mode opératoire peut être rattaché à un **document parent** (ex. notice machine > modes opératoires associés) ; navigation parent/enfants dans les deux sens.
+- **RF-67 — Gestion de statut** *(partiel : « à revoir » automatique implémenté ; workflow relecture/validé restant — vague 7)* : statut éditorial paramétrable sur le document — valeurs normalisées *brouillon / en relecture / validé / à revoir / obsolète* ; transitions contrôlées par rôle (auteur : brouillon→relecture ; validateur : relecture→validé ; passage automatique à « à revoir » à l'échéance de revue). Filtrage et badge en liste/lecture.
 - **RF-70 — Gabarit qualité étape** (revue v1.4) : aide contextuelle dans l'éditeur — conseil « une action par étape », limite indicative de longueur de description, rappel photo — informative, jamais bloquante.
 - **RF-71 — QR code d'accès** (revue v1.4) : chaque mode opératoire publié expose une vignette imprimable (PDF : titre, référence, QR pointant vers la page de lecture) pour affichage au poste ; consignes d'impression (taille min., zone de silence).
 - **RF-72 — Mode lecture guidée** (revue v1.4) : sur mobile, option de lecture « une étape par écran » avec boutons Suivant/Précédent en zone pouce et indicateur de progression (étape n/N).
 - **RF-73 — Retour terrain** (revue v1.4) : bouton « Signaler un problème sur cette étape » en lecture → entrée d'audit + notification à l'auteur ; les signalements sont consultables par l'auteur et l'admin.
 - **RF-74 — Date de revue périodique** (revue v1.4) : champ « à revoir le » par document ; alerte visuelle en liste et lecture quand l'échéance est dépassée ; filtre « à revoir ». Un document jamais relu devient silencieusement faux — c'est le cœur du socle GED.
-- **RF-75 — Responsable éditorial** (revue v1.4) : champ propriétaire du document, distinct de l'auteur d'une version ; affiché dans l'historique.
-- **RF-76 — Obsolescence tracée** (revue v1.4) : un mode opératoire remplacé pointe vers son successeur (badge + lien) ; jamais de suppression silencieuse tant que la politique de conservation ne l'archive pas.
+- **RF-75 — Responsable éditorial** (revue v1.4) : champ propriétaire du document, distinct de l'auteur d'une version ; affiché dans l'historique. *Implémenté : sélecteur à recherche parmi les comptes actifs (Prénom Nom) ; désactivation du responsable → ses MO passent « à revoir ».*
+- **RF-76 — Obsolescence tracée** *(partiel : badge « à revoir » et garde-fou responsable implémentés ; lien successeur restant)* (revue v1.4) : un mode opératoire remplacé pointe vers son successeur (badge + lien) ; jamais de suppression silencieuse tant que la politique de conservation ne l'archive pas.
 - **RF-77 — Statistiques de consultation** (revue v1.4) : vues et exports par mode opératoire exposés à l'auteur (l'API `/api/stats` existe en partie) — aide à prioriser les mises à jour.
 
 ### 1.4 Hors périmètre (V1)
@@ -93,10 +93,10 @@ L'application est destinée à une **équipe interne** : pas d'inscription libre
 - **RF-10** — Créer un mode opératoire avec titre, référence, description, catégorie.
 - **RF-11** — Ajouter, réordonner (glisser-déposer), modifier et supprimer des étapes.
 - **RF-12** — Pour chaque étape : saisir un titre et une description riche (mise en forme simple : gras, listes).
-- **RF-13** — Importer des photos depuis l'appareil (appareil photo mobile ou fichiers) ; redimensionnement/compression côté client.
+- **RF-13** — Importer des photos depuis l'appareil (appareil photo mobile ou fichiers) ; redimensionnement/compression côté client. *Implémenté : galerie OU appareil photo au choix (capture natif), uploads parallèles avec progression.*
 - **RF-14** — Annoter les photos : flèches, rectangles, zones surlignées, texte ; dessin réalisé dans le navigateur.
 - **RF-15** — Ajouter des pictogrammes d'indication par étape (attention, EPI, outil spécifique, etc.).
-- **RF-16** — Enregistrement automatique en brouillon pendant l'édition.
+- **RF-16** — Enregistrement automatique en brouillon pendant l'édition. *Implémenté (autosave des métadonnées ~1 s après la frappe, badge « Enregistrement… »).*
 - **RF-17** — Aperçu en temps réel de la mise en page pendant l'édition.
 
 ### 3.3 Publication et versions
@@ -109,7 +109,7 @@ L'application est destinée à une **équipe interne** : pas d'inscription libre
 ### 3.4 Consultation
 
 - **RF-30** — Liste des modes opératoires avec recherche (titre, référence) et filtres (catégorie, état).
-- **RF-31** — Vue de lecture optimisée mobile : une étape par écran, navigation simple, photos plein écran avec zoom.
+- **RF-31** — Vue de lecture optimisée mobile : une étape par écran, navigation simple, photos plein écran avec zoom. *Implémenté : lecture guidée (boutons fixes en bas) + lightbox plein écran au tap sur une photo.*
 - **RF-32** — Vue de lecture PC : présentation complète, navigation par sommaire.
 - **RF-33** — Consultation hors ligne des modes opératoires déjà consultés (PWA + cache) — souhaitable, non bloquante pour le lot 1.
 
@@ -161,6 +161,8 @@ Application classique en trois tiers, dans un monorepo :
 | **Lot 6 — terrain** (v1.4) | RF-71 (QR d'accès), RF-72 (lecture guidée mobile), RF-73 (retour terrain), RNF-5 mode atelier |
 
 ## 8. Critères d'acceptation (lot 1)
+
+> **État lot 1 : ✅ atteint sur beta** (création multi-étapes avec photos sur smartphone, consultation PC/mobile, export .docx, V1→V2 dans l'historique, PWA installable). Suites : voir [roadmap.md](roadmap.md).
 
 - Un auteur peut créer un mode opératoire de 10 étapes avec photos depuis un smartphone, sans blocage.
 - Un lecteur peut le consulter sur mobile et PC, et l'exporter en `.docx`.

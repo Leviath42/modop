@@ -34,6 +34,22 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-52 — Documentation restructurée : archive des vagues, roadmap courte, README agents (réalisé)
+
+**Problème** : la documentation s'était empilée — la roadmap contenait tout l'historique des vagues (221 lignes), le README mélangeait marketing et technique, et rien n'était optimisé pour un agent IA qui reprend le projet (perte de contexte à chaque session).
+
+**Correctif** :
+1. **`docs/archives/`** : l'ancienne roadmap (v0→v6bis, tableaux d'audit inclus) et la revue de cahier des charges y sont archivées — l'historique complet reste consultable mais hors du chemin principal.
+2. **`docs/roadmap.md` (nouvelle, courte)** : ce qui est **implémenté** (v0→v6bis + C-01→C-51, résumé par domaine) et ce qui **reste** (vague 7 : workflow validation, comparaison versions, SSO réel, PWA cache ; vague 8 : arborescence, menu, drag&drop, parents, statut éditorial).
+3. **`README.md` simplifié** : « Ce que ça fait » (humains), installation, table des docs, dev — plus une section **« Pour les agents IA »** : branche de travail (`beta`), stack, structure, conventions (C-xx, portes qualité, tests runtime obligatoires, piège du formatage compacté), variables d'env, et où lire l'historique avant de retravailler une zone.
+4. **`docs/cahier-des-charges.md` v1.5** : statut mis à jour (v0→v6bis + C-01→C-51), chaque RF marqué *implémenté* (RF-13, 16, 31, 75 avec détails) ou *restant* (RF-62/63/64/66 vague 8, RF-67/76 partiels), état du lot 1 (✅ atteint).
+
+**Fichiers** : `README.md`, `docs/roadmap.md`, `docs/cahier-des-charges.md`, `docs/archives/` (roadmap + revue déplacées)
+
+**État** : ✅ livré sur beta.
+
+---
+
 ## C-51 — Barre d'outils : sticky sous le bandeau (réalisé)
 
 **Problème** : C-50 avait sorti la barre du bandeau, mais elle restait en haut de page — au défilement, les outils disparaissaient : inutilisables sur un MO long.
