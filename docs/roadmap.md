@@ -1,6 +1,6 @@
 # Modop — Roadmap
 
-*Dernière mise à jour : 2026-10-12 — après C-51 (barre d'outils sticky).*
+*Dernière mise à jour : après C-53 — ajout de **RF-78 (import de modes opératoires existants)** à la spécification, planifié vague 8.*
 
 L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archives/roadmap-v1-a-v6bis.md](archives/roadmap-v1-a-v6bis.md). La série de correctifs UI/UX (C-01 → C-51) est journalisée dans [correctifs.md](correctifs.md).
 
@@ -38,6 +38,7 @@ L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archi
 | 3 | **Nouvelle image : drag & drop / presse-papiers** | Ctrl+V dans l'étape + glisser-déposer sur le canevas ; compression conservée |
 | 4 | **Documents parents** | rattachement parent/enfants (notice machine > MO associés), navigation |
 | 5 | **Gestion de statut éditorial** | brouillon / en relecture / validé / obsolète (distinct de publié), filtrage, badges |
+| 6 | **Import de MO existants (RF-78)** | conversion automatique `.docx` / `.pdf` / scans → brouillon Modop : extraction texte + images, détection des étapes, relecture obligatoire par l'auteur avant publication (jamais de publication automatique) |
 
 ### Vision long terme
 

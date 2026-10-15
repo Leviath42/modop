@@ -2,7 +2,7 @@
 
 **Projet :** Application web de création et consultation de modes opératoires, auto-hébergée.
 
-**Statut :** **v1.5** — vagues 0→6bis **et correctifs C-01→C-51** livrés sur `beta` : socle GED (RF-70 à RF-77), lecture guidée terrain, QR d'accès, remontées terrain, Prénom/Nom des comptes, responsable à sélectionner, barre d'outils sticky, sécurité durcie. Historique des vagues : [docs/archives/roadmap-v1-a-v6bis.md](archives/roadmap-v1-a-v6bis.md) ; journal des correctifs : [correctifs.md](correctifs.md). Versions précédentes : v1.4 (socle GED), v1.3 (layout photos), v1.2 (comptes, pictos, familles), v1.1 (sécurité), v1.0 (MVP).
+**Statut :** **v1.6** — vagues 0→6bis **et correctifs C-01→C-53** livrés sur `beta` : socle GED (RF-70 à RF-77), lecture guidée terrain, QR d'accès, remontées terrain, Prénom/Nom des comptes, responsable à sélectionner, barre d'outils sticky, sécurité durcie. **Spéc. v1.6 :** ajout **RF-78** (import de modes opératoires existants — restant, vague 8). Historique des vagues : [docs/archives/roadmap-v1-a-v6bis.md](archives/roadmap-v1-a-v6bis.md) ; journal des correctifs : [correctifs.md](correctifs.md). Versions précédentes : v1.4 (socle GED), v1.3 (layout photos), v1.2 (comptes, pictos, familles), v1.1 (sécurité), v1.0 (MVP).
 
 ## 1. Présentation du projet
 
@@ -60,6 +60,8 @@ Un mode opératoire se compose de :
 - **RF-75 — Responsable éditorial** (revue v1.4) : champ propriétaire du document, distinct de l'auteur d'une version ; affiché dans l'historique. *Implémenté : sélecteur à recherche parmi les comptes actifs (Prénom Nom) ; désactivation du responsable → ses MO passent « à revoir ».*
 - **RF-76 — Obsolescence tracée** *(partiel : badge « à revoir » et garde-fou responsable implémentés ; lien successeur restant)* (revue v1.4) : un mode opératoire remplacé pointe vers son successeur (badge + lien) ; jamais de suppression silencieuse tant que la politique de conservation ne l'archive pas.
 - **RF-77 — Statistiques de consultation** (revue v1.4) : vues et exports par mode opératoire exposés à l'auteur (l'API `/api/stats` existe en partie) — aide à prioriser les mises à jour.
+
+- **RF-78 — Import de modes opératoires existants** *(restant — vague 8)* : téléverser un document existant — `.docx`, `.pdf` ou scans/images — et générer **automatiquement** un mode opératoire au format Modop : extraction du texte et des images du document, **détection des étapes** (titres, numérotation, sauts de paragraphe), création des étapes avec photos rattachées, le tout en **brouillon**. Le résultat n'est jamais publié en l'état : l'auteur relit et complète (positionnement des photos, annotations, pictogrammes, indications visuelles) avant publication en V1. Le document source et un aperçu côte à côte restent disponibles pendant la relecture.
 
 ### 1.4 Hors périmètre (V1)
 
