@@ -28,13 +28,15 @@
 
 ```
 server/src/routes/   workflows (CRUD+étapes) · publish (versions Vn immuables) · export (docx)
-                     duplicate · restore · list · photos · auth (login/oidc/totp)
-                     admin (comptes) · stats · deploy (maj/rollback depuis l'UI)
+                     duplicate · restore · list · photos (+ rognage :id/file) · settings (paramètres)
+                     auth (login/oidc/totp) · admin (comptes) · stats · deploy (maj/rollback depuis l'UI)
 server/src/auth/     middleware · sessions · security (rate-limit, headers) · oidc · totp · audit · origin (CSRF)
-server/src/db/       schema.ts (migrations idempotentes) · seed.ts
-server/src/render/   canvas-composite.ts (rendu serveur des canevas annotés)
-web/src/pages/       list · editor · reader · guided-reader · qr · feedbacks · admin · stats · deploy · login
-web/src/             step-canvas.tsx (canevas) · api.ts · auth-context.tsx · theme.ts
+server/src/db/       schema.ts (migrations idempotentes, table settings) · seed.ts
+server/src/render/   canvas-composite.ts (rendu serveur des canevas annotés, épaisseur honorée)
+web/src/pages/       list · editor · reader · guided-reader · qr · feedbacks · admin · stats · deploy · settings · login
+web/src/             step-canvas.tsx (canevas + rognage) · api.ts · auth-context.tsx · theme.ts
+web/src/editor/      tools/ (registre de commandes) · bottom-bar.tsx (barre basse fixe)
+web/src/components/  ui/ (Button, Card, Input, Badge, Modal… type shadcn, faits maison)
 web/src/lib/         tests front autonomes (jsdom, un fichier = un scénario, exit non-zéro = échec)
 ```
 
@@ -61,4 +63,4 @@ web/src/lib/         tests front autonomes (jsdom, un fichier = un scénario, ex
 
 ## Travaux en cours (voir roadmap)
 
-**Priorité actuelle (décision propriétaire, 2026-10-18) : le fonctionnel et le mode édition — vagues 7-8. La vague 10 (sécurité, issue #9) est en standby** (rappel tant qu'elle dort : l'UI de login n'a pas de champ `totp` — ne pas activer `MODOP_TOTP_SECRET` en production). La vague 9 est terminée côté code et ops (C-57/C-62 : CI, lint, audit, sauvegardes VACUUM INTO, Uptime Kuma déployé et supervisé depuis Home Assistant) ; production maintenue sur `beta` (activation `MODOP_DEPLOY_BRANCH=main` différée).
+**Cycle de retour terrain (C-70 → C-80) livré** : refonte UI complète (Tailwind v4, palette, barre basse d'outils, Lucide), rognage d'image en place avec retour arrière, paramètres applicatifs (page `/settings`), lecture = dernier publié. **Backlog prioritaire** (roadmap) : undo/redo global, **templates de documents** (mode de réaction, tableau, enregistrements, FIT, fiches d'aspect), vidéo liée au MO, texte riche. La vague 10 (sécurité, issue #9) reste **en standby** (rappel tant qu'elle dort : l'UI de login n'a pas de champ `totp` — ne pas activer `MODOP_TOTP_SECRET` en production). Vague 9 terminée code + ops (Uptime Kuma déployé, supervisé depuis Home Assistant). Environ de test terrain : **Android/Chrome**. Constats connus : test serveur « S2 photos auth » flaky intermittent sous charge (~1 run/4).

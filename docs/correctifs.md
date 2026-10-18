@@ -36,6 +36,25 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-80 — Validation texte : plus de saut de fenêtre + documentation à jour (correctif C-77)
+
+**Problème** : à la validation d'un texte, le focus explicite sur le canevas (C-77) provoquait un **saut de la fenêtre** — `focus()` fait défiler l'élément par défaut.
+
+**Correctif** : `focus({ preventScroll: true })` (validation et Échap) — le focus est bien posé (le navigateur ne peut pas le faire tomber sur le champ de l'étape suivante), mais **sans aucun défilement**. Un focus « nul » total n'est pas réalisable de façon fiable (le démontage d'un input focusé laisse le navigateur choisir le suivant) ; `preventScroll` supprime le symptôme tout en gardant la protection.
+
+**Documentation mise à jour** (ensemble) :
+- **guide-utilisateur.md** : barre d'outils basse + raccourcis clavier, actions contextuelles (Recadrer / Annuler rognage / Objets), formes en clic-glissé, outil texte fidèle au résultat, Style (8 couleurs + épaisseur), sélection par contour et au-dessus des photos, lecture = dernier publié + option « Brouillon en cours » (auteurs) + bouton Éditer + retour au début fixe, publication refusée si date de revue passée + « Abandonner le brouillon », page **Paramètres** (3 options) + alerte MO sans responsable, recherche depuis la loupe du bandeau.
+- **AGENTS.md** : arborescence (editor/, components/ui, settings, rognage serveur) + travaux en cours (backlog : templates de documents, undo/redo, vidéo).
+- **roadmap.md** : en-tête rafraîchi.
+
+**Tests** : suite front verte, 121/121 serveur, lint, builds OK.
+
+**Fichiers** : `web/src/step-canvas.tsx`, `docs/{guide-utilisateur,roadmap,correctifs}.md`, `AGENTS.md`.
+
+**État** : livré sur beta, **fusionné sur main** (validation propriétaire).
+
+---
+
 ## C-79 — Champ texte : largeur mesurée au pixel près + templates en roadmap (correctif C-77)
 
 **Problème** : le champ texte s'élargissait à l'excès — la largeur `len × 1ch` sur-estime avec une police proportionnelle (le « ch » est la largeur du « 0 », plus large que la moyenne des caractères).

@@ -213,7 +213,7 @@ export default function StepCanvas({
       // On pose explicitement le focus sur le CANEVAS avant le démontage :
       // le focus ne peut plus « tomber » ailleurs.
       (document.activeElement as HTMLElement | null)?.blur?.();
-      canvasRef.current?.focus?.();
+      canvasRef.current?.focus?.({ preventScroll: true });
       const v = textDraft.value.trim();
       if (v) {
         if (textDraft.editIndex != null) {
@@ -780,7 +780,7 @@ export default function StepCanvas({
                 // C-77 : même discipline de focus que la validation — le
                 // canevas reprend le focus avant le démontage du champ.
                 (document.activeElement as HTMLElement | null)?.blur?.();
-                canvasRef.current?.focus?.();
+                canvasRef.current?.focus?.({ preventScroll: true });
                 setTextDraft(null);
                 setTool(null);
               }
