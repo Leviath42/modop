@@ -1,37 +1,55 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "./auth-context";
 import { getStoredTheme, toggleTheme, watchTheme, type Theme } from "./theme";
 
 const SunIcon = () => (
-  <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+  <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
   </svg>
 );
 const MoonIcon = () => (
-  <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+  <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
   </svg>
 );
 const BarsIcon = () => (
-  <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+  <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
   </svg>
 );
 
-// Navigation : bandeau épuré — logo Modop + menu (⋮ hamburger). Toutes les
-// entrées (selon rôle) et actions y sont regroupées ; fermeture au clic
-// extérieur, à l'Échap ou après navigation.
-export default function NavBar() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const navRef = useRef<HTMLElement | null>(null);
+// Bascule de thème, façon meal_plan : bouton icône nu dans la bandeau,
+// accessible (aria-label), jamais dans un sous-menu.
+function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>(() =>
     (document.documentElement.dataset.theme as Theme) || getStoredTheme()
   );
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => watchTheme(setTheme), []);
+  const label = theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre";
+  return (
+    <button
+      onClick={() => setTheme(toggleTheme())}
+      className="shrink-0 rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-link"
+      aria-label="Changer de thème"
+      title={label}
+    >
+      {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+    </button>
+  );
+}
+
+// Navigation, calquée sur le bandeau de meal_plan : barre neutre (surface +
+// bordure basse) de 48 px (56 px dès sm), contenu contraint à max-w-6xl ;
+// liens visibles sur desktop (md+), hamburger + panneau déroulant sur mobile.
+// Sticky conservé : les bandeaux des pages s'accrochent à --nav-h.
+export default function NavBar() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const navRef = useRef<HTMLElement | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+
   // Publier la hauteur réelle du bandeau : les headers sticky des pages
   // s'y raccrochent (var --nav-h) — plus de décalage quelle que soit la
   // hauteur réelle (mobile, redimensionnement).
@@ -46,85 +64,115 @@ export default function NavBar() {
     return () => ro.disconnect();
   }, [user]);
 
+  // Échap ferme le menu mobile ouvert (comportement meal_plan).
   useEffect(() => {
     if (!menuOpen) return;
-    const onDown = (e: PointerEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
-    };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setMenuOpen(false);
     };
-    document.addEventListener("pointerdown", onDown);
     document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("pointerdown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
+    return () => document.removeEventListener("keydown", onKey);
   }, [menuOpen]);
 
   if (!user) return null;
 
-  const menuLabel = theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre";
+  const link = (to: string, label: string) => {
+    const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
+    return (
+      <Link
+        key={to}
+        to={to}
+        onClick={() => setMenuOpen(false)}
+        className={`whitespace-nowrap py-2 text-xs text-muted-foreground transition-colors hover:text-link sm:text-sm ${active ? "font-medium text-link" : ""}`}
+      >
+        {label}
+      </Link>
+    );
+  };
 
-  const menuItem =
-    "flex w-full items-center gap-2.5 rounded-md px-3 py-2.5 text-left text-sm text-foreground no-underline hover:bg-accent";
+  const entries: [string, string][] = [["/", "Modes opératoires"]];
+  if (user.role === "admin") {
+    entries.push(["/admin", "Comptes"], ["/stats", "Statistiques"], ["/deploy", "Déploiement"]);
+  }
 
   return (
-    <nav
-      ref={navRef}
-      className="sticky top-0 z-[300] flex items-center gap-2 bg-primary px-3 py-1.5 text-primary-foreground shadow-sm"
-    >
-      <Link
-        to="/"
-        className="flex shrink-0 items-center gap-1.5 text-base font-bold text-primary-foreground no-underline"
-      >
-        <span aria-hidden="true" className="inline-block size-2 rounded-sm bg-brand" />
-        Modop
-      </Link>
-      <div ref={menuRef} className="relative ml-auto">
-        <button
-          onClick={() => setMenuOpen((v) => !v)}
-          aria-expanded={menuOpen}
-          aria-haspopup="menu"
-          aria-label="Menu"
-          title="Menu"
-          className="inline-flex size-8 items-center justify-center rounded-md text-primary-foreground hover:bg-white/10 focus-visible:outline-white"
-        >
-          <BarsIcon />
-        </button>
-        {menuOpen && (
-          <div
-            role="menu"
-            aria-label="Menu de navigation"
-            className="absolute right-0 top-[calc(100%+0.4rem)] grid min-w-60 max-w-[calc(100vw-1.5rem)] gap-0.5 rounded-lg border border-border bg-surface p-1.5 text-foreground shadow-xl"
+    <nav ref={navRef} className="sticky top-0 z-[300] border-b border-border-soft bg-surface">
+      <div className="mx-auto max-w-6xl px-3 sm:px-4 lg:px-8">
+        <div className="flex h-12 items-center justify-between sm:h-14">
+          <Link
+            to="/"
+            onClick={() => setMenuOpen(false)}
+            className="truncate text-base font-bold text-brand-strong no-underline sm:text-lg"
           >
-            <p className="mx-2 mt-1 mb-1.5 text-sm break-anywhere text-muted-foreground">
-              {user.email} <span className="opacity-70">({user.role})</span>
-            </p>
-            <Link role="menuitem" to="/" onClick={() => setMenuOpen(false)} className={menuItem}>Modes opératoires</Link>
-            {user.role === "admin" && (
-              <>
-                <Link role="menuitem" to="/admin" onClick={() => setMenuOpen(false)} className={menuItem}>Comptes</Link>
-                <Link role="menuitem" to="/stats" onClick={() => setMenuOpen(false)} className={menuItem}>Statistiques</Link>
-                <Link role="menuitem" to="/deploy" onClick={() => setMenuOpen(false)} className={menuItem}>Déploiement</Link>
-              </>
-            )}
-            <span className="mx-2 my-1 h-px bg-border-soft" aria-hidden="true" />
+            Modop
+          </Link>
+
+          {/* Desktop : liens à plat, séparateur, email, déconnexion, thème */}
+          <div className="hidden items-center gap-3 md:flex lg:gap-4">
+            {entries.map(([to, label]) => (
+              <Link
+                key={to}
+                to={to}
+                className={`whitespace-nowrap text-xs text-muted-foreground transition-colors hover:text-link sm:text-sm ${pathname === to ? "font-medium text-link" : ""}`}
+              >
+                {label}
+              </Link>
+            ))}
+            <span className="hidden text-border lg:inline" aria-hidden="true">|</span>
+            <span className="hidden max-w-48 truncate text-xs text-muted-foreground lg:inline" title={user.email}>
+              {user.email}
+            </span>
             <button
-              role="menuitem"
-              onClick={() => { setMenuOpen(false); setTheme(toggleTheme()); }}
-              aria-label={menuLabel}
-              className={menuItem}
-            >
-              {theme === "dark" ? <SunIcon /> : <MoonIcon />} {menuLabel}
-            </button>
-            <button
-              role="menuitem"
-              onClick={async () => { setMenuOpen(false); await logout(); navigate("/login"); }}
-              className={menuItem + " text-destructive"}
+              onClick={async () => { await logout(); navigate("/login"); }}
+              className="whitespace-nowrap text-xs text-muted-foreground transition-colors hover:text-destructive sm:text-sm"
             >
               Déconnexion
             </button>
+            <ThemeToggle />
+          </div>
+
+          {/* Mobile : thème + hamburger */}
+          <div className="flex items-center gap-1 md:hidden">
+            <ThemeToggle />
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-expanded={menuOpen}
+              aria-haspopup="menu"
+              aria-label="Menu"
+              title="Menu"
+              className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-link"
+            >
+              <BarsIcon />
+            </button>
+          </div>
+        </div>
+
+        {/* Fond masquant sous le menu mobile : un clic en dehors le ferme */}
+        {menuOpen && (
+          <div
+            className="fixed inset-x-0 bottom-0 top-12 z-10 bg-black/25 md:hidden sm:top-14"
+            onClick={() => setMenuOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
+        {menuOpen && (
+          <div role="menu" aria-label="Menu de navigation" className="relative z-20 border-t border-border-soft bg-surface px-3 pb-3 md:hidden">
+            <div className="flex flex-col gap-2">
+              <p className="mt-2 truncate text-xs text-muted-foreground" title={user.email}>
+                {user.email} <span className="opacity-70">({user.role})</span>
+              </p>
+              {entries.map(([to, label]) => link(to, label))}
+              <div className="mt-1 border-t border-border-soft pt-2">
+                <button
+                  role="menuitem"
+                  onClick={async () => { setMenuOpen(false); await logout(); navigate("/login"); }}
+                  className="w-full py-2 text-left text-xs text-destructive transition-colors hover:opacity-80 sm:text-sm"
+                >
+                  Déconnexion
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

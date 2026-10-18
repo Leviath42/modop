@@ -36,6 +36,24 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-66 — Bandeau de navigation calqué sur meal_plan (correctif C-65)
+
+**Problème** (constat propriétaire après C-65) : le bandeau bleu-gris plein semblait toujours trop massif — le propriétaire demande la barre identique à celle de **meal_plan** (référence historique : la base de `styles.css` vient déjà de cette app).
+
+**Correctif** : `nav.tsx` réécrit sur le modèle de `app/Nav.tsx` de meal_plan, avec les tokens Modop :
+- barre **neutre** (surface + bordure basse, plus de bande de couleur), hauteur fixe **48 px / 56 px dès sm**, contenu contraint `max-w-6xl mx-auto` ;
+- **desktop (md+)** : liens à plat (Modes opératoires ; Comptes/Statistiques/Déploiement pour l'admin) avec état actif, séparateur, email tronqué, Déconnexion, **ThemeToggle dans la barre** (bouton icône, plus dans un sous-menu) ;
+- **mobile** : hamburger + ThemeToggle, panneau déroulant sous le bandeau avec overlay de fermeture au clic extérieur, Échap conservé ;
+- logo « Modop » en orange lisible (`text-brand-strong`, 5:1) ; sticky conservé (les bandeaux des pages s'accrochent à `--nav-h`, publié par ResizeObserver).
+
+**Tests** : `nav-menu.test.tsx` inchangé et vert (hamburger `aria-label="Menu"`, entrées par rôle, Échap) ; suite front verte, lint server+web, 117/117 serveur.
+
+**Fichiers** : `web/src/nav.tsx`.
+
+**État** : livré sur beta.
+
+---
+
 ## C-65 — Refonte UI : règles de base écrasant Tailwind + lisibilité des couleurs (correctif C-64)
 
 **Problème** (constaté sur le CT après C-64) : le bouton « + » de l'accueil et le titre « Modop » du bandeau étaient invisibles, les boutons semblaient mal colorés, la barre supérieure paraissait trop épaisse. **Cause racine** : les styles par élément de `styles.css` (`a { color: var(--accent) }`, `button { color: var(--text) }`, `h1 { font-size: 1.05rem }`…) étaient **non layerés** — or en CSS, une règle hors `@layer` bat TOUT `@layer`, spécificité égale par ailleurs : elles écrasaient systématiquement les utilitaires Tailwind (`text-primary-foreground` → texte bleu-gris sur fond bleu-gris, titres stylés ramenés à 1.05rem).
