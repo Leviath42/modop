@@ -36,6 +36,18 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-63 — Vague 10 en standby, priorité au fonctionnel et au mode édition (décision)
+
+**Décision propriétaire (2026-10-18)** : la vague 10 (palier sécurité entreprise, issue #9) passe **en standby** — pas de besoin pour le moment. La priorité va au **fonctionnel et au mode édition** : vagues 7 et 8, avec en tête de vague 8 l'item édition d'images (drag & drop / presse-papiers) et le statut éditorial.
+
+**Conséquences tenues dans les docs** : roadmap réorganisée (note de priorité, vague 8 réordonnée, vague 10 marquée standby avec son contenu conservé) ; AGENTS.md (section « Travaux en cours » mise à jour). Rappel de sécurité maintenu tant que la vague dort : `MODOP_TOTP_SECRET` reste désactivé (UI de login sans champ `totp`).
+
+**Docs** : `docs/roadmap.md`, `AGENTS.md`.
+
+**État** : documentation seule — aucun code modifié.
+
+---
+
 ## C-62 — Uptime Kuma déployé : supervision vague 9 bouclée côté ops (bilan)
 
 **Contexte** : C-57 laissait le déploiement réel d'Uptime Kuma à la charge du propriétaire (procédure dans guide-test-proxmox.md). C'est fait : moniteur HTTP sur `GET /api/health`, état online/offline remonté dans Home Assistant.

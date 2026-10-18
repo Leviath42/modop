@@ -1,6 +1,6 @@
 # Modop — Roadmap
 
-*Dernière mise à jour : après C-62 — **Uptime Kuma déployé sur le Proxmox** (healthcheck `GET /api/health` supervisé, état online/offline remonté dans Home Assistant) ; vague 9 terminée côté code **et** côté ops ; reste côté propriétaire : recevoir les premières PR Dependabot. **Décision propriétaire (2026-10-18) : la production reste sur `beta`** — l'activation de `MODOP_DEPLOY_BRANCH=main` est différée jusqu'à nouvel ordre.*
+*Dernière mise à jour : après C-63 — **priorité redéfinie : le fonctionnel et le mode édition (vagues 7-8)**, **vague 10 (sécurité) en standby** (décision propriétaire 2026-10-18) ; Uptime Kuma déployé sur le Proxmox (healthcheck supervisé, remonté dans Home Assistant) ; vague 9 terminée côté code et ops ; production maintenue sur `beta` (activation `MODOP_DEPLOY_BRANCH=main` différée) ; reste côté propriétaire : recevoir les premières PR Dependabot.*
 
 L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archives/roadmap-v1-a-v6bis.md](archives/roadmap-v1-a-v6bis.md). La série de correctifs UI/UX (C-01 → C-51) est journalisée dans [correctifs.md](correctifs.md).
 
@@ -20,6 +20,8 @@ L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archi
 
 ## 🚧 Restant à implémenter
 
+> **Priorité actuelle (décision propriétaire, 2026-10-18) : le fonctionnel et le mode édition** — les vagues 7 et 8 passent devant ; la vague 10 (sécurité) est en standby. Dans la vague 8, les items d'édition (images, statut éditorial) sont en tête.
+
 ### Vague 7 (proposition — reprise de l'ancienne vague 6)
 
 | # | Fonctionnalité | Notes |
@@ -33,11 +35,11 @@ L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archi
 
 | # | Fonctionnalité | Pistes |
 |---|---------------|-------|
-| 1 | **Arborescence documentaire paramétrable** | types de documents + regroupements multi-niveaux (Famille > Sous-famille > Type) |
-| 2 | **Page de menu** | navigation par arborescence ou tuiles (la liste groupée actuelle peut servir de base) |
-| 3 | **Nouvelle image : drag & drop / presse-papiers** | Ctrl+V dans l'étape + glisser-déposer sur le canevas ; compression conservée |
-| 4 | **Documents parents** | rattachement parent/enfants (notice machine > MO associés), navigation |
-| 5 | **Gestion de statut éditorial** | brouillon / en relecture / validé / obsolète (distinct de publié), filtrage, badges |
+| 1 | **Nouvelle image : drag & drop / presse-papiers** | Ctrl+V dans l'étape + glisser-déposer sur le canevas ; compression conservée — prioritaire (mode édition) |
+| 2 | **Gestion de statut éditorial** | brouillon / en relecture / validé / obsolète (distinct de publié), filtrage, badges |
+| 3 | **Arborescence documentaire paramétrable** | types de documents + regroupements multi-niveaux (Famille > Sous-famille > Type) |
+| 4 | **Page de menu** | navigation par arborescence ou tuiles (la liste groupée actuelle peut servir de base) |
+| 5 | **Documents parents** | rattachement parent/enfants (notice machine > MO associés), navigation |
 | 6 | **Import de MO existants (RF-78)** | conversion automatique `.docx` / `.pdf` / scans → brouillon Modop : extraction texte + images, détection des étapes, relecture obligatoire par l'auteur avant publication (jamais de publication automatique) |
 
 ### Vague 9 — Durcissement industriel (issue #8)
@@ -55,7 +57,9 @@ Automatisation des portes qualité et cycle de déploiement — revue externe du
 
 Critères d'acceptation (issue #8) : un push cassant typecheck/build/tests refusé par le CI (✅ CI fonctionnelle) ; lint vert sur `server` et `web` (✅) ; premières PR Dependabot reçues (⏳ côté GitHub) ; déploiement de production visant `main` (✅ `MODOP_DEPLOY_BRANCH` — ⏳ activation différée : production maintenue sur `beta`, décision propriétaire) ; healthcheck supervisé avec alerte (✅ Uptime Kuma déployé, supervisé depuis Home Assistant) ; une sauvegarde restaure une base `integrity_check = ok` (✅ testé en runtime).
 
-### Vague 10 — Palier sécurité entreprise (issue #9)
+### Vague 10 — Palier sécurité entreprise (issue #9) — ⏸️ **en standby**
+
+*Décision propriétaire (2026-10-18) : pas de besoin pour le moment — priorité au fonctionnel et au mode édition. Contenu conservé pour relance ultérieure. Rappel en attendant : l'UI de login n'a pas de champ `totp`, **`MODOP_TOTP_SECRET` reste désactivé**.*
 
 | # | Action | Priorité | État |
 |---|---|---|---|

@@ -59,6 +59,6 @@ web/src/lib/         tests front autonomes (jsdom, un fichier = un scénario, ex
 | Utilisateur final | `docs/guide-utilisateur.md` |
 | Processus de développement | `docs/processus-vagues.md` |
 
-## Travaux en cours (issue #9 — vague 10, voir roadmap)
+## Travaux en cours (voir roadmap)
 
-MFA TOTP par compte (UI de login sans champ `totp` : ne pas activer `MODOP_TOTP_SECRET` en production), chiffrement at-rest de la base, scan offensif externe, exercice PRA chronométré. La vague 9 est terminée (C-57 : CI fonctionnelle, lint server+web, porte audit, sauvegardes VACUUM INTO, `MODOP_DEPLOY_BRANCH`) ; restes côté propriétaire : déployer Uptime Kuma (procédure dans `docs/guide-test-proxmox.md`), activer `MODOP_DEPLOY_BRANCH=main` pour la production.
+**Priorité actuelle (décision propriétaire, 2026-10-18) : le fonctionnel et le mode édition — vagues 7-8. La vague 10 (sécurité, issue #9) est en standby** (rappel tant qu'elle dort : l'UI de login n'a pas de champ `totp` — ne pas activer `MODOP_TOTP_SECRET` en production). La vague 9 est terminée côté code et ops (C-57/C-62 : CI, lint, audit, sauvegardes VACUUM INTO, Uptime Kuma déployé et supervisé depuis Home Assistant) ; production maintenue sur `beta` (activation `MODOP_DEPLOY_BRANCH=main` différée).
