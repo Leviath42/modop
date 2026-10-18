@@ -193,6 +193,10 @@ export default function StepCanvas({
   // d'etape, aucun deplacement du champ.
   function commitText() {
     if (!textDraft) return;
+    // C-74 : démonter un input FOCUSÉ fait sauter le focus du navigateur au
+    // champ suivant (le titre de l'étape d'après) et y scrolle — on rend
+    // explicitement le focus AVANT de démonter le champ.
+    (document.activeElement as HTMLElement | null)?.blur?.();
     const v = textDraft.value.trim();
     if (v) {
       if (textDraft.editIndex != null) {
@@ -647,7 +651,7 @@ export default function StepCanvas({
         ref={canvasRef}
         onPointerDown={onPointerDown}
         onPointerUp={onToolPointerUp}
-        style={{ position: "relative", width: "100%", height: `${H}px`, background: "var(--surface-2, #f0f1f4)", borderRadius: "8px", overflow: "hidden", touchAction: "none", cursor: tool ? "crosshair" : "default" }}
+        style={{ position: "relative", width: "100%", height: `${H}px`, background: "var(--surface-2, #f0f1f4)", borderRadius: "8px", overflow: "hidden", touchAction: (tool || selPhotos.size + selShapes.size > 0) ? "none" : "pan-y", cursor: tool ? "crosshair" : "default" }}
       >
         {/* images */}
         {objs.map((o, i) => (
@@ -719,6 +723,7 @@ export default function StepCanvas({
           <input autoFocus value={textDraft.value}
             onChange={(e) => setTextDraft({ ...textDraft, value: e.target.value })}
             className="canvas-text-draft"
+            size={Math.max(6, textDraft.value.length + 2)}
             placeholder="Texte…"
             aria-label="Texte à afficher sur l'étape"
             style={{

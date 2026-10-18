@@ -64,7 +64,7 @@ export default function EditorPage() {
   const [showMeta, setShowMeta] = useState(false);
   const [insertTool, setInsertTool] = useState<Shape["type"] | null>(null);
   const [insertColor, setInsertColor] = useState(COLORS[0]);
-  const [insertWidth, setInsertWidth] = useState(2); // C-71 (#10) : épaisseur du trait
+  const [insertWidth, setInsertWidth] = useState(5); // C-74 : défaut 5 (paramètre admin)
   const [activeStepId, setActiveStepId] = useState<number | null>(null);
   const [confirmDeleteStep, setConfirmDeleteStep] = useState<Step | null>(null);
   const [confirmPublish, setConfirmPublish] = useState(false);
@@ -90,6 +90,10 @@ export default function EditorPage() {
   const cameraRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const isNew = id === "new";
+  // C-74 : épaisseur par défaut depuis les paramètres admin.
+  useEffect(() => {
+    api.getSettings().then((s) => setInsertWidth(s.default_stroke_width)).catch(() => { /* défaut 5 conservé */ });
+  }, []);
   // C-45 : liste des comptes actifs pour le sélecteur de responsable
   const [accounts, setAccounts] = useState<{ id: number; email: string; first_name?: string; last_name?: string; role: string }[]>([]);
   useEffect(() => {

@@ -185,10 +185,10 @@ export const api = {
     );
   },
   // C-72 (#4/#5) : paramètres applicatifs (page Paramètres, admin).
-  async getSettings(): Promise<{ readers_see_drafts: boolean; no_review_date_is_overdue: boolean }> {
+  async getSettings(): Promise<{ readers_see_drafts: boolean; no_review_date_is_overdue: boolean; default_stroke_width: number }> {
     return handle(await fetch("/api/settings"));
   },
-  async saveSettings(data: { readers_see_drafts?: boolean; no_review_date_is_overdue?: boolean }): Promise<{ readers_see_drafts: boolean; no_review_date_is_overdue: boolean }> {
+  async saveSettings(data: { readers_see_drafts?: boolean; no_review_date_is_overdue?: boolean; default_stroke_width?: number }): Promise<{ readers_see_drafts: boolean; no_review_date_is_overdue: boolean; default_stroke_width: number }> {
     return handle(
       await fetch("/api/settings", {
         method: "PUT",

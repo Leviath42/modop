@@ -40,14 +40,18 @@ test("paramètres : défauts, lecture authentifiée", async () => {
   assert.equal(got.status, 200);
   assert.equal(got.json.readers_see_drafts, false, "défaut : lecteurs ne voient pas les brouillons");
   assert.equal(got.json.no_review_date_is_overdue, true, "défaut : sans date = à revoir");
+  assert.equal(got.json.default_stroke_width, 5, "défaut : épaisseur 5");
 });
 
 test("paramètres : PUT admin seul, persistance", async () => {
   const forbidden = await call("PUT", "/api/settings", { readers_see_drafts: true }, author);
   assert.equal(forbidden.status, 403, "un auteur ne peut pas modifier les paramètres");
-  const put = await call("PUT", "/api/settings", { no_review_date_is_overdue: false }, admin);
+  const put = await call("PUT", "/api/settings", { no_review_date_is_overdue: false, default_stroke_width: 8 }, admin);
   assert.equal(put.status, 200);
   assert.equal(put.json.no_review_date_is_overdue, false, "paramètre persisté");
+  assert.equal(put.json.default_stroke_width, 8, "épaisseur persistée");
+  const badWidth = await call("PUT", "/api/settings", { default_stroke_width: 20 }, admin);
+  assert.equal(badWidth.json.default_stroke_width, 8, "épaisseur hors bornes ignorée");
   const got = await call("GET", "/api/settings", undefined, author);
   assert.equal(got.json.no_review_date_is_overdue, false);
   await call("PUT", "/api/settings", { no_review_date_is_overdue: true }, admin);

@@ -257,6 +257,9 @@ const crop: CommandDefinition = {
   aria: "Recadrer la photo sélectionnée",
   title: "Recadrer la photo sélectionnée",
   icon: () => <Crop size={16} aria-hidden="true" />,
+  // C-74 : le clic sur ce bouton ne doit pas vider la sélection (C-31) —
+  // sinon le bouton disparaît avant son propre onClick (« ne fonctionne pas »).
+  keepCanvasSelection: true,
   isVisible: (ctx) => ctx.photoSelected === 1,
   run: (ctx) => ctx.actions.requestCrop(),
 };

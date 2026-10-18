@@ -36,6 +36,24 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-74 — Cinquième vague : épaisseur par défaut paramétrable, rognage cliquable, focus texte, scroll (réalisé)
+
+**Contexte** : retour sur C-73 — épaisseur par défaut demandée à 5 (paramétrable), bouton Recadrer inopérant, navigation douloureuse (mon `touch-action: none` permanent était trop agressif), focus qui saute au champ de l'étape suivante après validation d'un texte, largeur de saisie texte incohérente.
+
+1. **Épaisseur par défaut 5 + paramètre admin** : `default_stroke_width` dans les paramètres serveur (bornes 1-10, défaut **5**), sélecteur dans la page Paramètres, appliqué à l'ouverture de l'éditeur (le curseur Style reste libre pour la session). Tests runtime : défaut 5, persistance, hors-bornes ignoré.
+2. **Bouton « Recadrer » inopérant — cause** : le listener C-31 vidait la sélection au `pointerdown` sur la barre → le bouton contextuel **disparaissait avant son propre `click`**. Correctif : `data-keep-canvas-selection` sur la commande (comme « Objets »).
+3. **Scroll mobile — état de l'art** (recherche : Stack Overflow, blogs UI) : `touch-action: none` est LA solution canonique contre le vol de geste, mais **scopée à l'interaction** ; `none` permanent sur tout le canevas tue le scroll de page. Retour au **touch-action conditionnel** (`pan-y` au repos, `none` dès qu'un outil est actif ou une sélection existe) + `overscroll-behavior-y: contain` conservé (pull-to-refresh neutralisé).
+4. **Focus qui saute à l'étape suivante** : démonter un `<input>` FOCUSÉ fait basculer le focus du navigateur vers le champ suivant (le titre de l'étape d'après) et y scrolle — c'est le mécanisme derrière « valider fait passer à l'étape d'après » ET « chaque sélection ramène au champ de l'étape suivante ». Correctif : `blur()` explicite **avant** le démontage dans `commitText()`.
+5. **Largeur/longueur de saisie ≠ texte réel** : un `<input>` ne suit pas son contenu. Correctif : `size={len + 2}` — la largeur du champ grandit avec le texte tapé, fidèle au rendu final (hauteur, padding, graisse, taille déjà identiques depuis C-71/C-73).
+
+**Tests** : 121/121 serveur (settings étendus), suite front verte, lint server+web, builds OK.
+
+**Fichiers** : `server/src/routes/settings.ts`, `server/test/settings.test.ts`, `web/src/{api,step-canvas}.ts(x)`, `web/src/pages/{editor,settings,list}.tsx`, `web/src/editor/tools/definitions.tsx`.
+
+**État** : livré sur beta.
+
+---
+
 ## C-73 — Quatrième vague de retour terrain : rognage refondu + causes racine CSS (réalisé)
 
 **Contexte** : retour sur C-72 — le rognage initial supprimait l'original (pas de retour arrière), le bouton vivait dans le canevas, la photo rognée ne restait pas en place ; pastilles et taille de saisie « toujours pas » corrigées ; drag vs scroll toujours conflictuel ; publication avec date passée.

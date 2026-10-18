@@ -5,7 +5,7 @@ import NavBar from "../nav";
 import { Alert } from "../components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 
-type AppSettings = { readers_see_drafts: boolean; no_review_date_is_overdue: boolean };
+type AppSettings = { readers_see_drafts: boolean; no_review_date_is_overdue: boolean; default_stroke_width: number };
 
 // C-72 (#4/#5) : page Paramètres (admin) — chaque option est appliquée
 // immédiatement côté serveur (PUT) : le listing « à revoir » et la
@@ -49,7 +49,7 @@ export default function SettingsPage() {
     );
   }
 
-  const toggle = (key: keyof AppSettings, label: string, description: string) => (
+  const toggle = (key: "readers_see_drafts" | "no_review_date_is_overdue", label: string, description: string) => (
     <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-surface p-3">
       <input
         type="checkbox"
@@ -85,6 +85,21 @@ export default function SettingsPage() {
               "Sans date de revue = à revoir",
               "Les modes opératoires sans date de revue sont signalés « à revoir » (filtre et alerte d'accueil)."
             )}
+            <label className="grid gap-1 rounded-lg border border-border bg-surface p-3">
+              <span className="text-sm font-semibold text-foreground">Épaisseur de trait par défaut</span>
+              <span className="text-sm text-muted-foreground">Appliquée aux nouvelles formes (flèches, zones) de tous les auteurs.</span>
+              <select
+                value={settings ? settings.default_stroke_width : 5}
+                disabled={!settings}
+                onChange={(e) => void update({ default_stroke_width: Number(e.target.value) })}
+                className="h-9 w-24 rounded-md border border-border bg-surface px-2 text-sm"
+                aria-label="Épaisseur de trait par défaut"
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </label>
             {toggle(
               "readers_see_drafts",
               "Brouillons visibles par les lecteurs",
