@@ -78,7 +78,7 @@ export default function NavBar() {
 
   const entries: [string, string][] = [["/", "Modes opératoires"]];
   if (user.role === "admin") {
-    entries.push(["/admin", "Comptes"], ["/stats", "Statistiques"], ["/deploy", "Déploiement"]);
+    entries.push(["/admin", "Comptes"], ["/stats", "Statistiques"], ["/deploy", "Déploiement"], ["/settings", "Paramètres"]);
   }
 
   return (

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type Database from "better-sqlite3";
 import { requireAuth } from "../auth/middleware.js";
+import { getSettings } from "./settings.js";
 
 export function listRouter(db: Database.Database): Router {
   const r = Router();
@@ -22,7 +23,11 @@ export function listRouter(db: Database.Database): Router {
     if (category) { clauses.push("category = ?"); params.push(category); }
     if (family) { clauses.push("family = ?"); params.push(family); }
     if (state) { clauses.push("state = ?"); params.push(state); }
-    if (review === "overdue") { clauses.push("review_due IS NOT NULL AND review_due < date('now')"); }
+    if (review === "overdue") {
+      // C-72 (#4) : « sans date de revue = à revoir » est paramétrable.
+      const overdueAll = getSettings(db).no_review_date_is_overdue;
+      clauses.push(overdueAll ? "(review_due IS NULL OR review_due < date('now'))" : "review_due IS NOT NULL AND review_due < date('now')");
+    }
     const SORTS: Record<string, string> = {
       title: "title COLLATE NOCASE ASC",
       reference: "reference ASC",

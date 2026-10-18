@@ -50,6 +50,12 @@ export default function ListPage() {
   const [sort, setSort] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // C-72 (#4/#5) : paramètres applicatifs (sans date = à revoir ;
+  // brouillons visibles par les lecteurs).
+  const [settings, setSettings] = useState<{ readers_see_drafts: boolean; no_review_date_is_overdue: boolean }>({ readers_see_drafts: false, no_review_date_is_overdue: true });
+  useEffect(() => {
+    api.getSettings().then(setSettings).catch(() => { /* défauts conservés */ });
+  }, []);
 
   function onSearchChange(value: string) {
     setSearchInput(value);
@@ -78,7 +84,9 @@ export default function ListPage() {
   // Alerte « à revoir » pour les auteurs/admins : documents dont la date de
   // revue est dépassée (bandeau une fois, action directe vers le filtre).
   const today = new Date().toISOString().slice(0, 10);
-  const overdueCount = workflows.filter((w) => w.review_due && w.review_due < today).length;
+  const overdueCount = workflows.filter((w) =>
+    (w.review_due ? w.review_due < today : settings.no_review_date_is_overdue)
+  ).length;
 
   return (
     <>
@@ -172,7 +180,7 @@ export default function ListPage() {
           (() => {
             // #9 : les lecteurs ne voient pas les brouillons (paramètre
             // serveur optionnel à venir — filtre front pour l'instant).
-            const visible = user?.role === "reader" ? workflows.filter((w) => w.state !== "draft") : workflows;
+            const visible = user?.role === "reader" && !settings.readers_see_drafts ? workflows.filter((w) => w.state !== "draft") : workflows;
             // C-43 : regroupement — état (publiés d'abord) puis famille
             const groups = new Map<string, typeof workflows>();
             for (const st of ["published", "draft"]) {

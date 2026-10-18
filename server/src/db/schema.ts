@@ -84,6 +84,11 @@ CREATE TABLE IF NOT EXISTS audit_log (
   detail TEXT NOT NULL DEFAULT '',
   at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- C-72 : paramètres applicatifs (key/value) — page Paramètres (admin).
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_steps_workflow ON steps(workflow_id, position);
 CREATE INDEX IF NOT EXISTS idx_photos_step ON photos(step_id);
 CREATE INDEX IF NOT EXISTS idx_versions_workflow ON versions(workflow_id, number);

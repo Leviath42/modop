@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Crop, Trash2, X } from "lucide-react";
 import { api, type Photo } from "./api";
 import { parseShapes, type Shape } from "./annotated-photo";
 
@@ -47,6 +47,7 @@ export default function StepCanvas({
   onSelectionChange,
   deleteActionRef,
   onInteract,
+  onCropPhoto,
 }: {
   stepId: number;
   photos: CanvasPhoto[];
@@ -59,6 +60,7 @@ export default function StepCanvas({
   onSelectionChange?: (count: number) => void;
   deleteActionRef?: (fn: () => void) => void;
   onInteract?: () => void;
+  onCropPhoto?: (photo: Photo, file: File, alt: string) => void | Promise<void>;
 }) {
   const [objs, setObjs] = useState<CanvasPhoto[]>(photos);
   const [shapes, setShapes] = useState<Shape[]>(parseShapes(canvasShapes));
@@ -549,6 +551,68 @@ export default function StepCanvas({
 
   const sw = (i: number) => (shapes[i].width ?? 2) + (selShapes.has(i) ? 1 : 0);
 
+  // C-72 (#1) : ROGNAGE de la photo sélectionnée (une seule) — rectangle
+  // de cadrage manipulable au doigt/souris, application via canvas hors
+  // écran (jpeg 0.92), remplacement par l'éditeur (upload + suppression).
+  const [cropFor, setCropFor] = useState<CanvasPhoto | null>(null);
+  const [cropBox, setCropBox] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+  const [cropRect, setCropRect] = useState<{ x: number; y: number; w: number; h: number }>({ x: 0, y: 0, w: 0, h: 0 });
+  const [cropDrag, setCropDrag] = useState<null | "move" | "resize">(null);
+  const cropStartRef = useRef<{ px: number; py: number; rect: { x: number; y: number; w: number; h: number } } | null>(null);
+  const cropBusyRef = useRef(false);
+
+  function openCrop() {
+    const idx = [...selPhotos][0];
+    if (idx == null) return;
+    const o = objs[idx];
+    if (!o) return;
+    const bw = o.w * (canvasW || 800);
+    const bh = o.w * (canvasW || 800) * ratioOf(o);
+    setCropBox({ w: bw, h: bh });
+    setCropRect({ x: bw * 0.08, y: bh * 0.08, w: bw * 0.84, h: bh * 0.84 });
+    setCropFor(o);
+  }
+
+  useEffect(() => {
+    if (!cropDrag || !cropFor) return;
+    const onMove = (e: PointerEvent) => {
+      const st = cropStartRef.current;
+      if (!st) return;
+      const dx = e.clientX - st.px, dy = e.clientY - st.py;
+      const b = st.rect;
+      if (cropDrag === "move") {
+        setCropRect({ ...b, x: Math.min(Math.max(0, b.x + dx), Math.max(0, cropBox.w - b.w)), y: Math.min(Math.max(0, b.y + dy), Math.max(0, cropBox.h - b.h)) });
+      } else {
+        setCropRect({ ...b, w: Math.min(Math.max(24, b.w + dx), cropBox.w - b.x), h: Math.min(Math.max(24, b.h + dy), cropBox.h - b.y) });
+      }
+    };
+    const onUp = () => { cropStartRef.current = null; setCropDrag(null); };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); };
+  }, [cropDrag, cropFor, cropBox]);
+
+  async function applyCrop() {
+    if (!cropFor || cropBusyRef.current) return;
+    cropBusyRef.current = true;
+    try {
+      const img = new Image();
+      await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = () => rej(new Error("chargement")); img.src = `/photos/${cropFor.photo.filename}`; });
+      const sx = img.naturalWidth / cropBox.w, sy = img.naturalHeight / cropBox.h;
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(cropRect.w * sx));
+      c.height = Math.max(1, Math.round(cropRect.h * sy));
+      c.getContext("2d")!.drawImage(img, cropRect.x * sx, cropRect.y * sy, cropRect.w * sx, cropRect.h * sy, 0, 0, c.width, c.height);
+      const blob = await new Promise<Blob | null>((r) => c.toBlob(r, "image/jpeg", 0.92));
+      if (!blob) throw new Error("encodage");
+      const file = new File([blob], "rognee.jpg", { type: "image/jpeg" });
+      await onCropPhoto?.(cropFor.photo, file, cropFor.photo.alt ?? "");
+      setCropFor(null);
+      setSelPhotos(new Set());
+    } catch { /* l'éditeur affiche l'erreur via onCropPhoto */ }
+    finally { cropBusyRef.current = false; }
+  }
+
   return (
     <div className="grid gap-1.5">
       {/* Aide à la pose : déplacée dans la barre d'outils fixe (C-70) —
@@ -656,6 +720,55 @@ export default function StepCanvas({
               if (e.key === "Escape") { setTextDraft(null); setTool(null); }
             }}
             onBlur={() => { if (textDraft) commitText(); }} />
+        )}
+
+        {/* C-72 (#1) : rognage de la photo sélectionnée */}
+        {!tool && selPhotos.size === 1 && !cropFor && onCropPhoto && (
+          <button
+            onClick={openCrop}
+            onPointerDown={(e) => e.stopPropagation()}
+            data-keep-canvas-selection="1"
+            className="absolute right-2 top-2 z-30 inline-flex items-center gap-1 rounded-md border border-border bg-surface px-2 py-1 text-xs text-foreground shadow-md"
+            aria-label="Recadrer la photo sélectionnée"
+            title="Recadrer la photo sélectionnée"
+          ><Crop size={14} aria-hidden="true" /> Recadrer</button>
+        )}
+        {cropFor && (
+          <div
+            className="absolute inset-0 z-40 flex items-center justify-center bg-black/40"
+            style={{ touchAction: "none" }}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <div
+              className="relative"
+              style={{ width: cropBox.w, height: cropBox.h }}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <img src={`/photos/${cropFor.photo.filename}`} alt="" draggable={false} className="pointer-events-none block h-full w-full select-none" />
+              <div
+                className="absolute cursor-move"
+                style={{ left: cropRect.x, top: cropRect.y, width: cropRect.w, height: cropRect.h, border: "2px solid white", boxShadow: "0 0 0 9999px rgba(0,0,0,0.55)" }}
+                onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); cropStartRef.current = { px: e.clientX, py: e.clientY, rect: cropRect }; setCropDrag("move"); }}
+              >
+                <span
+                  role="button"
+                  aria-label="Redimensionner la zone de rognage"
+                  className="absolute -right-2.5 -bottom-2.5 size-6 cursor-nwse-resize rounded-sm border-2 border-white bg-white/80"
+                  onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); cropStartRef.current = { px: e.clientX, py: e.clientY, rect: cropRect }; setCropDrag("resize"); }}
+                />
+              </div>
+            </div>
+            <div className="absolute bottom-3 left-1/2 z-50 flex -translate-x-1/2 gap-2" onPointerDown={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => { setCropFor(null); setCropDrag(null); }}
+                className="inline-flex items-center gap-1 rounded-md border border-white/50 bg-black/60 px-3 py-2 text-sm text-white"
+              ><X size={14} aria-hidden="true" /> Annuler</button>
+              <button
+                onClick={() => void applyCrop()}
+                className="inline-flex items-center gap-1 rounded-md bg-brand-strong px-3 py-2 text-sm font-semibold text-brand-strong-foreground"
+              ><Crop size={14} aria-hidden="true" /> Recadrer</button>
+            </div>
+          </div>
         )}
 
         {/* carré de suppression pendant un drag — en haut à gauche (C-27) */}

@@ -36,6 +36,37 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-72 — Troisième vague de retour terrain : 10 correctifs en deux lots (réalisé)
+
+**Contexte** : troisième liste du propriétaire. Lots : 7 correctifs (commit b4312e8) puis paramètres serveur + rognage.
+
+**Lot 1+2** (commit b4312e8) :
+2. **Vidéo liée au MO** ajoutée au backlog roadmap (P2 demandé).
+7. Pastilles de couleur **encore réduites** sur mobile (16 px, grille resserrée).
+9. **Rectangle : sélection par le CONTOUR uniquement** — la surface laisse passer le clic vers les objets/photo derrière (annotations) ; déplacement par le contour (tolérance ~10 px).
+8. **Scroll mobile vs drag** : `touch-action: none` dès qu'une sélection existe ou qu'un outil est actif — le navigateur ne peut plus voler le geste en scroll (C-31 continuait de gérer `pointercancel` en dernier recours).
+6. **Pointe de flèche proportionnelle à l'épaisseur** (`markerUnits="strokeWidth"` en édition et lecture, tête proportionnelle dans l'export docx) + **curseur d'épaisseur 1–10**.
+10. **Outil texte refondu** : clic ailleurs VALIDE la saisie et ferme l'outil (le champ ne se déplace/ vide plus), clic sur un texte posé = **édition** (remplacement), garde anti-rouverture après validation, `Enter` sans effet de bord (`stopPropagation`).
+3. **Responsable** : le champ affiche « Prénom Nom » (recherche par nom/prénom/email), **responsable inconnu interdit** (saisie libre non résolue → champ vidé, null enregistré), vide privilégié ; **alerte admin** du nombre de MO sans responsable (page Comptes).
+
+**Lot 3 — paramètres applicatifs (#4, #5)** :
+- **Table `settings`** (migration idempotente) + route `GET/PUT /api/settings` (lecture authentifiée, modification admin) — défauts : brouillons masqués aux lecteurs, sans date = à revoir.
+- **Page Paramètres** (`/settings`, admin, entrée du bandeau) : les deux options appliquées immédiatement (stockées en base, sans redéploiement).
+- **« À revoir »** : le filtre serveur et l'alerte d'accueil comptent les MO sans date de revue selon le paramètre ; **brouillons visibles par les lecteurs** selon le paramètre (l'accueil l'applique).
+- **Tests runtime** (`settings.test.ts`, 3 tests) : défauts, PUT admin seul (403 auteur), effet réel sur `?review=overdue` avec un MO sans date.
+
+**Lot 4 — rognage d'image (#1)** :
+- Bouton **« Recadrer »** sur le canevas quand une seule photo est sélectionnée → overlay de cadrage (rectangle déplaçable + poignée de redimensionnement, masque assombri, tactile), application via canvas hors écran (jpeg 0.92).
+- L'éditeur **remplace** la photo : upload de la version rognée **héritant de la position/taille** de l'ancienne, suppression de l'ancienne (les versions publiées conservent le fichier original).
+
+**Tests** : +3 tests serveur (120), suite front verte, lint server+web, builds OK.
+
+**Fichiers** : `server/src/routes/settings.ts` (nouveau), `server/src/{app.ts,db/schema.ts,routes/list.ts,render/canvas-composite.ts}`, `server/test/settings.test.ts` (nouveau) ; `web/src/pages/settings.tsx` (nouveau), `web/src/{api.ts,step-canvas.tsx,app.tsx,nav.tsx}`, `web/src/pages/{admin,list,editor}.tsx`, `web/src/editor/tools/definitions.tsx`, `docs/roadmap.md`.
+
+**État** : livré sur beta.
+
+---
+
 ## C-71 — Deuxième vague de retour terrain : 13 correctifs en deux lots (réalisé)
 
 **Contexte** : deuxième liste du propriétaire après test sur le CT. Traitées par effort croissant, deux commits (lot 1 = 8, lot 2 = 5).

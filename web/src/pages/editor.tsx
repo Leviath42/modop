@@ -5,7 +5,7 @@ import { EditorBottomBar } from "../editor/bottom-bar";
 import type { PictoPreset, ToolContext } from "../editor/tools/registry";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { api, ApiError, type Step, type WorkflowDetail } from "../api";
+import { api, ApiError, type Photo, type Step, type WorkflowDetail } from "../api";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
 import { Badge } from "../components/ui/badge";
@@ -298,6 +298,25 @@ export default function EditorPage() {
       setTimeout(() => setNotice(null), 2500);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Restauration impossible");
+    }
+  }
+
+  // C-72 (#1) : remplace une photo par sa version rognée — la nouvelle
+  // photo HÉRITE de la position/taille de l'ancienne, puis l'ancienne est
+  // supprimée (le fichier original reste couvert par les versions publiées).
+  async function cropPhoto(step: Step, oldPhoto: Photo, file: File, alt: string) {
+    setError(null);
+    try {
+      const newPhoto = await api.uploadPhoto(step.id, file, alt);
+      const oldX = typeof oldPhoto.display_x === "number" ? oldPhoto.display_x : 0;
+      const oldY = typeof oldPhoto.display_y === "number" ? oldPhoto.display_y : 0.05;
+      const oldW = typeof oldPhoto.display_w === "number" ? oldPhoto.display_w : 1;
+      await api.saveLayout(newPhoto.id, "full", "left", oldX, oldY, oldW);
+      await api.deletePhoto(oldPhoto.id);
+      const w = await api.getWorkflow(id!);
+      setSteps(w.steps);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Recadrage impossible");
     }
   }
 
@@ -604,6 +623,7 @@ export default function EditorPage() {
                       })}
                       canvasShapes={step.canvas ?? []}
                       onInteract={() => { if (activeStepId !== step.id) setActiveStepId(step.id); }}
+                      onCropPhoto={(photo, file, alt) => cropPhoto(step, photo, file, alt)}
                       onPhotosChanged={async () => { const w = await api.getWorkflow(id!); setSteps(w.steps); }}
                     />
                     <div>

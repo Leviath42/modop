@@ -15,6 +15,7 @@ import QrPage from "./pages/qr";
 import GuidedReaderPage from "./pages/guided-reader";
 import FeedbacksPage from "./pages/feedbacks";
 import StatsPage from "./pages/stats";
+import SettingsPage from "./pages/settings";
 
 function RequireAuth({ children, min }: { children: React.ReactNode; min?: "reader" | "author" }) {
   const { user, loading } = useAuth();
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="/stats" element={<RequireAuth><StatsPage /></RequireAuth>} />
           <Route path="/workflow/:id/edit" element={<RequireAuth min="author"><EditorPage /></RequireAuth>} />
           <Route path="/deploy" element={<RequireAuth><DeployPage /></RequireAuth>} />
+          <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
           <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
           <Route path="*" element={<ErrorPage code="404" message="Page introuvable" />} />
         </Routes>

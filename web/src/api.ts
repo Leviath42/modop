@@ -168,6 +168,19 @@ export const api = {
   async restoreVersion(id: number, number: number): Promise<void> {
     await handle<unknown>(await fetch(`/api/workflows/${id}/versions/${number}/restore`, { method: "POST" }));
   },
+  // C-72 (#4/#5) : paramètres applicatifs (page Paramètres, admin).
+  async getSettings(): Promise<{ readers_see_drafts: boolean; no_review_date_is_overdue: boolean }> {
+    return handle(await fetch("/api/settings"));
+  },
+  async saveSettings(data: { readers_see_drafts?: boolean; no_review_date_is_overdue?: boolean }): Promise<{ readers_see_drafts: boolean; no_review_date_is_overdue: boolean }> {
+    return handle(
+      await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(data),
+      })
+    );
+  },
   async addStep(workflowId: number, data: { title: string; body?: string }): Promise<Step> {
     return handle<Step>(
       await fetch(`/api/workflows/${workflowId}/steps`, {
