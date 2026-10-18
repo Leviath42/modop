@@ -34,6 +34,18 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-54 — Plan d'action issues #8/#9 intégré : vagues 9-10, RF-79, MODOP_TOTP_SECRET documenté (réalisé)
+
+**Problème** : les revues externes du 2026-10-17 (issues #8 et #9 — durcissement industriel, palier sécurité entreprise) n'étaient tracées dans aucune documentation ; la MFA TOTP partiellement implémentée n'était documentée ni dans le guide de durcissement ni dans la spécification (aucun RF), et rien n'indiquait que l'UI de login ne sait pas encore saisir de code TOTP (activation du secret = admins bloqués hors de l'interface).
+
+**Correctif** : vagues **9** (CI GitHub Actions, lint/formatage, supply-chain, branche de déploiement paramétrable, observabilité, sauvegardes SQLite cohérentes) et **10** (MFA par compte, chiffrement at-rest, scan externe, PRA testé) ajoutées à la roadmap avec priorités, états constatés et critères d'acceptation des issues ; **RF-79** (MFA TOTP) ajouté au cahier des charges ; `MODOP_TOTP_SECRET` documenté dans le guide de durcissement avec son statut transitoire et l'avertissement UI ; README aligné (plage de correctifs, vagues restantes).
+
+**Fichiers** : `docs/roadmap.md`, `docs/cahier-des-charges.md`, `docs/durcissement-securite.md`, `docs/correctifs.md`, `README.md`
+
+**État** : livré sur beta (documentation seule). La livraison du code MFA/CI en cours dans l'arbre de travail prendra le numéro **C-55** (avec son entrée et ses tests, conformément aux conventions).
+
+---
+
 ## C-53 — Guide utilisateur réécrit (réalisé)
 
 **Problème** : le guide n'était plus à jour — structure cassée par les ajouts successifs (des paragraphes d'édition/lecture mélangés dans « Canevas d'étape », doublons C-41, la section « Header d'édition » décrivait l'ancien bouton « + » remplacé par la barre permanente C-49/50/51), et il manquait : lecture guidée, QR, versions avec changelog, signalements côté lecteur, filtre/statut « à revoir », responsable, stats, journal d'audit, changement de mot de passe.

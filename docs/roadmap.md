@@ -1,6 +1,6 @@
 # Modop — Roadmap
 
-*Dernière mise à jour : après C-53 — ajout de **RF-78 (import de modes opératoires existants)** à la spécification, planifié vague 8.*
+*Dernière mise à jour : après C-54 — vagues 9 et 10 créées à partir des issues [#8](https://github.com/Leviath42/modop/issues/8) et [#9](https://github.com/Leviath42/modop/issues/9) (durcissement industriel, palier sécurité entreprise) ; **RF-79 (MFA TOTP)** ajouté à la spécification.*
 
 L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archives/roadmap-v1-a-v6bis.md](archives/roadmap-v1-a-v6bis.md). La série de correctifs UI/UX (C-01 → C-51) est journalisée dans [correctifs.md](correctifs.md).
 
@@ -39,6 +39,32 @@ L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archi
 | 4 | **Documents parents** | rattachement parent/enfants (notice machine > MO associés), navigation |
 | 5 | **Gestion de statut éditorial** | brouillon / en relecture / validé / obsolète (distinct de publié), filtrage, badges |
 | 6 | **Import de MO existants (RF-78)** | conversion automatique `.docx` / `.pdf` / scans → brouillon Modop : extraction texte + images, détection des étapes, relecture obligatoire par l'auteur avant publication (jamais de publication automatique) |
+
+### Vague 9 — Durcissement industriel (issue #8)
+
+Automatisation des portes qualité et cycle de déploiement — revue externe du 2026-10-17, par priorité :
+
+| # | Action | Priorité | État |
+|---|---|---|---|
+| 1 | **CI GitHub Actions** sur push/PR `beta` et `main` : jobs `server` (typecheck + build + tests runtime) et `web` (build + tests front), badge de statut dans le README | 🔴 | en cours — brouillon `.github/workflows/ci-cd.yml` présent mais **non fonctionnel** : `working-directory` absent (le repo est un monorepo workspaces, les jobs tournent à la racine), script `typecheck` inexistant côté serveur, porte lint absente |
+| 2 | **Lint et formatage automatisés** : ESLint (TS strict) + Prettier sur `server` et `web`, 4ᵉ porte qualité en CI, reformatage ponctuel en un commit dédié | 🔴 | en cours — dépendances posées et `eslint.config.js` serveur présent ; manque : config web, passage initial, porte CI |
+| 3 | **Supply-chain** : Dependabot (ou Renovate) + porte `npm audit --omit=dev --audit-level=high` en CI ; statuer sur `--ignore-scripts` pour `npm ci` (esbuild, better-sqlite3) | 🟠 | à faire — **restaurer `server/package-lock.json`** (supprimé dans l'arbre de travail : `npm ci` du README et d'`update.sh` est cassé sinon) |
+| 4 | **Branche de déploiement paramétrable** : `MODOP_DEPLOY_BRANCH` (défaut `beta` rétro-compatible pour l'homelab), production sur `main` ; à terme CT de recette sur `beta` + CT de prod sur `main` | 🟠 | à faire — `deploy.ts` suit toujours `origin/beta` en dur |
+| 5 | **Observabilité minimale** : supervision du healthcheck (ex. Uptime Kuma auto-hébergé sur le Proxmox) avec notification ; optionnel : endpoint `/metrics` | 🟡 | à faire |
+| 6 | **Sauvegardes SQLite cohérentes** : remplacer la copie de fichier par `VACUUM INTO` ou `.backup()` (better-sqlite3) dans `update.sh` ; test de restauration automatisé (`PRAGMA integrity_check`) | 🟡 | à faire |
+
+Critères d'acceptation (issue #8) : un push cassant typecheck/build/tests refusé par le CI ; lint vert sur `server` et `web` ; premières PR Dependabot reçues ; déploiement de production visant `main` ; healthcheck supervisé avec alerte ; une sauvegarde restaure une base `integrity_check = ok`.
+
+### Vague 10 — Palier sécurité entreprise (issue #9)
+
+| # | Action | Priorité | État |
+|---|---|---|---|
+| 1 | **MFA TOTP par compte** (RF-79) : QR `otpauth://` à l'activation, code de secours à usage unique, admin obligatoire / auteur optionnel / lecteur exempt, login SSO exempt, anti-replay, révocation à la désactivation | 🔴 | partiel — porte serveur livrée (secret global `MODOP_TOTP_SECRET`, login admin uniquement, tests `server/test/mfa-totp.test.ts`) ; **l'UI de login n'envoie pas de champ `totp` : ne pas activer en production avant le front** ; reste : par compte, activation QR, code de secours, anti-replay, UI |
+| 2 | **Chiffrement at-rest de la base** : SQLCipher via better-sqlite3 ou chiffrement applicatif ; clé hors base (`MODOP_DB_KEY` ou fichier monté) ; exports de sauvegarde chiffrés avec la même clé ; procédure de restauration documentée et testée | 🟠 | à faire |
+| 3 | **Scan offensif externe** : OWASP ZAP (active) ou Nuclei sur l'instance de recette + checklist manuelle (upload non-image, IDOR `/api/workflows` et `/api/photos`, injection SQL dans la recherche, brute force login derrière le tunnel) ; rapport dans `docs/revue-securite-externe.md` | 🟡 | à faire |
+| 4 | **PRA écrit et testé** : `docs/plan-de-reprise.md` + **exercice réel** chronométré (base + photos dans un CT vierge), corriger le doc ; lié au test de restauration de la vague 9 | 🟡 | partiel — brouillon du document présent ; exercice de restauration à faire |
+
+Critères d'acceptation (issue #9) : un compte admin sans code TOTP valide ne se connecte pas (replay impossible) ; la base est illisible sans la clé ; sauvegardes chiffrées et restauration testée sur CT vierge ; rapport ZAP/Nuclei archivé et constats classés ; `plan-de-reprise.md` + exercice chronométré.
 
 ### Vision long terme
 

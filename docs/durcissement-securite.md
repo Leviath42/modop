@@ -20,8 +20,11 @@ Sans configuration, Modop utilise l'auth maison (bcrypt), les cookies `sameSite=
 | `MODOP_SESSION_TTL_HOURS` | Durée de session | `24` |
 | `MODOP_ALLOWED_HOSTS` | Allowlist des hôtes acceptés dans `X-Forwarded-Host` (anti-CSRF derrière proxy/tunnel), séparés par des virgules. Vide = aucun contrôle (comportement historique) | — |
 | `MODOP_DEPLOY` | `off` désactive totalement /api/deploy (statut inclus) | `off` en prod stricte |
+| `MODOP_TOTP_SECRET` | Active la MFA TOTP sur le login local des **admins** (secret base32) — **transitoire** : ne pas activer tant que l'UI de login n'offre pas le champ code (vague 10) ; le login SSO est exempté | secret base32 aléatoire (ex. 20 octets) |
 
 Le SSO est **générique** : aucun fournisseur codé en dur, tout passe par OIDC Discovery. En mode SSO, les mots de passe locaux sont ignorés pour ces comptes (`change-password` refusé) ; le login maison reste disponible en fallback si l'IdP tombe.
+
+**MFA TOTP (v1.7 — transitoire)** : `MODOP_TOTP_SECRET` exige un code TOTP à 6 chiffres pour le login local des comptes **admin** — vérifié après le mot de passe, couvert par le rate-limit login, échecs tracés dans l'audit (`login_mfa_echec`). Mesure transitoire à **secret global partagé** : la version par compte (QR à l'activation, code de secours, anti-replay, auteur optionnel) est planifiée en **vague 10** (issue #9). **Attention** : l'UI de login n'envoie actuellement que email/mot de passe — activer la variable bloque les admins hors de l'interface ; à ne poser qu'une fois le front adapté.
 
 ### 2. Reverse proxy TLS
 
