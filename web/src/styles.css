@@ -1,0 +1,283 @@
+/* Fondation UI Modop — Tailwind v4 + design tokens.
+   Palette : docs/palette-couleurs.md · Guide : docs/Guide interface utilisateur.md
+   - Thème porté par <html data-theme="..."> (light par défaut, dark en surcharge).
+   - Toute couleur passe par les tokens ci-dessous, JAMAIS en dur dans les composants.
+   - Compatibilité : les anciens noms (--accent, --surface, --text…) restent
+     définis et remappés sur la nouvelle palette — le code non migré (styles
+     inline) change donc de peau automatiquement.
+   - C-65 : les styles par ÉLÉMENT (a, button, input, titres…) vivent dans
+     @layer base — sinon (règles non layerées) ils écrasent TOUS les
+     utilitaires Tailwind (text-primary-foreground invisible sur les boutons,
+     liens et titres bleu-sur-bleu). Seules les garanties structurelles
+     (anti-débordement, tailles tactiles, impression) restent non layerées.
+   Principe structurel inchangé : la PAGE ne doit JAMAIS scroller horizontalement. */
+@import "tailwindcss";
+
+/* Mode sombre : piloté par data-theme sur <html> (et non la classe dark),
+   pour rester compatible avec theme.ts / le script inline de index.html. */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+:root {
+  font-family: system-ui, sans-serif;
+
+  /* Palette officielle (docs/palette-couleurs.md) */
+  --bleu-gris: #517485;        /* couleur primaire */
+  --orange: #e84e0f;           /* accent principal */
+  --bleu-gris-clair: #96a9b1;  /* fonds et surfaces secondaires */
+  --anthracite: #2c3a43;       /* texte / contraste */
+
+  /* Thème clair (défaut) */
+  --bg: #f4f6f7;
+  --text: #2c3a43;
+  --text-muted: #5b6470;
+  --surface: #ffffff;
+  --surface-2: #e9edf0;
+  /* --accent : couleur d'ACTION textuelle (liens, focus, sélection canevas) ;
+     distincte de --accent-bg (fond teinté). Liens bleu-gris sur blanc : 5:1. */
+  --accent: #517485;
+  --accent-bg: #e8eef1;
+  --border: #b7c3ca;
+  --border-soft: #dfe4e8;
+  /* Primaire = couleur de FOND (boutons, bandeau) : bleu-gris + blanc = 5:1
+     dans les DEUX thèmes (en sombre un fond #96a9b1 était trop pâle/sale). */
+  --primary: #517485;
+  --primary-foreground: #ffffff;
+  --secondary: #96a9b1;
+  --secondary-foreground: #132030;
+  /* Orange : décoratif par défaut (icônes, bordures, indicateurs) ; pour un
+     texte ou un fond portant du texte, utiliser la variante "strong" — le
+     contraste blanc sur #e84e0f est de 3,8:1 (WCAG insuffisant en texte
+     courant), blanc sur #c7410b atteint 5:1. */
+  --brand: #e84e0f;
+  --brand-strong: #c7410b;
+  --brand-strong-foreground: #ffffff;
+  --destructive: #b30000;
+  --destructive-foreground: #ffffff;
+  --error-text: #b30000;
+  --error-bg: #fdeaea;
+  --ok-text: #1d6b2e;
+  --ok-bg: #e2f2e5;
+  --warn-text: #8a6d1a;
+  --warn-bg: #fdf3d7;
+  --danger-bg: #fff5f5;
+  --danger-border: #e0b4b4;
+  --log-bg: #f2f3f5;
+  /* Couleurs complémentaires (catégories, états — avec parcimonie) */
+  --cat-yellow: #d8da00;
+  --cat-green: #65b32e;
+  --cat-teal: #38b6ab;
+  --cat-blue: #008ed5;
+  --cat-indigo: #4d55a2;
+  --cat-pink: #c24f97;
+}
+
+/* Mode sombre (issue #2) — activé via data-theme sur <html>.
+   Lisibilité : primaire/fonds inchangés (bleu-gris + blanc), les couleurs
+   TEXTUELLES s'éclaircissent (--accent 8,9:1 sur --bg, etc.). */
+html[data-theme="dark"] {
+  --bg: #15191d;
+  --text: #e4e8ea;
+  --text-muted: #9daab3;
+  --surface: #1f262c;
+  --surface-2: #2a333b;
+  --accent: #a3bcc9;
+  --accent-bg: #243135;
+  --border: #3b454e;
+  --border-soft: #333d45;
+  --primary: #517485;
+  --primary-foreground: #ffffff;
+  --secondary: #38434c;
+  --secondary-foreground: #e4e8ea;
+  --brand: #f2661f;
+  --brand-strong: #ff7a45;
+  --brand-strong-foreground: #21100a;
+  --destructive: #ff9b9b;
+  --destructive-foreground: #2a0d0d;
+  --error-text: #ff9b9b;
+  --error-bg: #3a2020;
+  --ok-text: #7fd08d;
+  --ok-bg: #16301e;
+  --warn-text: #d9bd6a;
+  --warn-bg: #3a3115;
+  --danger-bg: #2a1a1a;
+  --danger-border: #6b3a3a;
+  --log-bg: #171b21;
+}
+
+/* Exposition Tailwind v4 : chaque token devient un utilitaire (bg-primary,
+   text-muted-foreground, border-border…). inline = suit la var à l'exécution,
+   donc le mode sombre s'applique partout sans recompiler. --link est la
+   couleur d'action TEXTUELLE (liens, focus) : bleu-gris en clair, éclaircie
+   en sombre. */
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text);
+  --color-muted: var(--surface-2);
+  --color-muted-foreground: var(--text-muted);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-border-soft: var(--border-soft);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-link: var(--accent);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent-bg);
+  --color-accent-foreground: var(--text);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-strong-foreground: var(--brand-strong-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-error: var(--error-text);
+  --color-error-bg: var(--error-bg);
+  --color-ok: var(--ok-text);
+  --color-ok-bg: var(--ok-bg);
+  --color-warn: var(--warn-text);
+  --color-warn-bg: var(--warn-bg);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-border: var(--danger-border);
+  --color-log: var(--log-bg);
+  --color-cat-yellow: var(--cat-yellow);
+  --color-cat-green: var(--cat-green);
+  --color-cat-teal: var(--cat-teal);
+  --color-cat-blue: var(--cat-blue);
+  --color-cat-indigo: var(--cat-indigo);
+  --color-cat-pink: var(--cat-pink);
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+}
+
+/* --- Mobile (bonnes pratiques : inputs >= 16px évitent le zoom auto iOS Safari,
+   base 16px lisible, safe areas pour l'encoche, cibles tactiles) --- */
+html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+input, select, textarea { font-size: 16px; }
+@media (min-width: 700px) {
+  input, select, textarea { font-size: 0.95rem; }
+}
+/* Sur mobile, les tailles inline < 16px déclenchent le zoom auto iOS :
+   on force 16px sur tout contrôle de saisie, quel que soit le style inline. */
+@media (max-width: 699px) {
+  input, select, textarea { font-size: 16px !important; }
+  /* C-73 : EXCEPTION — le champ de saisie du texte posé sur le canevas doit
+     être FIDÈLE au rendu final (0.8rem) : la règle 16px ci-dessus gonflait
+     la saisie par rapport au texte posé. */
+  input.canvas-text-draft { font-size: 0.8rem !important; }
+}
+/* Tactile : cibles confortables (reco Apple/Google : >= 44px) sur les
+   boutons et poignées, sans changer le look desktop. */
+@media (pointer: coarse) {
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  /* C-73 : EXCEPTION — les pastilles de couleur du flyout Style restent
+     compactes sur mobile (la règle 44px les gonflait : « trop gros ») ;
+     la zone reste utilisable (grille, espacement). */
+  .color-swatch {
+    min-height: 1.5rem;
+    min-width: 1.5rem;
+  }
+  /* C-37 : boutons compacts de palette (icônes seules) — la règle 44px ne doit
+     pas s'appliquer SEULEMENT à l'état touché : le bouton grandissait au clic
+     et la palette (flexWrap) reflowait, déplaçant les outils d'~1 cm sous le
+     doigt. Taille tactile fixe dès le rendu : plus aucun déplacement. */
+  .tool-icon-btn {
+    min-height: 2.4rem;
+    min-width: 2.4rem;
+    height: 2.4rem;
+    width: 2.4rem;
+    justify-content: center;
+  }
+  .tool-icon-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+/* Anti-débordement structurel : rien ne peut élargir la page, quoi qu'il
+   arrive (champs, pré, SVG, images) ; la page ne scrolle JAMAIS
+   horizontalement. Garanties non layerées : elles doivent gagner. */
+img, svg, video, canvas { max-width: 100%; }
+input, textarea, select { max-width: 100%; }
+body { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+button, [role="button"] { touch-action: manipulation; }
+
+html, body {
+  margin: 0;
+  max-width: 100vw;
+  /* clip (et PAS hidden) : n'élève pas de scroll container, donc
+     position: sticky continue de fonctionner dans toute la page */
+  overflow-x: clip;
+  /* C-78 : le pull-to-refresh (tirer vers le bas) est RÉTABLI — le
+     overscroll-behavior:contain global de C-73 l'avait supprimé partout.
+     Les drags du canevas restent protégés par le touch-action conditionnel
+     (none dès qu'un outil est actif ou une sélection existe : le navigateur
+     ne peut pas démarrer le geste de rafraîchissement pendant un drag). */
+}
+#root {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: clip;      /* ne transmet jamais de débordement */
+}
+* { box-sizing: border-box; }
+
+/* Anti-débordement : tout contenu long se replie, ne coupe jamais la page */
+pre, code {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+}
+main, section, article, figure, nav, ul, li {
+  min-width: 0;
+}
+figure { margin: 0; }
+ul { padding: 0; margin: 0; }
+li { list-style: none; }
+
+/* C-19 : navigations internes (liens d'étapes, retours en haut) fluides. */
+html { scroll-behavior: smooth; }
+
+/* RF-71 : impression de la vignette QR — la feuille seule, sans l'interface.
+   C-71 : la feuille reste CLAIRE même en mode sombre (contraste du numéro de
+   document sur fond blanc) — couleurs forcées, priorité sur les utilitaires. */
+.qr-sheet { background: #ffffff !important; color: #2c3a43 !important; }
+.qr-sheet code { background: #e9edf0 !important; color: #2c3a43 !important; }
+@media print {
+  .no-print { display: none !important; }
+  nav { display: none !important; }
+  .qr-sheet { box-shadow: none !important; border: 1px solid #ccc; }
+}
+
+/* ============================================================
+   Styles par élément — @layer base (C-65) : les utilitaires Tailwind
+   des composants DOIVENT pouvoir les surcharger ; hors layer, ces
+   règles écrasaient text-primary-foreground (boutons/liens invisibles)
+   et la taille des titres stylés.
+   ============================================================ */
+@layer base {
+  body { background: var(--bg); color: var(--text); }
+  button { cursor: pointer; color: var(--text); }
+  a { color: var(--accent); }
+
+  /* Saisies cohérentes + thème */
+  input, select, textarea {
+    font: inherit;
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  /* I2 : focus visible pour la navigation clavier (sans doubler le look au clic). */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* Filet de sécurité pour les h1/h2 "nus" du code non migré — les titres
+     stylés explicitement (Tailwind) restent prioritaires. */
+  h1 { font-size: 1.05rem; margin: 0.4rem 0 0.6rem; }
+  h2 { font-size: 0.95rem; }
+}

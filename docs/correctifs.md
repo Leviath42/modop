@@ -1,0 +1,1249 @@
+# Modop — Journal des correctifs UI/UX (série post-audit)
+
+Série de petits correctifs UI/UX appliqués un par un sur beta.
+Chaque entrée : problème constaté → correctif → fichiers touchés → état.
+
+*Les correctifs listés ici sont retirés de la roadmap (vague 6 livrée) : ce journal trace la série en cours.*
+
+> **Agents IA** : ce journal dépasse 800 lignes — **ne pas le lire en entier**. Chercher la zone visée par mot-clé (`grep -n "<mot-clé>" docs/correctifs.md`) et lire seulement l'entrée correspondante. Routage complet : [AGENTS.md](../AGENTS.md).
+
+---
+
+## C-38 — Canevas : un clic sur une flèche la déplaçait (réalisé)
+
+**Problème** : cliquer/taper sur une forme déjà posée (flèche, zone) la déplaçait d'environ 1 cm dans la direction du geste. Cause : le drag des formes démarrait au `pointerdown` **sans seuil de tolérance** — au tactile, le micro-glissement naturel du doigt pendant un tap (quelques px) était traité comme un déplacement, et la forme suivait.
+
+**Correctif** : **hystérésis de 6 px** — le déplacement d'une forme (ou photo) ne s'engage qu'après ~6 px de trajet réel depuis le point de départ ; en dessous, c'est un clic : la sélection s'applique mais rien ne bouge, et aucune sauvegarde inutile n'est envoyée (le `PUT canvas`/layout n'est émis que si un vrai déplacement a eu lieu).
+
+**Test** : scénario C-38 dans `step-canvas-adaptive.test.ts` — tap sur le centre d'une flèche avec micro-glissement de 3 px : aucun `PUT /canvas` émis, la flèche ne bouge pas.
+
+**Fichiers** : `web/src/step-canvas.tsx`, `web/src/lib/step-canvas-adaptive.test.ts`
+
+## C-45 — Comptes : Prénom/Nom + responsable à sélectionner + garde-fou à revoir (réalisé)
+
+**Problème** : les comptes n'étaient qu'un email ; le « Responsable » d'un MO se tapait à la main sans lien avec les comptes ; et rien ne se passait quand le compte responsable disparaissait.
+
+**Correctif** :
+1. **Prénom/Nom sur les comptes** : colonnes `first_name`/`last_name` (migration idempotente), champs à la création et à l'édition dans la page Comptes (admin), affichage « Prénom Nom (email) ». Le login et `/api/auth/me` renvoient les deux champs ; le SSO OIDC les remplit depuis `given_name`/`family_name`.
+2. **Responsable à sélectionner** : dans les détails d'un MO, le champ Responsable devient un **input avec recherche** (`datalist`) listant les **comptes actifs** — saisir quelques lettres filtre, choisir pose l'email. Plus de saisie manuelle aveugle.
+3. **Garde-fou à la désactivation** : désactiver le compte responsable marque automatiquement **À REVOIR** tous ses MO sans date de revue (`review_due` = aujourd'hui), tracé dans le journal d'audit (`flag_review_no_owner`). Les MO concernés remontent dans le filtre « À revoir » pour réattribution.
+
+**Test** : `security.test.ts` (C-45) — création avec prénom/nom, login les renvoie, MO avec responsable, désactivation → `review_due` posé + action tracée dans l'audit.
+
+**Fichiers** : `server/src/db/schema.ts`, `server/src/auth/sessions.ts`, `server/src/routes/auth.ts`, `server/src/routes/admin.ts`, `web/src/api.ts`, `web/src/pages/admin.tsx`, `web/src/pages/editor.tsx`, `server/test/security.test.ts`
+
+**État** : ✅ livré sur beta — 107/107 tests serveur, tsc + build + tous tests front verts.
+
+---
+
+## C-80 — Validation texte : plus de saut de fenêtre + documentation à jour (correctif C-77)
+
+**Problème** : à la validation d'un texte, le focus explicite sur le canevas (C-77) provoquait un **saut de la fenêtre** — `focus()` fait défiler l'élément par défaut.
+
+**Correctif** : `focus({ preventScroll: true })` (validation et Échap) — le focus est bien posé (le navigateur ne peut pas le faire tomber sur le champ de l'étape suivante), mais **sans aucun défilement**. Un focus « nul » total n'est pas réalisable de façon fiable (le démontage d'un input focusé laisse le navigateur choisir le suivant) ; `preventScroll` supprime le symptôme tout en gardant la protection.
+
+**Documentation mise à jour** (ensemble) :
+- **guide-utilisateur.md** : barre d'outils basse + raccourcis clavier, actions contextuelles (Recadrer / Annuler rognage / Objets), formes en clic-glissé, outil texte fidèle au résultat, Style (8 couleurs + épaisseur), sélection par contour et au-dessus des photos, lecture = dernier publié + option « Brouillon en cours » (auteurs) + bouton Éditer + retour au début fixe, publication refusée si date de revue passée + « Abandonner le brouillon », page **Paramètres** (3 options) + alerte MO sans responsable, recherche depuis la loupe du bandeau.
+- **AGENTS.md** : arborescence (editor/, components/ui, settings, rognage serveur) + travaux en cours (backlog : templates de documents, undo/redo, vidéo).
+- **roadmap.md** : en-tête rafraîchi.
+
+**Tests** : suite front verte, 121/121 serveur, lint, builds OK.
+
+**Fichiers** : `web/src/step-canvas.tsx`, `docs/{guide-utilisateur,roadmap,correctifs}.md`, `AGENTS.md`.
+
+**État** : livré sur beta, **fusionné sur main** (validation propriétaire).
+
+---
+
+## C-79 — Champ texte : largeur mesurée au pixel près + templates en roadmap (correctif C-77)
+
+**Problème** : le champ texte s'élargissait à l'excès — la largeur `len × 1ch` sur-estime avec une police proportionnelle (le « ch » est la largeur du « 0 », plus large que la moyenne des caractères).
+
+**Correctif** : **mesure réelle** — un `<span>` invisible, rendu à la même position avec le style EXACT du texte posé (fond, padding, taille, graisse, `whiteSpace: pre`), sert d'étalon ; la largeur du champ est fixée à `offsetWidth` du span après chaque frappe. Fidélité au pixel près avec le texte posé, vide = pastille au caret. Route mesurée par un effet sur `textDraft` (l'étalon porte la même valeur, espace si vide).
+
+**Roadmap** : ajout de **templates de documents** (mode de réaction, tableau, enregistrements, FIT, fiches d'aspect, autres) — type en base, gabarit par type, filtrage accueil, export par gabarit ; marqué P1, gros chantier transverse à spécifier.
+
+**Tests** : suite front verte, tsc + lint + build OK.
+
+**Fichiers** : `web/src/step-canvas.tsx`, `docs/roadmap.md`.
+
+**État** : livré sur beta.
+
+---
+
+## C-78 — Pull-to-refresh rétabli (correctif C-73)
+
+**Problème** (constat propriétaire, Android/Chrome) : plus moyen de rafraîchir en tirant vers le bas — le `overscroll-behavior-y: contain` posé globalement en C-73 avait supprimé le pull-to-refresh sur TOUTES les pages.
+
+**Correctif** : règle retirée (comportement natif rétabli). La protection d'origine est conservée par le **touch-action conditionnel** du canevas d'édition (C-74 : `none` dès qu'un outil est actif ou une sélection existe) — le navigateur ne peut pas démarrer le geste de rafraîchissement pendant un drag d'objet ; au repos, le pull-to-refresh redevient légitime.
+
+Nota : le correctif de focus de C-77 (focus explicite sur le canevas avant démontage du champ texte) vaut aussi pour Chrome/Android — la restauration de focus séquentielle existe dans les deux moteurs.
+
+**Tests** : suite front verte, 121/121 serveur, lint, builds OK.
+
+**Fichiers** : `web/src/styles.css`.
+
+**État** : livré sur beta.
+
+---
+
+## C-77 — Outil texte : focus verrouillé sur le canevas + champ fantôme fidèle (correctif C-74)
+
+**Problèmes persistants** :
+1. « Après avoir validé un texte, cela ramène au champ de l'étape suivante » — le `blur()` seul (C-74) ne suffit pas : quand un input est démonté **clavier ouvert**, iOS/Safari re-focalise l'élément focusable SUIVANT dans l'ordre du DOM (le titre de l'étape d'après) et y scrolle. Par ailleurs le `blur()` déclenchait le `onBlur` du champ → `commitText` réentrant (double sauvegarde du texte).
+2. Le champ de saisie ne ressemblait pas au résultat (largeur fixe `minWidth`, pointillé, placeholder).
+
+**Correctifs** :
+1. **Focus verrouillé** : le canevas devient focusable (`tabIndex={-1}`) ; à la validation (Enter, clic à côté, blur) comme à l'annulation (Échap), `blur()` puis **`canvasRef.focus()` AVANT le démontage** — le focus ne peut plus « tomber » sur le champ suivant. Garde anti-réentrance (`committingRef`) : plus de double sauvegarde.
+2. **Champ fantôme** : largeur = contenu (`width: calc(len × 1ch + 0.8rem)`, plafonnée à 60 %) — vide = pastille de la couleur du trait avec juste le caret clignotant (plus de placeholder ni `minWidth`) ; rempli = même fond, padding, taille, graisse et rayon que le texte posé ; le pointillé de saisie est supprimé (aucun cadre différé).
+
+**Tests** : suite front verte, 121/121 serveur (flaky S2 connu), lint, builds OK.
+
+**Fichiers** : `web/src/step-canvas.tsx`.
+
+**État** : livré sur beta.
+
+---
+
+## C-76 — Rognage : panneau borné entre les deux barres, image ajustée (correctif C-75)
+
+**Problème** : l'overlay de rognage couvrait tout le canevas (solidaire de sa hauteur, potentiellement bien plus grand que l'écran) → cadrage demandait du scroll.
+
+**Correctif** : le panneau est **`fixed`, borné entre la barre du haut (`--nav-h`) et la barre d'outils** (marge basse 9 rem réservée aux boutons fixes de C-75). L'image est **ajustée à la zone libre** au moment de l'ouverture (`openCrop` calcule la taille affichée en fonction du ratio et du viewport) ; cadrage et application mis à l'échelle par rapport aux pixels naturels, inchangés (`applyCrop` divise par `cropBox`).
+
+**Tests** : suite front verte, tsc + lint + build OK.
+
+**Fichiers** : `web/src/step-canvas.tsx`.
+
+**État** : livré sur beta.
+
+---
+
+## C-75 — Rognage : boutons Annuler/Recadrer fixes au-dessus de la barre (correctif C-73)
+
+**Problème** : les boutons de validation du rognage vivaient en `absolute` dans l'overlay du canevas — inatteignables quand le canevas défilait sous la barre d'outils fixe.
+
+**Correctif** : `fixed bottom-24` au-dessus de la barre (`z-[150]`), toujours visibles et cliquables pendant le cadrage, quel que soit le scroll.
+
+**Tests** : suite front verte, 121/121 serveur, lint OK.
+
+**Fichiers** : `web/src/step-canvas.tsx`.
+
+**État** : livré sur beta.
+
+---
+
+## C-74 — Cinquième vague : épaisseur par défaut paramétrable, rognage cliquable, focus texte, scroll (réalisé)
+
+**Contexte** : retour sur C-73 — épaisseur par défaut demandée à 5 (paramétrable), bouton Recadrer inopérant, navigation douloureuse (mon `touch-action: none` permanent était trop agressif), focus qui saute au champ de l'étape suivante après validation d'un texte, largeur de saisie texte incohérente.
+
+1. **Épaisseur par défaut 5 + paramètre admin** : `default_stroke_width` dans les paramètres serveur (bornes 1-10, défaut **5**), sélecteur dans la page Paramètres, appliqué à l'ouverture de l'éditeur (le curseur Style reste libre pour la session). Tests runtime : défaut 5, persistance, hors-bornes ignoré.
+2. **Bouton « Recadrer » inopérant — cause** : le listener C-31 vidait la sélection au `pointerdown` sur la barre → le bouton contextuel **disparaissait avant son propre `click`**. Correctif : `data-keep-canvas-selection` sur la commande (comme « Objets »).
+3. **Scroll mobile — état de l'art** (recherche : Stack Overflow, blogs UI) : `touch-action: none` est LA solution canonique contre le vol de geste, mais **scopée à l'interaction** ; `none` permanent sur tout le canevas tue le scroll de page. Retour au **touch-action conditionnel** (`pan-y` au repos, `none` dès qu'un outil est actif ou une sélection existe) + `overscroll-behavior-y: contain` conservé (pull-to-refresh neutralisé).
+4. **Focus qui saute à l'étape suivante** : démonter un `<input>` FOCUSÉ fait basculer le focus du navigateur vers le champ suivant (le titre de l'étape d'après) et y scrolle — c'est le mécanisme derrière « valider fait passer à l'étape d'après » ET « chaque sélection ramène au champ de l'étape suivante ». Correctif : `blur()` explicite **avant** le démontage dans `commitText()`.
+5. **Largeur/longueur de saisie ≠ texte réel** : un `<input>` ne suit pas son contenu. Correctif : `size={len + 2}` — la largeur du champ grandit avec le texte tapé, fidèle au rendu final (hauteur, padding, graisse, taille déjà identiques depuis C-71/C-73).
+
+**Tests** : 121/121 serveur (settings étendus), suite front verte, lint server+web, builds OK.
+
+**Fichiers** : `server/src/routes/settings.ts`, `server/test/settings.test.ts`, `web/src/{api,step-canvas}.ts(x)`, `web/src/pages/{editor,settings,list}.tsx`, `web/src/editor/tools/definitions.tsx`.
+
+**État** : livré sur beta.
+
+---
+
+## C-73 — Quatrième vague de retour terrain : rognage refondu + causes racine CSS (réalisé)
+
+**Contexte** : retour sur C-72 — le rognage initial supprimait l'original (pas de retour arrière), le bouton vivait dans le canevas, la photo rognée ne restait pas en place ; pastilles et taille de saisie « toujours pas » corrigées ; drag vs scroll toujours conflictuel ; publication avec date passée.
+
+**Rognage refondu** (remplacement EN PLACE) :
+- **Serveur** : `PUT /api/photos/:id/file` — deux modes : multipart (nouveau binaire sniffé → nouveau nom de fichier, **la ligne photo est conservée** : id, position, taille, alt) et JSON `{filename}` (repointage vers un fichier existant = retour arrière). L'ancien fichier **n'est jamais supprimé au rognage** (la purge des orphelins au démarrage le recyclera hors session). Test runtime complet (remplacement, position conservée y>1, repointage, garde-fous 422/404).
+- **Bouton dans la barre d'outils** (« Recadrer », zone droite, visible quand une seule photo est sélectionnée — plus dans le canevas) + **« Annuler rognage »** (pile, visible tant qu'un retour est possible). Le canevas ouvre l'overlay sur demande de la barre (compteur, garde anti-réouverture).
+- **Le morceau rogné reste au même endroit, à la même taille** : conséquence directe du remplacement en place (même ligne = même layout).
+
+**Causes racine CSS** (les « toujours pas » s'expliquaient par des règles globales qui écrasaient les tailles) :
+- **Pastilles de couleur** : la règle tactile `button { min 44px }` les gonflait sur mobile (d'où « rétréci sur desktop seulement ») — exception `.color-swatch` (24 px sur tactile).
+- **Taille de saisie du texte** : la règle anti-zoom iOS `input { font-size: 16px !important }` gonflait le champ par rapport au texte posé (0.8rem) — exception `.canvas-text-draft` (fidèle au rendu final).
+- **Drag vs scroll / pull-to-refresh** : le canevas d'édition passe en `touch-action: none` **permanent** (le scroll se fait par le reste de la page) et `overscroll-behavior-y: contain` sur `html/body` neutralise le pull-to-refresh qui volait les gestes descendants.
+
+**Publication avec date de revue passée** : garde serveur (422 « date de revue dépassée ») + modale front (avertissement + bouton Confirmer désactivé).
+
+**Tests** : +1 test runtime serveur (121), suite front verte ( effet cropRequest restructuré après TDZ détecté par les tests), lint server+web, builds OK.
+
+**Fichiers** : `server/src/routes/{photos,publish}.ts`, `server/src/app.ts`, `server/test/photo-layout.test.ts`, `web/src/{api,step-canvas}.ts(x)`, `web/src/styles.css`, `web/src/pages/editor.tsx`, `web/src/editor/tools/{types.ts,definitions.tsx}`.
+
+**État** : livré sur beta.
+
+---
+
+## C-72 — Troisième vague de retour terrain : 10 correctifs en deux lots (réalisé)
+
+**Contexte** : troisième liste du propriétaire. Lots : 7 correctifs (commit b4312e8) puis paramètres serveur + rognage.
+
+**Lot 1+2** (commit b4312e8) :
+2. **Vidéo liée au MO** ajoutée au backlog roadmap (P2 demandé).
+7. Pastilles de couleur **encore réduites** sur mobile (16 px, grille resserrée).
+9. **Rectangle : sélection par le CONTOUR uniquement** — la surface laisse passer le clic vers les objets/photo derrière (annotations) ; déplacement par le contour (tolérance ~10 px).
+8. **Scroll mobile vs drag** : `touch-action: none` dès qu'une sélection existe ou qu'un outil est actif — le navigateur ne peut plus voler le geste en scroll (C-31 continuait de gérer `pointercancel` en dernier recours).
+6. **Pointe de flèche proportionnelle à l'épaisseur** (`markerUnits="strokeWidth"` en édition et lecture, tête proportionnelle dans l'export docx) + **curseur d'épaisseur 1–10**.
+10. **Outil texte refondu** : clic ailleurs VALIDE la saisie et ferme l'outil (le champ ne se déplace/ vide plus), clic sur un texte posé = **édition** (remplacement), garde anti-rouverture après validation, `Enter` sans effet de bord (`stopPropagation`).
+3. **Responsable** : le champ affiche « Prénom Nom » (recherche par nom/prénom/email), **responsable inconnu interdit** (saisie libre non résolue → champ vidé, null enregistré), vide privilégié ; **alerte admin** du nombre de MO sans responsable (page Comptes).
+
+**Lot 3 — paramètres applicatifs (#4, #5)** :
+- **Table `settings`** (migration idempotente) + route `GET/PUT /api/settings` (lecture authentifiée, modification admin) — défauts : brouillons masqués aux lecteurs, sans date = à revoir.
+- **Page Paramètres** (`/settings`, admin, entrée du bandeau) : les deux options appliquées immédiatement (stockées en base, sans redéploiement).
+- **« À revoir »** : le filtre serveur et l'alerte d'accueil comptent les MO sans date de revue selon le paramètre ; **brouillons visibles par les lecteurs** selon le paramètre (l'accueil l'applique).
+- **Tests runtime** (`settings.test.ts`, 3 tests) : défauts, PUT admin seul (403 auteur), effet réel sur `?review=overdue` avec un MO sans date.
+
+**Lot 4 — rognage d'image (#1)** :
+- Bouton **« Recadrer »** sur le canevas quand une seule photo est sélectionnée → overlay de cadrage (rectangle déplaçable + poignée de redimensionnement, masque assombri, tactile), application via canvas hors écran (jpeg 0.92).
+- L'éditeur **remplace** la photo : upload de la version rognée **héritant de la position/taille** de l'ancienne, suppression de l'ancienne (les versions publiées conservent le fichier original).
+
+**Tests** : +3 tests serveur (120), suite front verte, lint server+web, builds OK.
+
+**Fichiers** : `server/src/routes/settings.ts` (nouveau), `server/src/{app.ts,db/schema.ts,routes/list.ts,render/canvas-composite.ts}`, `server/test/settings.test.ts` (nouveau) ; `web/src/pages/settings.tsx` (nouveau), `web/src/{api.ts,step-canvas.tsx,app.tsx,nav.tsx}`, `web/src/pages/{admin,list,editor}.tsx`, `web/src/editor/tools/definitions.tsx`, `docs/roadmap.md`.
+
+**État** : livré sur beta.
+
+---
+
+## C-71 — Deuxième vague de retour terrain : 13 correctifs en deux lots (réalisé)
+
+**Contexte** : deuxième liste du propriétaire après test sur le CT. Traitées par effort croissant, deux commits (lot 1 = 8, lot 2 = 5).
+
+**Lot 1** (commit 36efb42) :
+1. **QR mode sombre** : la feuille QR reste claire (couleurs forcées, priorité sur le thème) — numéro de document lisible.
+2. **Positions perdues à la publication/brouillon — CAUSE RACINE serveur** : `display_y` était validé sur [0,1] alors que le canevas dépasse 240 px (y = fraction de 240 px). Toute photo posée sous la première recevait un 422 **silencieux** → mise en page perdue au rechargement. Plage étendue à [0,10] + 5 assertions runtime (`photo-layout.test.ts` : y=1.75 accepté/persisté, y négatif et >10 rejetés).
+13. **Mode guidé** : cadres ajustés au contenu (suppression de la rangée `1fr` qui étirait).
+9. **Brouillons masqués aux lecteurs** (filtre front ; paramètre serveur optionnel à venir).
+5. **Bouton « Éditer »** pour les auteurs en lecture classique.
+8. **Responsable** : champ pleine largeur, suggestions « Prénom Nom » seules.
+12. **Indications** rendues à l'identique de la lecture pendant l'édition.
+7. **Champ de saisie texte** : style identique au texte posé (padding, taille, graisse — seul un pointillé discret distingue la saisie).
+
+**Lot 2** :
+6. **Flèche/zone en UN clic-glissé** (départ au pointerdown, création au relâchement ; un clic sans glisser n'insère rien) — `zone-roundtrip` adapté.
+3. **Rectangle de sélection démarre AU-DESSUS d'une photo** (avant : clic simple sur une photo non sélectionnée ne faisait rien).
+11. **Hit-test fidèle au rendu** : flèche saisissable le long de son segment, rectangle sur son contour (plus seulement au centre/intérieur strict).
+10. **Bouton Style** (raccourci S) : icône + pastille de la couleur en cours → flyout grille de 8 couleurs compactes + curseur d'épaisseur (1–6). Épaisseur persistée avec chaque forme (`width`), rendue en lecture, canevas d'édition ET export docx (`canvas-composite`).
+4. **« Dernier état » = dernier PUBLIÉ** : lecture classique et guidée ouvrent par défaut la dernière version publiée ; le brouillon n'est plus la vue par défaut. Option « Brouillon en cours » réservée aux auteurs (sélecteur de versions) + bandeau explicite. **« Abandonner le brouillon »** dans l'éditeur (confirmation) : restaure la dernière version publiée via l'API `restore` existante — plus besoin de tout retaper après un brouillon raté.
+
+**Tests** : suite front verte (`zone-roundtrip` et `step-canvas-adaptive` adaptés — le second exposed une race de timing test-only : pointerup dans le même tick traité par des listeners stale), lint server+web, 117/117 serveur, build web OK.
+
+**Fichiers** : `server/src/routes/photos.ts`, `server/test/photo-layout.test.ts`, `server/src/render/canvas-composite.ts`, `web/src/{api,annotated-photo,step-canvas,step-canvas-view,styles}.ts(x)`, `web/src/pages/{reader,guided-reader,editor}.tsx`, `web/src/editor/tools/{types,definitions}.ts(x)`, 2 fichiers de tests front.
+
+**État** : livré sur beta.
+
+---
+
+## C-70 — Retour utilisateur terrain : 17 correctifs UX en deux lots (réalisé)
+
+**Contexte** : liste de 19 modifications fournie par le propriétaire après test sur le CT. Traitées par effort croissant, en deux commits (lot A = 12 correctifs, lot B = 5).
+
+**Lot A** (commit 9e6ce3e) :
+1. **Brouillon ≠ « dernier état »** : bandeau explicite en lecture (« Brouillon de travail — non publié ») + bouton « Voir Vn » vers la dernière version publiée ; option du sélecteur renommée ; bandeau compact en lecture guidée.
+2. **Outils qui ne se désactivaient jamais** : `onToolDone` (câblé mais jamais appelé) est désormais invoqué après la pose d'une forme/flèche et du texte — l'outil se désarme seul.
+3. **Entête lecture mobile** réorganisée en 2 rangées (titre+retour / sélecteurs+liens).
+4. **Anti-débordement** : `min-w-0`/`truncate`/`shrink-0` durcis (bandeau éditeur, rangées d'étapes, entête lecture).
+6. **Photos pleine largeur au chargement** (défaut 0,6 → 1 : éditeur, vue lecture, calcul de hauteur).
+8. **Accueil : un MO par ligne** (retour au rendu antérieur, plus lisible).
+11. **Alerte « à revoir »** pour auteurs/admins sur l'accueil (bandeau + action vers le filtre).
+12. **Aide à la pose** déplacée du canevas vers la barre d'outils fixe (texte contextuel dans la barre).
+13. **Flyout Formes : auto-repli à la sélection** (règle 4 de la spec, ré-affichage par re-clic).
+14. **Couleurs d'annotation élargies à 8** + pastilles plus petites sur mobile.
+18. **Retour au début fixe** en lecture (bouton flottant bas-droite).
+19. **Lecture guidée** : colonne contrainte `max-w-[560px]` (desktop lisible, calqué sur les autres pages).
+
+**Lot B** :
+15. **Indications sécurité** : bannière forte par indication (fond teinté + bordure 5 px de la couleur, icône colorée, libellé gras majuscule) — remplace les petites pastilles.
+10. **Recherche globale** : bouton loupe dans le bandeau (desktop + mobile) → accueil avec focus automatique sur le champ (`?rechercher=1`).
+7. **Suppression au drag & drop d'étapes** : zone « Relâchez pour supprimer » apparaît pendant le déplacement → ouvre la confirmation (jamais de suppression directe).
+5. **Recherche de responsable** : suggestions déroulantes avec Prénom Nom + email (filtrage nom ET email) — remplace le datalist natif peu lisible.
+9. **Page comptes** : rangées en 3 lignes (nom / email / actions), boutons raccourcis (« Réinit. mdp »), sélecteur de rôle compact.
+
+**Différés (nouveaux chantiers, roadmap)** : #16 personnalisation des indications métiers (paramétrage persisté = migration + API), #17 commentaires auteurs par étape (schema + API + UI).
+
+**Tests** : suite front verte (`header-tools` adapté à l'auto-repli du flyout), lint server+web, 117/117 serveur (flaky S2 connu), build web OK.
+
+**Fichiers** : `web/src/pages/{list,reader,guided-reader,editor,admin}.tsx`, `web/src/{nav,step-canvas,step-canvas-view}.tsx`, `web/src/editor/{bottom-bar.tsx,tools/definitions.tsx}`, `web/src/lib/header-tools.test.ts`.
+
+**État** : livré sur beta.
+
+---
+
+## C-69 — Barre d'outils tactile : libellés masqués, icônes en priorité (correctif C-67)
+
+**Problème** (constat propriétaire sur mobile) : la barre basse superposait ses textes — la règle `pointer:coarse` de styles.css (C-37) fixe les boutons `tool-icon-btn` à 2,4 rem pour éviter tout reflow pendant le drag ; avec « icône + libellé », le contenu débordait de cette boîte fixe.
+
+**Correctif** : les libellés des outils passent en `pointer-coarse:hidden` (variante Tailwind v4 native) — **icônes seules sur tout pointeur tactile** (boîtes carrées 2,4 rem, conformes C-37), « icône + texte » conservé au pointeur souris (desktop inchangé, validé par le propriétaire). L'accessibilité est préservée : chaque bouton garde son `aria-label` complet, le badge compteur (Indications) reste visible.
+
+**Tests** : suite front verte (aria-labels inchangés), lint server+web, 117/117 serveur ; media query `pointer:coarse` vérifiée dans le CSS buildé.
+
+**Fichiers** : `web/src/editor/bottom-bar.tsx`.
+
+**État** : livré sur beta.
+
+---
+
+## C-68 — Icônes : jeu unique Lucide, suppression des emojis (réalisé)
+
+**Problème** (constat propriétaire) : de nombreux emojis/glyphes décoratifs (🖼 📷 🗑 ⚠ ✓ ⠿ ✎ ✕ ⚑ ⇥ ⬇ ▸) avaient été posés au fil des correctifs UI, avant qu'un jeu d'icônes n'existe puis pour tout ce qu'il ne couvrait pas — rendu amateur, incohérent et dépendant de la police emoji du système.
+
+**Correctif** : adoption de **Lucide** (lucide.dev — open source ISC, le jeu standard de shadcn/ui, 1500+ icônes au trait `currentColor`, importables à l'unité/tree-shakeables, cohérent avec le style de l'existant). Remplacement systématique : nav (Menu/Sun/Moon), accueil et comptes (Pencil, ChevronRight), lecteur et lecture guidée (BookOpen, Flag, Download, TriangleAlert, X, Check), terrain (Check), barre d'outils (Plus, Image, Camera, Shapes, ArrowUpRight, Square, Type, Trash2, TriangleAlert, Check), éditeur (GripVertical, ChevronDown/Right, FoldVertical/UnfoldVertical), canevas (Trash2 corbeille de drag, X lightbox). `web/src/icons.tsx` (SVG maison hétérogènes) **supprimé**. Conservés : le marqueur « ▶ » des `<option>` (pas de SVG possible dans un `option`, invariant testé C-34) et les couleurs de pictos (données métier persistées).
+
+**Tests** : `editor-sticky` et `header-tools` adaptés (boutons de pli identifiés par aria-label au lieu des glyphes ▸/▾) ; suite front verte, lint server+web, 117/117 tests serveur, build web OK (+~4 kB gzip).
+
+**Fichiers** : `web/src/{nav,step-canvas,step-canvas-view}.tsx` (supprimé : `web/src/icons.tsx`), `web/src/pages/{list,reader,guided-reader,feedbacks,admin,editor}.tsx`, `web/src/editor/tools/definitions.tsx`, 3 fichiers de tests ; dépendance `lucide-react`.
+
+**État** : livré sur beta.
+
+---
+
+## C-67 — Palette d'outils : barre basse fixe + registre de commandes modulaire (spec)
+
+**Contexte** : spec fournie par le propriétaire ([spec-palette-outils.md](spec-palette-outils.md)) — revoir en profondeur l'utilisation des outils : barre basse unifiée desktop/mobile (modèle Figma), flyouts extensibles au-dessus du bouton, contextualité par mutation, raccourcis clavier, et une **architecture par registre** pour créer les outils au fur et à mesure.
+
+**Correctif** :
+1. **Registre de commandes modulaire** (`web/src/editor/tools/` — `types.ts`, `definitions.tsx`, `registry.ts`) : chaque outil = une entrée déclarative (id, zone, libellé, title avec raccourci, icône pouvant dépendre de l'état, visibilité, état actif, badge, danger, action, flyout, commande clavier-only). **Ajouter un outil = une entrée dans `EDITOR_COMMANDS`, rien d'autre** — la barre consomme le registre (source unique, spec § 6).
+2. **Barre basse fixe** (`web/src/editor/bottom-bar.tsx`, spec § 3.1) : ancrée en bas + `env(safe-area-inset-bottom)` ; gauche Structure/Insertion (Étape, Photos, Formes, Indications), droite actions contextuelles (Supprimer l'étape si >1 étape, Objets (n) si sélection canevas) ; flyout au-dessus du bouton, **un seul ouvert**, auto-repli à la sélection ou à Échap ; le bouton Formes **affiche l'outil actif** du groupe (règle 3) ; raccourcis **E P F A R T I** actifs hors saisie de texte ; classe `tool-icon-btn` conservée (cibles tactiles 44 px, C-37).
+3. **Éditeur** : la rangée d'outils haute (C-49/C-50) disparaît ; le bandeau documentaire (titre, Publier, sélecteur d'étape, tout replier) reste sticky ; les outils ne voient l'éditeur **que via `ToolContext`** (actions injectées) ; comportements pictos/photos/formes inchangés ; `data-keep-canvas-selection` conservé sur « Objets » (C-31) ; padding bas de page pour la barre fixe.
+4. **Non couvert — backlog roadmap** : undo/redo global, texte riche, numéros de repère, ligne de geste, recadrage/pivot, TipTap (décision ouverte : changerait le contrat figé `shared/` et l'export docx).
+
+**Tests** : `header-tools.test.ts` réécrit pour la barre basse (outils visibles sans clic, flyout Formes, sélection flèche cochée + bouton parent actif, Échap, pas de « Supprimer l'étape » à une étape) ; `photo-source`, `empty-tools`, `editor-sticky`, `mobile-overflow`, `editor-smoke`, `step-drag` verts sans modification ; suite front verte, lint server+web, 117/117 serveur.
+
+**Fichiers** : `web/src/editor/tools/{types.ts,definitions.tsx,registry.ts}`, `web/src/editor/bottom-bar.tsx` (nouveaux), `web/src/pages/editor.tsx`, `web/src/lib/header-tools.test.ts`, `docs/spec-palette-outils.md` (ajoutée au dépôt).
+
+**État** : livré sur beta.
+
+---
+
+## C-66 — Bandeau de navigation calqué sur meal_plan (correctif C-65)
+
+**Problème** (constat propriétaire après C-65) : le bandeau bleu-gris plein semblait toujours trop massif — le propriétaire demande la barre identique à celle de **meal_plan** (référence historique : la base de `styles.css` vient déjà de cette app).
+
+**Correctif** : `nav.tsx` réécrit sur le modèle de `app/Nav.tsx` de meal_plan, avec les tokens Modop :
+- barre **neutre** (surface + bordure basse, plus de bande de couleur), hauteur fixe **48 px / 56 px dès sm**, contenu contraint `max-w-6xl mx-auto` ;
+- **desktop (md+)** : liens à plat (Modes opératoires ; Comptes/Statistiques/Déploiement pour l'admin) avec état actif, séparateur, email tronqué, Déconnexion, **ThemeToggle dans la barre** (bouton icône, plus dans un sous-menu) ;
+- **mobile** : hamburger + ThemeToggle, panneau déroulant sous le bandeau avec overlay de fermeture au clic extérieur, Échap conservé ;
+- logo « Modop » en orange lisible (`text-brand-strong`, 5:1) ; sticky conservé (les bandeaux des pages s'accrochent à `--nav-h`, publié par ResizeObserver).
+
+**Tests** : `nav-menu.test.tsx` inchangé et vert (hamburger `aria-label="Menu"`, entrées par rôle, Échap) ; suite front verte, lint server+web, 117/117 serveur.
+
+**Fichiers** : `web/src/nav.tsx`.
+
+**État** : livré sur beta.
+
+---
+
+## C-65 — Refonte UI : règles de base écrasant Tailwind + lisibilité des couleurs (correctif C-64)
+
+**Problème** (constaté sur le CT après C-64) : le bouton « + » de l'accueil et le titre « Modop » du bandeau étaient invisibles, les boutons semblaient mal colorés, la barre supérieure paraissait trop épaisse. **Cause racine** : les styles par élément de `styles.css` (`a { color: var(--accent) }`, `button { color: var(--text) }`, `h1 { font-size: 1.05rem }`…) étaient **non layerés** — or en CSS, une règle hors `@layer` bat TOUT `@layer`, spécificité égale par ailleurs : elles écrasaient systématiquement les utilitaires Tailwind (`text-primary-foreground` → texte bleu-gris sur fond bleu-gris, titres stylés ramenés à 1.05rem).
+
+**Correctif** :
+1. **`@layer base`** : les styles par élément (body, button, a, champs, `:focus-visible`, h1/h2) passent dans `@layer base` — les utilitaires Tailwind (layer `utilities`, déclaré après) gagnent désormais. Seules les garanties structurelles restent non layerées (anti-débordement, 16px iOS, cibles tactiles 44px, impression) : elles doivent gagner.
+2. **Tokens lisibles dans les deux thèmes** (proche palette) : primaire `#517485` + blanc en **clair ET sombre** (5:1 ; en sombre le fond pâle `#96a9b1` faisait sale) ; nouveau token **`--color-link`** pour l'action textuelle (liens, focus, sélection canevas) : `#517485` en clair (5:1 sur blanc), `#a3bcc9` en sombre (8,9:1) ; bordures claires un peu plus présentes (`#b7c3ca`) ; chips sur fond teinté en `text-foreground` (anthracite ≈ 12:1, le bleu-gris sur teinte ne faisait que 4,3:1).
+3. **Bandeau compact** : `py-1.5` + bouton menu `size-8` + logo `text-base` (≈44 px desktop au lieu de 52).
+
+**Tests** : suite front verte (nav-menu, list-groups, editor-sticky, header-tools, mobile-overflow…), build web + lint server/web + 117/117 tests serveur verts.
+
+**Fichiers** : `web/src/styles.css`, `web/src/nav.tsx`, `web/src/components/ui/{button,input}.tsx`, `web/src/pages/{list,reader,guided-reader,editor}.tsx`.
+
+**État** : livré sur beta.
+
+---
+
+## C-64 — Refonte UI : Tailwind v4 + design tokens de la palette + composants type shadcn (réalisé)
+
+**Contexte** : l'interface était entièrement en styles inline React sur une palette ad-hoc (bleu `#1f4e9c`), sans système de design. Le propriétaire a fourni un guide UI/UX de référence ([Guide interface utilisateur.md](Guide%20interface%20utilisateur.md) : Tailwind + shadcn/ui, responsive, WCAG) et la palette de marque ([palette-couleurs.md](palette-couleurs.md) : bleu-gris `#517485` primaire, orange `#e84e0f` accent, anthracite `#2c3a43`).
+
+**Correctif** :
+1. **Fondation** : Tailwind v4 (plugin `@tailwindcss/vite`, compatible Vite 8) ; `styles.css` remappé sur la palette **en conservant les noms de variables** (`--accent`, `--surface`…) — le code non migré change de peau automatiquement ; exposition `@theme inline` (utilitaires `bg-primary`, `text-muted-foreground`, `border-border`…) ; variante `dark:` sur `data-theme` (compatible `theme.ts`, pas de classe `dark`).
+2. **Composants type shadcn faits maison** (sans Radix, patterns aria existants conservés) : `Button` (variantes default/secondary/outline/ghost/destructive/brand/link via cva), `Card`, `Input`/`Textarea`/`Select`/`Label`, `Badge`, `Modal`, `Skeleton`, `Alert` ; `cn()` (clsx + tailwind-merge).
+3. **Accessibilité de la palette** : boutons primaires en bleu-gris (contraste 5:1 avec blanc) ; l'orange est décoratif (`--brand`) et ne porte du texte que via `--brand-strong` `#c7410b` (5:1) — blanc sur `#e84e0f` = 3,8:1, insuffisant en texte courant (règle 60-30-10 du guide respectée : 1 primaire + 1 accent).
+4. **Migration complète** : bandeau + toutes les pages, styles inline → classes Tailwind + composants ; comportements, aria, handlers et textes inchangés ; invariants conservés (bandeau/barre d'outils sticky, `tool-icon-btn` tactile C-37, `qr-sheet` impression RF-71, safe-area barre guidée, publication `--nav-h`). Le **canevas** reste en positionnement dynamique inline (pratique Tailwind correcte) — reskinné par les tokens ; seule la couleur de sélection en dur est passée sur `var(--accent)`.
+5. **Tests adaptés** (invariants identiques, forme changée : classe au lieu de style compilé) : `editor-sticky`, `header-tools`, `mobile-overflow`, `guided-finish`, `theme-persistence` (nouvelles valeurs meta `#517485`/`#15191d`).
+
+**Tests** : build web (tsc + vite) et lint server+web verts ; tous les tests front passent ; 117/117 tests serveur. ⚠ Constat préexistant non lié : « S2 : photos accessibles uniquement authentifié » échoue de façon intermittente sous charge (observé avant et après, plusieurs sessions) — à investiguer en mission dédiée.
+
+**Fichiers** : `web/src/styles.css`, `web/vite.config.ts`, `web/src/lib/utils.ts`, `web/src/components/ui/*` (nouveaux), `web/src/nav.tsx`, toutes les pages `web/src/pages/*`, `web/src/step-canvas.tsx`, `web/src/theme.ts`, `web/index.html`, 5 fichiers de tests front ; dépendances `tailwindcss`, `@tailwindcss/vite`, `clsx`, `tailwind-merge`, `class-variance-authority`.
+
+**État** : livré sur beta.
+
+---
+
+## C-63 — Vague 10 en standby, priorité au fonctionnel et au mode édition (décision)
+
+**Décision propriétaire (2026-10-18)** : la vague 10 (palier sécurité entreprise, issue #9) passe **en standby** — pas de besoin pour le moment. La priorité va au **fonctionnel et au mode édition** : vagues 7 et 8, avec en tête de vague 8 l'item édition d'images (drag & drop / presse-papiers) et le statut éditorial.
+
+**Conséquences tenues dans les docs** : roadmap réorganisée (note de priorité, vague 8 réordonnée, vague 10 marquée standby avec son contenu conservé) ; AGENTS.md (section « Travaux en cours » mise à jour). Rappel de sécurité maintenu tant que la vague dort : `MODOP_TOTP_SECRET` reste désactivé (UI de login sans champ `totp`).
+
+**Docs** : `docs/roadmap.md`, `AGENTS.md`.
+
+**État** : documentation seule — aucun code modifié.
+
+---
+
+## C-62 — Uptime Kuma déployé : supervision vague 9 bouclée côté ops (bilan)
+
+**Contexte** : C-57 laissait le déploiement réel d'Uptime Kuma à la charge du propriétaire (procédure dans guide-test-proxmox.md). C'est fait : moniteur HTTP sur `GET /api/health`, état online/offline remonté dans Home Assistant.
+
+**Bilan — ce que la supervision peut fournir au-delà de l'état binaire** : le healthcheck ne renvoie que `{ ok: true }` (app.ts) ; les informations supplémentaires viennent de Kuma lui-même (disponibilité 24 h/7 j/30 j, temps de réponse, historique d'incidents, expiration du certificat si le moniteur vise l'URL publique du tunnel) ou de moniteurs **push** (battement de cœur « sauvegarde OK » après `backup-db.mjs`, « déploiement OK » après `update.sh` — une absence de battement alerte). Pistes documentées, non implémentées à ce jour.
+
+**Docs** : `docs/roadmap.md` (vague 9 n°5 → déployé, critères issue #8 mis à jour), `docs/guide-test-proxmox.md` (§ supervision enrichi).
+
+**État** : documentation seule — aucun code modifié.
+
+---
+
+## C-61 — update.sh bloqué par la sauvegarde quand node_modules est cassé (réalisé)
+
+**Problème** : constaté sur le CT — après un `npm ci` raté (C-60 : `make` absent), `better-sqlite3` n'est résoluble **nulle part** (l'ancien `cd server && npm ci` pré-C-57 avait vidé `server/node_modules` avant d'échouer, le `npm ci` racine a échoué avant de peupler `node_modules`). `update.sh` mourait alors à sa première étape utile — la sauvegarde VACUUM INTO — sans jamais atteindre le `npm ci` qui répare l'installation : **œuf et poule**, la mise à jour était bloquée à vie. Ce log confirme au passage la cause de l'incident initial (C-58) : app en crash-loop faute de modules, pm2 à ↺ 9.
+
+**Correctif** (`update.sh`) — dégradation propre au lieu d'échec fatal :
+1. **Sauvegarde** : si `better-sqlite3` n'est pas résoluble, bascule sur une **copie brute `.db` + `-wal` + `-shm`** (cohérente à l'arrêt, pm2 est déjà stoppé) avec avertissement explicite « non vérifiée » — la mise à jour continue, le `npm ci` répare, la prochaine mise à jour refera un snapshot vérifié.
+2. **Restauration** (update et rollback) : les `-wal`/`-shm` de la sauvegarde sont restaurés s'ils existent (cas des sauvegardes brutes ; les VACUUM INTO n'en ont pas).
+3. **Rollback dégradé** : `integrity_check` sauté avec avertissement « NON VÉRIFIÉE » si `better-sqlite3` est indisponible.
+
+**Tests** : `scripts/test-update.sh` — scénarios **F** (meilleur-sqlite3 indisponible → « sauvegarde brute, non vérifiée », mise à jour menée à terme, sauvegarde de secours présente) et **F2** (rollback dégradé, restauration « NON VÉRIFIÉE » assumée) — 13 assertions au total, toutes vertes.
+
+**Fichiers** : `update.sh`, `scripts/test-update.sh`, `docs/{correctifs,guide-test-proxmox}.md`
+
+**État** : livré sur beta — le fallback a été écrit APRÈS observation de l'échec réel sur le CT (la version C-58 y a bloqué la sauvegarde) ; le CT est repassé sur un `npm ci` sain puis mis à jour normalement, incident clos.
+
+---
+
+## C-60 — CT Proxmox : npm ci échoue faute d'outils de compilation (node-gyp) (réalisé)
+
+**Problème** : sur le CT, `npm ci` (racine, workspaces) échoue sur `better-sqlite3` — `gyp ERR! not found: make`. Pourtant `better-sqlite3@13` n'a **aucun script d'installation** et embarque ses binaires précompilés (`prebuilds/linux-x64.node`) : c'est la passe de rebuild de npm (node-gyp 11, pour les paquets à `binding.gyp`) qui exige `make`/`g++` — absents du CT créé par le guide (le runner GitHub CI les a préinstallés, d'où une CI verte). L'installation d'origine (pre-workspaces) n'y était jamais passée, le problème n'apparaît qu'au premier `npm ci` racine sur le CT.
+
+**Correctif** :
+1. `scripts/proxmox-install.sh` : installe `python3 make g++` en tête de script (prérequis node-gyp) — un CT frais devient autonome.
+2. `update.sh` : le message d'échec de `npm ci` pointe vers le prérequis (make/g++ — Dépannage du guide).
+3. Guide : nouvelle ligne Dépannage (`gyp ERR! not found: make`).
+
+**Test** : non reproductible en local (outils présents / scripts d'install bloqués par npm 11) ; **validé sur le CT par le propriétaire** — `apt install -y make g++` puis `npm ci` racine OK (better-sqlite3 compilé), suite de remise en route complète.
+
+**Fichiers** : `scripts/proxmox-install.sh`, `update.sh`, `docs/{correctifs,guide-test-proxmox}.md`
+
+**État** : livré sur beta, validé sur le CT.
+
+---
+
+## C-59 — CI : tests front instables sous charge du runner (réalisé)
+
+**Problème** : la CI échoue sur « Tests front » pour les runs C-57 et C-58 — 8 puis 6 fichiers en échec, **des ensembles différents à code identique** : non-déterminisme, pas un bug fonctionnel. Reproduction locale par famine CPU (24 processus consommateurs + suite `-P 8`) : mêmes erreurs que la CI (« boutons… trouvés 0 », « titre absent », « introuvable ») — toujours un **DOM non rendu après un délai fixe** (`setTimeout(120-400 ms)`).
+
+**Cause** : les tests jsdom attendent des délais fixes après montage React ; le harnais lançait 22 process tsx lourds avec `xargs -P 8` sur un runner GitHub à 4 vCPU — chaque process étant privé de CPU par moments, un délai de 150 ms pouvait expirer avant le commit du rendu React. De plus, la sortie des tests était **jetée** (`>/dev/null 2>&1`) : aucun diagnostic possible depuis la CI ; et `test:seq` (syntaxe bash) était exécuté par cmd.exe sous Windows — cassé.
+
+**Correctif** (`web/scripts/run-tests.sh` réécrit) :
+1. **Parallélisme adaptatif** : la moitié des cœurs, borné à [2, 8] — sur le runner dédié du job web, 2 process au lieu de 8 sur 4 vCPU (contention divisée par 4).
+2. **Retry** : chaque fichier est réessayé une fois en cas d'échec (un vrai bug échoue deux fois ; une famine CPU transitoire est résorbée).
+3. **Diagnostics** : la sortie d'un test échoué deux fois est affichée (15 dernières lignes) — plus de « ÉCHEC: fichier » muet en CI.
+4. `--seq` : mode séquentiel du harnais, `test:seq` réparé sous Windows (plus de boucle bash dans package.json).
+   Fragilité résiduelle documentée : les délais fixes des tests restent sensibles à une famine CPU extrême (reproduit en local avec 24 hogs même avec retry) ; la conversion en attentes conditionnelles (helper `waitFor`) des 22 fichiers est une vague à part si la CI flake encore.
+
+**Tests** : suite complète verte en local en parallèle (8,7 s) et en séquentiel (`test:seq`, réparé) ; stress famine CPU documenté (7 échecs résiduels sous 24 hogs — hors conditions réelles du runner).
+
+**Fichiers** : `web/scripts/run-tests.sh`, `web/package.json`, `docs/{correctifs,guide-test-proxmox}.md`
+
+**État** : livré sur beta.
+
+---
+
+## C-58 — update.sh ne peut plus laisser l'application à l'arrêt (relance garantie) (réalisé)
+
+**Problème** : mise à jour déclenchée depuis **/deploy sur le CT — le serveur est resté injoignable**. Analyse initiale sans les logs du CT, **confirmée depuis par les logs du CT** (l'incident complet est reconstitué en C-60/C-61 : l'ancien `cd server && npm ci` pré-C-57 a vidé `server/node_modules` avant d'échouer, puis le `npm ci` racine a échoué faute de `make` — app en crash-loop, et le script mourait avant toute relance) : `set -euo pipefail` interrompt le script au premier échec, mais seules les étapes prévues passaient par `die()` — qui relance pm2. Un échec sur une commande **non gardée** (`git fetch`, `git reset`, `chmod`, purge des sauvegardes, `pm2 save`) tuait le script **après le `pm2 stop`**, avant toute relance : pm2 restait arrêté, serveur muet, jusqu'à une intervention manuelle. S'y ajoutait le risque structurel d'un script qui se réécrit lui-même (`git reset` remplace update.sh pendant son exécution ; bash bufférise les petits scripts mais relit le fichier au-delà de son tampon).
+
+**Correctif** :
+1. **`relaunch()` idempotent + `trap EXIT`** : toute sortie non nette du script (échec imprévu, `set -e` sur une commande non gardée) relance l'application avant de sortir — pm2 ne peut plus rester à l'arrêt, quelle que soit la cause de mort. `die()` partage la même relance (jamais de double relance).
+2. **Commandes gardées** : `git fetch`/`git reset` passent par `die()` avec message explicite ; `chmod` de la sauvegarde, purge des anciens backups et `pm2 save` deviennent non fatals.
+3. **Auto-snapshot** : update.sh s'exécute depuis une copie hors dépôt (`server/data/.update-snapshot.sh`, non suivie par git) — immunisé contre sa propre réécriture par `git reset`, quelle que soit la taille du script. Le rollback (qui ne touche pas au dépôt) et une copie invoquée hors du dépôt restent en exécution directe.
+
+**Tests** : `scripts/test-update.sh` (runtime : dépôt git temporaire + stubs pm2/node/curl/npm, `npm run test:update`) — 4 scénarios, 9 assertions : mise à jour où update.sh est lui-même réécrit (mène à terme via le snapshot), `git fetch` en échec (die + relance pm2), abort brutal non gardé après le `pm2 stop` (trap EXIT → relance), rollback (sauvegarde restaurée, `integrity_check` via le stub, app relancée). Branché en CI (job serveur).
+
+**Fichiers** : `update.sh`, `scripts/test-update.sh` (nouveau), `package.json` (script `test:update`), `.github/workflows/ci-cd.yml`, `docs/{correctifs,roadmap,guide-test-proxmox}.md`
+
+**État** : livré sur beta.
+
+---
+
+## C-57 — Vague 9 (fin) : CI fonctionnelle, lint web, audit, sauvegardes VACUUM INTO, branche de déploiement (réalisé)
+
+**Problème** : la CI livrée en C-56 était un brouillon non fonctionnel (jobs joués à la racine d'un monorepo workspaces, `npm run typecheck` inexistant côté serveur) ; `update.sh` restait cassé par la migration workspaces de C-56 (`npm ci` et lockfile cherchés dans `server/` et `web/`) ; la sauvegarde de la base copiait brutalement `.db` + `-wal` + `-shm` (image possiblement incohérente, résidus à gérer au rollback) ; pas de lint web, pas de porte `npm audit`, branche de déploiement en dur ; `test-ci-cd.sh` (test volontairement cassant poussé sur beta) traîné dans le dépôt.
+
+**Correctif** :
+1. **CI** (`.github/workflows/ci-cd.yml` réécrit) : `npm ci` unique à la racine puis scripts par workspace (`-w server` / `-w web`), portes **lint + typecheck + build + tests** des deux côtés, job **audit** (`npm audit --omit=dev --audit-level=high`), déclenché sur push et PR `beta`/`main`, badge README.
+2. **Lint/format** : `web/eslint.config.js` (typescript-eslint `recommended`, `no-unused-vars` avec convention `_`), scripts `lint`/`typecheck` côté web et `typecheck`/`format` côté serveur, Prettier configuré à la racine (`.prettierrc` + `.prettierignore`, style du code existant) — lint vert sur `server` et `web` (24 erreurs web corrigées : code mort, imports/variables inutilisés, deux `eslint-disable react-hooks` sans plugin correspondant).
+3. **Sauvegardes cohérentes** : `server/scripts/backup-db.mjs` — `VACUUM INTO` (snapshot en un seul fichier, WAL inclus, écriture impossible sur une sauvegarde existante) **+ `PRAGMA integrity_check`** de la copie ; `update.sh` sauvegarde, vérifie, et vérifie aussi la base **après restauration** (rollback) ; plus de `-wal`/`-shm` à recopier.
+4. **update.sh adapté aux workspaces** : `npm ci` à la racine (lockfile racine, garde-fou `better-sqlite3` résolu depuis la racine), plus de référence aux lockfiles supprimés ; idem `scripts/proxmox-install.sh`.
+5. **Branche de déploiement paramétrable** : `MODOP_DEPLOY_BRANCH` (env) > fichier `.deploy-branch` > `beta` par défaut — la production peut viser `main` sans toucher au script.
+6. **Nettoyages** : `test-ci-cd.sh` supprimé (il cassait volontairement le build et poussait sur beta), `jest`/`@types/jest` retirés du package.json racine (jamais utilisés — tests `node:test`), résidus non suivis retirés (`.github/eslintrc.json`, `.github/prettierrc`, `server/src/db/index.ts`), `.vscode/` ignoré.
+
+**Tests** : `server/test/backup-restore.test.ts` (3 tests runtime, vraie base better-sqlite3 : snapshot VACUUM INTO avec écritures WAL non checkpointées → restauration → `integrity_check` ok + données intactes ; refus d'écraser une sauvegarde ; détection d'une base corrompue) — suite serveur 117/117, lint vert server + web, build tsc + vite OK.
+
+**Fichiers** : `.github/workflows/ci-cd.yml`, `README.md`, `package.json` + `package-lock.json`, `.prettierrc` + `.prettierignore` (nouveaux), `.gitignore`, `web/eslint.config.js` (nouveau), `web/package.json`, `server/package.json`, `server/scripts/backup-db.mjs` (nouveau), `server/test/backup-restore.test.ts` (nouveau), `update.sh`, `scripts/proxmox-install.sh`, `web/src/step-canvas.tsx`, `web/src/pages/{editor,list,deploy}.tsx`, `web/src/lib/*.test.*` (suppressions de code mort), `test-ci-cd.sh` (supprimé), `docs/{guide-test-proxmox,roadmap,durcissement-securite}.md`
+
+**État** : livré sur beta.
+
+---
+
+## C-56 — MFA TOTP admin (serveur) + outillage : workspaces npm, ESLint, CI, PRA (réalisé)
+
+**Problème** : issues #8 et #9 — aucun second facteur sur le login admin (auth maison), portes qualité purement manuelles (aucun CI), pas de lint automatisé, PRA non documentée.
+
+**Correctif** :
+1. **MFA TOTP (RF-79, transitoire)** : `server/src/auth/totp.ts` (lib `otpauth`) — quand `MODOP_TOTP_SECRET` est posé, le login local des comptes **admin** exige un code TOTP valide ; vérifié **après** le mot de passe, échecs tracés dans l'audit (`login_mfa_echec`), couvert par le rate-limit login ; lecteurs et SSO exemptés. Version par compte (QR, code de secours, anti-replay) + UI : vague 10.
+2. **Outillage** : migration **npm workspaces** (package.json racine, lockfile racine unique — `server/package-lock.json` retiré) ; ESLint (`eslint.config.js`, script `lint`) + Prettier côté serveur ; `tsconfig.test.json` pour le typecheck des tests.
+3. **CI / supply-chain** : `.github/workflows/ci-cd.yml` (jobs server/web sur push `beta`/`main`) — **brouillon non fonctionnel** (pas de `working-directory`, scripts appelés inexistants à la racine), correction tracée en vague 9 (issue #8) ; **Dependabot** configuré (`.github/dependabot.yml`, mises à jour npm quotidiennes).
+4. **PRA** : `docs/plan-de-reprise.md` (brouillon ; l'exercice chronométré reste à faire — vague 10, issue #9).
+5. Nettoyages : `deployRouter()` / `staticPhotos()` n'exigent plus le `db`, code mort et variables inutiles retirés, `photosDir()` résolu à chaque appel.
+
+**Tests** : `server/test/mfa-totp.test.ts` (7 tests runtime : MFA active, code valide/invalide, login admin sans code / mauvais code / bon code, lecteur sans TOTP) — suite serveur 111/111, build tsc OK, build + tests front OK.
+
+**Fichiers** : `server/src/auth/totp.ts` (nouveau), `server/src/routes/auth.ts`, `server/src/app.ts`, `server/src/routes/{deploy,export,photos}.ts`, `server/test/*` (mfa-totp nouveau + nettoyages), `server/package.json`, `package.json` + `package-lock.json` (racine, workspaces), `server/eslint.config.js` (nouveau), `server/tsconfig.test.json` (nouveau), `.github/workflows/ci-cd.yml` + `.github/dependabot.yml` (nouveaux), `docs/plan-de-reprise.md` (nouveau), `test-ci-cd.sh`
+
+**État** : livré sur beta.
+
+---
+
+## C-55 — Doc optimisée pour sessions IA : AGENTS.md, routage documentaire, journal consulté par mot-clé (réalisé)
+
+**Problème** : une nouvelle session IA devait enchaîner README (section agents verbeuse), cahier des charges, roadmap et journal des correctifs (~800 lignes) pour se situer — orientation lente et coût en tokens élevé. Le projet meal_plan démontre l'approche inverse : un point d'entrée unique dense (stack, arborescence annotée, conventions) et des pointeurs vers les docs détaillées.
+
+**Correctif** :
+1. **`AGENTS.md` à la racine** (nouveau) : contexte complet compressé — pitch, stack, commandes, arborescence annotée (routes, auth, pages, tests), conventions, env de durcissement, **routage documentaire par zone** (« pour toucher X → lire Y »), travaux en cours. Lu automatiquement par la plupart des agents IA.
+2. **README allégé** : la section « Pour les agents IA » devient un pointeur vers `AGENTS.md` (une seule source de vérité).
+3. **Note en tête de ce journal** : consultation par `grep` sur mot-clé, jamais une lecture intégrale.
+
+**Fichiers** : `AGENTS.md` (nouveau), `README.md`, `docs/correctifs.md`
+
+**État** : livré sur beta. La livraison du code MFA/CI en cours prendra le numéro **C-56**.
+
+---
+
+## C-54 — Plan d'action issues #8/#9 intégré : vagues 9-10, RF-79, MODOP_TOTP_SECRET documenté (réalisé)
+
+**Problème** : les revues externes du 2026-10-17 (issues #8 et #9 — durcissement industriel, palier sécurité entreprise) n'étaient tracées dans aucune documentation ; la MFA TOTP partiellement implémentée n'était documentée ni dans le guide de durcissement ni dans la spécification (aucun RF), et rien n'indiquait que l'UI de login ne sait pas encore saisir de code TOTP (activation du secret = admins bloqués hors de l'interface).
+
+**Correctif** : vagues **9** (CI GitHub Actions, lint/formatage, supply-chain, branche de déploiement paramétrable, observabilité, sauvegardes SQLite cohérentes) et **10** (MFA par compte, chiffrement at-rest, scan externe, PRA testé) ajoutées à la roadmap avec priorités, états constatés et critères d'acceptation des issues ; **RF-79** (MFA TOTP) ajouté au cahier des charges ; `MODOP_TOTP_SECRET` documenté dans le guide de durcissement avec son statut transitoire et l'avertissement UI ; README aligné (plage de correctifs, vagues restantes).
+
+**Fichiers** : `docs/roadmap.md`, `docs/cahier-des-charges.md`, `docs/durcissement-securite.md`, `docs/correctifs.md`, `README.md`
+
+**État** : livré sur beta (documentation seule). La livraison du code MFA/CI en cours dans l'arbre de travail prendra le numéro **C-56** (avec son entrée et ses tests, conformément aux conventions).
+
+---
+
+## C-53 — Guide utilisateur réécrit (réalisé)
+
+**Problème** : le guide n'était plus à jour — structure cassée par les ajouts successifs (des paragraphes d'édition/lecture mélangés dans « Canevas d'étape », doublons C-41, la section « Header d'édition » décrivait l'ancien bouton « + » remplacé par la barre permanente C-49/50/51), et il manquait : lecture guidée, QR, versions avec changelog, signalements côté lecteur, filtre/statut « à revoir », responsable, stats, journal d'audit, changement de mot de passe.
+
+**Correctif** : guide **réécrit entièrement**, structuré par parcours : Accueil → Connexion (+ changement de mot de passe) → **Consulter** (liste, lecture : sélecteur ▶, versions/changelog, lightbox, signalement, Guidé, QR, hors-ligne, page ⚑ Terrain) → **Créer** (bandeau vs barre d'outils sticky, étape active dynamique, étapes, photos galerie/appareil, annotations avec texte sur place et corbeille, indications, publication avec changelog, revue/responsable, suppression admin) → **Administrer** (comptes avec Prénom/Nom et modale, stats avec audit, déploiement) → Dépannage. Toutes les entrées correspondent à l'état C-51 du code.
+
+**Fichiers** : `docs/guide-utilisateur.md`
+
+**État** : ✅ livré sur beta.
+
+---
+
+## C-52 — Documentation restructurée : archive des vagues, roadmap courte, README agents (réalisé)
+
+**Problème** : la documentation s'était empilée — la roadmap contenait tout l'historique des vagues (221 lignes), le README mélangeait marketing et technique, et rien n'était optimisé pour un agent IA qui reprend le projet (perte de contexte à chaque session).
+
+**Correctif** :
+1. **`docs/archives/`** : l'ancienne roadmap (v0→v6bis, tableaux d'audit inclus) et la revue de cahier des charges y sont archivées — l'historique complet reste consultable mais hors du chemin principal.
+2. **`docs/roadmap.md` (nouvelle, courte)** : ce qui est **implémenté** (v0→v6bis + C-01→C-51, résumé par domaine) et ce qui **reste** (vague 7 : workflow validation, comparaison versions, SSO réel, PWA cache ; vague 8 : arborescence, menu, drag&drop, parents, statut éditorial).
+3. **`README.md` simplifié** : « Ce que ça fait » (humains), installation, table des docs, dev — plus une section **« Pour les agents IA »** : branche de travail (`beta`), stack, structure, conventions (C-xx, portes qualité, tests runtime obligatoires, piège du formatage compacté), variables d'env, et où lire l'historique avant de retravailler une zone.
+4. **`docs/cahier-des-charges.md` v1.5** : statut mis à jour (v0→v6bis + C-01→C-51), chaque RF marqué *implémenté* (RF-13, 16, 31, 75 avec détails) ou *restant* (RF-62/63/64/66 vague 8, RF-67/76 partiels), état du lot 1 (✅ atteint).
+
+**Fichiers** : `README.md`, `docs/roadmap.md`, `docs/cahier-des-charges.md`, `docs/archives/` (roadmap + revue déplacées)
+
+**État** : ✅ livré sur beta.
+
+---
+
+## C-51 — Barre d'outils : sticky sous le bandeau (réalisé)
+
+**Problème** : C-50 avait sorti la barre du bandeau, mais elle restait en haut de page — au défilement, les outils disparaissaient : inutilisables sur un MO long.
+
+**Correctif** : la barre devient **sticky** et se colle **juste sous le bandeau** qui est lui-même sticky sous la nav — les trois niveaux (nav → bandeau léger → barre d'outils) restent visibles en permanence pendant le défilement. La hauteur du bandeau est publiée en variable CSS (`--bandeau-h`, même mécanique que `--nav-h` via ResizeObserver) pour que la barre s'accroche à la bonne position quelle que soit la hauteur du bandeau (détails repliés/dépliés). `zIndex` 25 — sous le bandeau (30), au-dessus du contenu ; fond opaque, bord et ombre pour rester lisible par-dessus les étapes.
+
+**Fichiers** : `web/src/pages/editor.tsx`
+
+**État** : ✅ livré sur beta — tsc + build verts (pas de test supplémentaire, sur demande).
+
+---
+
+## C-50 — Barre d'outils : sortie du bandeau, rangée indépendante + labels (réalisé)
+
+**Problème** : après C-49, la barre vivait DANS le bandeau sticky — l'ensemble (titre, Publier, replier, sélecteur d'étape, + 12 boutons d'outils) formait une masse compacte illisible, et le header n'était « plus du tout compréhensible ».
+
+**Correctif** :
+1. **Le bandeau redevient léger** : titre + Enregistrement…, Détails, Publier, replier, sélecteur d'étape active. Rien d'autre.
+2. **La barre d'outils est une rangée indépendante juste sous le bandeau** (carte surface avec bordure, comme le reste de la page) — groupes conservés : Étape | Insertion | Indications | Actions.
+3. **Labels sur les boutons** : Photos, Flèche, Zone, Texte, Couleur, Indications portent leur nom en toutes lettres à côté de l'icône (0.75 rem) — plus besoin de survoler pour comprendre. Compteur conservé sur Indications.
+4. Popovers inchangés (galerie/appareil, couleurs, pictos) ; fermetures Échap/clic extérieur conservées.
+
+**Tests** : `header-tools` (barre + labels + popover couleurs), `empty-tools`, `photo-source` — tous passent sans modification supplémentaire ; 107/107 serveur.
+
+**Fichiers** : `web/src/pages/editor.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front + 107/107 tests serveur verts.
+
+---
+
+## C-49 — Palette d'édition refondue : barre d'outils permanente (réalisé)
+
+**Problème** : la palette exigeait un clic sur « Outils » pour apparaître, s'étalait en une rangée dense sans hiérarchie (photos, 3 formes, 4 pastilles couleur, pictos, suppressions tout au même niveau), et disparaissait à chaque erreur de manipulation.
+
+**Refonte (inspiration Figma / Google Docs / Procreate)** :
+1. **Barre permanente** : plus de bouton « Outils » — la barre est visible en permanence sous le bandeau (une ligne, wrap sur mobile), tous les outils à un clic.
+2. **Groupes sémantiques** séparés par des séparateurs fins : **Étape** (+ étape) | **Insertion** (photos, flèche, zone, texte, couleur) | **Indications** (pictos) | **Actions** (suppression étape, objets sélectionnés — en rouge, uniquement contextuelles).
+3. **Couleur compacte** : les 4 pastilles ne sont plus étalées — un bouton pastille affiche la **couleur courante**, le clic ouvre un popover de choix (fermeture Échap/clic extérieur). Un seul bouton au lieu de quatre.
+4. État actif marqué (fond accent) sur l'outil et le picto en cours ; les menus contextuels (photos galerie/appareil, pictos, couleurs) restent des popovers.
+
+**Tests** : `header-tools` réécrit (barre visible sans clic, bouton Outils disparu, groupes présents, 4 couleurs dans le popover) ; `empty-tools` (+ étape visible sans clic sur un MO vide) ; `photo-source` (menu Photos accessible directement).
+
+**Fichiers** : `web/src/pages/editor.tsx`, `web/src/lib/header-tools.test.ts`, `web/src/lib/empty-tools.test.tsx`, `web/src/lib/photo-source.test.ts`
+
+**État** : ✅ livré sur beta — 107/107 tests serveur, tsc + build + tous tests front verts.
+
+---
+
+## C-48 — Comptes : bug « sans nom » persistant + fenêtre d'édition complète (réalisé)
+
+**Problème** : 1) après validation de l'édition, le compte restait « sans nom » ; 2) l'édition inline (C-47) était jugée peu pratique.
+
+**Cause du bug (racine, prouvée en runtime)** : le `GET /api/admin/users` **omettait** `first_name`/`last_name` dans son SELECT — le PUT écrivait correctement, mais le refresh de la liste renvoyait les comptes sans les noms, et l'affichage retombait sur « (sans nom) ». Corrigé : le SELECT du listing renvoie désormais les deux colonnes (prouvé : PUT Jean/Moulin → GET renvoie Jean/Moulin).
+
+**Correctif** : l'édition inline est remplacée par une **fenêtre (modale) d'édition complète du compte** : Prénom, Nom, **Rôle** et **Compte actif** pré-remplis — Enregistrer envoie le PUT complet et rafraîchit ; protections conservées (pas d'auto-rétrogradation/désactivation de soi-même, garde-fou « à revoir » à la désactivation C-45) ; fermeture par Annuler, clic sur le fond ou Échap.
+
+**Test** : `admin-name-edit.test.ts` réécrit — modale ouverte avec les 4 champs pré-remplis, PUT complet (noms + rôle + actif) vers le bon compte, modale fermée après enregistrement ; serveur : le GET renvoie les noms (scénario runtime C-45 étendu implicitement par la correction, 107/107).
+
+**Fichiers** : `server/src/routes/admin.ts` (SELECT du listing corrigé), `web/src/pages/admin.tsx` (modale), `web/src/lib/admin-name-edit.test.ts`
+
+**État** : ✅ livré sur beta — 107/107 tests serveur, tsc + build + tous tests front verts.
+
+---
+
+## C-47 — Comptes existants : édition inline du Prénom/Nom (réalisé)
+
+**Problème** : les comptes créés avant C-45 n'ont pas de prénom/nom, et la page Comptes n'offrait pas de moyen de les renseigner (seule la création portait les champs).
+
+**Correctif** : **édition inline** dans la liste des comptes — un bouton **✎** à côté de chaque nom ouvre deux champs Prénom/Nom (pré-remplis) avec **✓** (Valider) et Annuler ; la validation envoie le `PUT` admin (`first_name`/`last_name`) et rafraîchit la liste. Les comptes sans nom affichent « (sans nom) » pour signifier le champ à compléter.
+
+**Test** : `admin-name-edit.test.ts` — compte sans nom rendu, bouton ✎ présent, champs ouverts en édition, saisie conservée, PUT émis vers le bon compte avec `first_name`/`last_name`.
+
+**Fichiers** : `web/src/pages/admin.tsx`, `web/src/lib/admin-name-edit.test.ts`
+
+**État** : ✅ livré sur beta — 107/107 tests serveur, tsc + build + tous tests front verts.
+
+---
+
+## C-46 — Suppression d'un MO : case décochée par défaut + admins uniquement (réalisé)
+
+**Problème** : à la dernière étape de confirmation de suppression, la case « Je comprends… » arrivait **cochée** (le même état servait de flag d'étape et de case), et tout auteur pouvait supprimer définitivement un MO.
+
+**Correctif** :
+1. **Case décochée par défaut** : l'état d'étape et la case sont désormais séparés (`deleteAck`) — à l'étape finale, la case est **décochée** et le bouton « Supprimer définitivement » **désactivé** jusqu'à cochetée explicite. Annuler réinitialise tout.
+2. **Admins uniquement** : côté serveur, `DELETE /api/workflows/:id` passe de `requireAuth("author")` à **`requireAuth("admin")`** — la destruction irréversible (cascade étapes/photos/versions) est une opération de gestion. Côté front, la section de suppression n'est **visible que des admins**.
+
+**Tests** : serveur — l'auteur reçoit **403**, l'admin supprime (cascade prouvée) dans `workflows.test.ts` et `features.test.ts` ; front — `delete-guard.test.ts` : section invisible d'un non-admin, visible d'un admin, case décochée, bouton désactivé.
+
+**Fichiers** : `server/src/routes/workflows.ts`, `web/src/pages/editor.tsx`, `server/test/workflows.test.ts`, `server/test/features.test.ts`, `web/src/lib/delete-guard.test.ts`
+
+**État** : ✅ livré sur beta — 106/106 tests serveur, tsc + build + tous tests front verts.
+
+---
+
+## C-44 — Accueil : groupes Publié/Brouillon et familles repliables (réalisé)
+
+**Problème** : le regroupement C-43 affichait tout déplié — pas moyen de rabattre un état ou une famille pour focaliser la liste.
+
+**Correctif** : les en-têtes **« Publié »/« Brouillon »** et chaque **famille** sont des boutons de repli (chevron ▸ pivotant, compteur toujours visible, `aria-expanded`). Replier un état masque toutes ses familles et cartes ; replier une famille masque ses cartes (l'en-tête et le compteur restent). **Persistance localStorage** (`modop-collapsed-groups`) : les replis survivent aux rechargements et navigations.
+
+**Test** : `list-groups.test.ts` étendu — replier « Publié » masque ses MO et garde le brouillon visible, le repli est persisté (`state:published` dans localStorage), déplier remonte les cartes ; replier la famille « Mécanique » masque ses MO sans toucher aux autres familles, en-tête et compteur conservés.
+
+**Fichiers** : `web/src/pages/list.tsx`, `web/src/lib/list-groups.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front + 106/106 tests serveur verts.
+
+---
+
+## C-43 — Accueil : MO regroupés par état puis famille (réalisé)
+
+**Problème** : la liste d'accueil était plate — publiés et brouillons mélangés, familles dispersées.
+
+**Correctif** : la liste regroupe désormais les MO par **état** (« Publié » en tête, avec compteur ; « Brouillon » ensuite) puis par **famille** (tri alphabétique, « Sans famille » pour les MO sans famille renseignée). Chaque groupe : en-tête d'état avec compteur-badge, nom de famille, cartes compactes inchangées (titre, référence, ✎). Les filtres et le tri existants continuent de s'appliquer avant le regroupement.
+
+**Test** : `web/src/lib/list-groups.test.ts` — 4 MO (brouillon méca, publié élec, publié méca, publié sans famille) : en-têtes Publié AVANT Brouillon, familles dans l'ordre attendu (Électrique, Mécanique, Sans famille, puis Mécanique en brouillon), sections peuplées correctement.
+
+**Fichiers** : `web/src/pages/list.tsx`, `web/src/lib/list-groups.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front (dont le nouveau) + 106/106 tests serveur verts.
+
+---
+
+## C-42 — Photos : galerie OU appareil photo au choix + bandeau d'action (réalisé)
+
+**Problème** : le bouton Photos n'offrait que le sélecteur de fichiers unique — sur mobile, pas de choix direct entre la galerie et l'appareil photo (l'OS propose parfois les deux, pas toujours) ; et le bandeau « cette étape n'a pas de photo » était un simple texte sans action.
+
+**Correctif** :
+1. Le bouton **Photos** de la palette ouvre un menu deux choix : **« 🖼 Depuis la galerie »** (sélecteur de fichiers, multi-sélection) et **« 📷 Prendre une photo »** (input `capture="environment"` — **capture natif du navigateur**, ouvre directement l'appareil photo sur mobile, l'explorateur de fichiers sur desktop — sans couche supplémentaire, comme n'importe quelle application).
+2. Le bandeau **« Cette étape n'a pas de photo »** porte désormais les deux **boutons d'action directs** (Galerie / Prendre une photo) — plus besoin d'ouvrir la palette pour ajouter la première photo d'une étape.
+3. Fermeture du menu au clic extérieur/Échap, même ergonomie que les autres menus ; l'étape ciblée reste l'étape active (C-41).
+
+**Test** : `web/src/lib/photo-source.test.ts` — menu avec les deux options, input `capture="environment"` présent, input galerie `multiple` intact, boutons du bandeau branchés (clic sur « Prendre une photo » → input capture déclenché, prouvé par interception).
+
+**Fichiers** : `web/src/pages/editor.tsx`, `web/src/lib/photo-source.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front (dont le nouveau) + 106/106 tests serveur verts.
+
+---
+
+## C-41 — Étape active dynamique + saisie du texte sur place (réalisé)
+
+**Problème** : l'étape active du sélecteur ne changeait que si on la choisissait explicitement ou cliquait son titre — éditer une autre étape (poser un outil, cliquer le canevas, taper la description) ne la rendait pas active : la palette et le bouton Supprimer continuaient de cibler l'ancienne étape, source d'erreurs. Et l'outil Texte affichait son champ de saisie en **bas de l'étape**, loin du point cliqué.
+
+**Correctif** :
+1. **Étape active automatique** : le `StepCanvas` émet `onInteract` à toute interaction (pointerdown dans le canevas, pose d'outil) ; l'éditeur rend l'étape active. La frappe dans le titre ou la description d'une étape la rend aussi active. Le sélecteur, la palette et les actions suivent l'étape réellement travaillée — plus besoin de sélectionner avant d'agir.
+2. **Texte saisi sur place** : l'input de l'outil Texte apparaît **dans le canevas, au point cliqué** (style du futur texte : fond de la couleur choisie, texte blanc, bordure blanche) — plus de bloc en bas d'étape. Entrée valide, Échap annule, et la perte de focus (tap ailleurs) valide aussi.
+
+**Test** : `web/src/lib/active-step.test.ts` — déplier l'étape 2, revenir à l'étape 1 via le sélecteur, cliquer dans le canevas de l'étape 2 : le sélecteur passe à l'étape 2 (marqueur ▶).
+
+**Fichiers** : `web/src/step-canvas.tsx` (onInteract, input texte in-canvas), `web/src/pages/editor.tsx` (branchement onInteract, titre/description activent l'étape), `web/src/lib/active-step.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front (dont le nouveau) + 106/106 tests serveur verts.
+
+---
+
+## C-40 — Le VRAI bug des flèches : bond au premier déplacement (réalisé)
+
+**Problème** ( уточнение de C-38) : une flèche sélectionnée sautait **d'un bond** non pas au clic, mais **au moindre déplacement** — le bond valait la moitié de la longueur de la flèche, dans la direction du geste.
+
+**Cause racine** : incohérence entre le point de saisie et l'assignation au move. Le grab (offset pointeur → forme) est calculé depuis le **centre** de la flèche (`(x1+x2)/2`), mais le move assignait la position du pointeur moins le grab (= le nouveau **centre**) **directement à `x1`** — qui est le point de **départ** de la flèche. La flèche se retrouvait donc translatée de la moitié de sa longueur au premier mouvement. (C-38 avait traité un vrai problème connexe — le micro-glissement du tap — mais pas celui-ci.)
+
+**Correctif** : le move conserve le **centre sous le pointeur** — `x1 = centre.x − lenX/2`, `x2 = centre.x + lenX/2` (idem en y), avec bornage aux bords du canevas. La flèche suit exactement le geste, sans bond. (Les zones et photos étaient déjà cohérentes : leur grab est relatif au coin d'origine.)
+
+**Test** : scénario C-40 dans `step-canvas-adaptive.test.ts` — saisir une flèche par son centre, glisser de (+0.025, +0.05) : les coordonnées rendues bougent d'exactement le delta du geste (l'assertion à ±0.005 aurait détecté le bond d'avant). Au passage : mock `clientWidth` en jsdom (le rendu SVG lit `clientWidth`, toujours 0 en jsdom) et attente d'un tick entre pointerdown et pointermove (le temps que l'effet attache les listeners window).
+
+**Fichiers** : `web/src/step-canvas.tsx`, `web/src/lib/step-canvas-adaptive.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front (9 OK dans le canvas adaptatif) + 106/106 tests serveur verts.
+
+---
+
+## C-39 — Palette d'outils : persistante pendant l'usage + scroll recalé à l'ouverture (réalisé)
+
+**Problème** : la palette se refermait au premier clic dans le canevas (poser une flèche = rouvrir la palette pour l'outil suivant) ; et à l'ouverture, la palette — posée en absolu sous le bandeau sticky — pouvait dépasser du bas de l'écran sans recalage du scroll.
+
+**Correctif** :
+1. La palette **reste affichée** pendant l'utilisation des outils (pose de formes, sélection, photos…) — fermeture uniquement par le bouton Outils, Échap ou navigation. Les pictos et menus secondaires conservent leur fermeture au clic extérieur (menus contextuels, pas palettes de travail).
+2. À l'ouverture, le scroll est **recalé** : si le bas de la palette dépasse du viewport, la fenêtre défile doucement pour que la palette soit entièrement visible (le bas du bandeau étendu devient la ligne de flottaison).
+
+**Fichiers** : `web/src/pages/editor.tsx`
+
+**État (C-38/C-39)** : ✅ livrés sur beta — tsc + build + tous tests front (dont le scénario C-38) + 106/106 tests serveur verts.
+
+---
+
+## C-37 — Palette d'édition : les outils « sautaient » d'~1 cm au clic (tactile) (réalisé)
+
+**Problème** : sur écran tactile, sélectionner un outil dans la palette (flèche, zone, texte…) déplaçait les boutons d'environ 1 cm. Cause : la règle `@media (pointer: coarse) { button { min-height: 44px; min-width: 44px } }` s'applique à TOUS les boutons — les outils compacts (~30 px) grandissaient au premier rendu tactile… mais surtout, la palette étant en `flexWrap: wrap`, l'agrandissement des boutons au clic provoquait un **reflow** (passage à la ligne des voisins), déplaçant tout le contenu d'environ une ligne ≈ 1 cm — sous le doigt, juste au moment du tap.
+
+**Correctif** : classe `.tool-icon-btn` pour les boutons d'icônes de la palette (Photos, Flèche, Zone, Texte, pastilles de couleur) — **taille tactile fixe dès le rendu** (2.4 rem / 38 px, icônes 20 px) au lieu du 44 px général qui ne s'appliquait qu'après le premier toucher. Plus aucun changement de taille au clic → plus de reflow → plus de déplacement. La règle 44 px reste pour les autres boutons (texte, actions).
+
+**Fichiers** : `web/src/styles.css` (règle `.tool-icon-btn` dans le bloc pointer: coarse), `web/src/pages/editor.tsx` (classe appliquée aux 3 groupes de boutons)
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front + 106/106 tests serveur verts.
+
+---
+
+## C-36 — Lecture guidée : Précédent/Suivant/Terminé accrochés au bas de l'écran (réalisé)
+
+**Problème** : dans la lecture guidée, la rangée Précédent/Suivant/Terminé était le 3ᵉ rang de la grille du `main` — elle ne « collait » au bas que si l'étape remplissait l'écran ; dès que le contenu était long (grande photo, description détaillée), les boutons défilaient hors de vue, hors de la zone pouce.
+
+**Correctif** :
+1. La barre de navigation devient **`position: fixed` en bas de l'écran** (pleine largeur, fond opaque `var(--bg)`, bordure + ombre légère, `zIndex` 200, safe areas iPhone respectées gauche/droite/bas).
+2. Le `main` passe à `minHeight: 100dvh` (viewport dynamique — barre d'URL mobile incluse) avec un `paddingBottom` réservant la hauteur de la barre : le contenu défile sous la barre sans jamais être masqué.
+3. L'article d'étape perd son `overflowY: auto` interne — c'est la page qui défile (comportement naturel du scroll au doigt), la barre reste immobile.
+
+**Test** : `guided-finish.test.ts` étendu — la nav est rendue `position: fixed` avec `bottom: 0`, fond opaque, bouton Précédent présent (en plus du scénario B-A1 Terminé navigue).
+
+**Fichiers** : `web/src/pages/guided-reader.tsx`, `web/src/lib/guided-finish.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front verts.
+
+---
+
+## C-35 — Remontées terrain : page dédiée, lecteur allégé (réalisé)
+
+**Problème** : l'historique des signalements terrain (à traiter + résolus, avec actions « Corriger l'étape » et « Résoudre ») s'affichait en pleine page de lecture — un contenu de gestion qui n'a pas sa place dans la consultation atelier, et qui poussait les étapes vers le bas.
+
+**Correctif** :
+1. Nouvelle page dédiée **`/workflow/:id/feedbacks`** (auteur+) : section **« À traiter »** (compteur, actions Corriger l'étape / Résoudre) puis **« Traitées »** (historique des signalements résolus avec résolveur et date, opacité réduite). Cartes individuelles, compteurs en badges, mêmes conventions compactes que le reste (C-34).
+2. Le **lecteur n'affiche plus la section** — seul un lien discret **« ⚑ Terrain »** (auteur+) dans le header y renvoie. Le formulaire « Signaler un problème sur cette étape » reste bien sûr en lecture : c'est l'entrée du flux terrain.
+3. La page dédiée charge ses données elle-même ; le lecteur ne fait plus la requête `listFeedback` (une requête en moins pour chaque lecteur).
+
+**Test** : `web/src/lib/feedbacks-page.test.ts` — page dédiée rendue : sections « À traiter »/« Traitées » avec compteurs, signalement ouvert avec bouton Résoudre, signalement résolu dans l'historique avec mention du résolveur, lien Corriger l'étape.
+
+**Fichiers** : `web/src/pages/feedbacks.tsx` (nouveau), `web/src/pages/reader.tsx` (section retirée, lien ajouté), `web/src/app.tsx` (route), `web/src/lib/feedbacks-page.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front (dont le nouveau) + 106/106 tests serveur verts.
+
+---
+
+## C-34 — Lecteur : sélecteur « Aller à » aligné sur l'éditeur + tailles rationalisées (réalisé)
+
+**Problème** : dans la page de lecture, le sélecteur « Aller à l'étape… » était un sélecteur **jetable** (`value=""` réinitialisée à chaque rendu) : pas de repère de l'étape courante, re-choisir la même étape ne scrollait pas, libellé différent de l'éditeur. Les titres et champs du lecteur suivaient des tailles disparates (h1 1.05/0.95 rem selon la largeur, h2 par défaut ~1.5 rem, selects 0.9 rem avec padding 0.45 rem — contre 0.85 rem/0.25 rem dans l'éditeur compact).
+
+**Correctif** :
+1. Le sélecteur reprend la **logique de l'éditeur** : état contrôlé `activeStep`, option active marquée **▶**, scroll fluide **différé de 80 ms** (le temps du re-rendu), aria-label et title identiques (« Étape affichée — choisir pour y aller »). Re-sélectionner la même étape fonctionne désormais.
+2. Tailles rationalisées aux conventions compactes de l'éditeur : h1 du document 1 rem (+ ellipsis), h2 d'étape 1 rem/600 (au lieu du ~1.5 rem par défaut), les deux sélecteurs (étape + version) en 0.85 rem/600 avec padding 0.25 rem, liens Guidé/QR 0.8 rem.
+
+**Test** : `web/src/lib/reader-goto.test.ts` — sélecteur contrôlé prouvé : valeur initiale 0, marqueur ▶ sur l'option active, choix de l'étape 2 → valeur synchronisée et ▶ déplacé (l'ancienne étape ne le porte plus).
+
+**Fichiers** : `web/src/pages/reader.tsx`, `web/src/lib/reader-goto.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front (dont le nouveau) + 106/106 tests serveur verts.
+
+---
+
+## C-33 — Suite de tests rationalisée : 32 s + 55 s → 9 s + 16 s (réalisé)
+
+**Problème** : les tests prenaient ~87 s au total. Mesures : côté serveur, chaque fichier de test traînait ~3,5 s APRÈS ses tests — les connexions keep-alive d'undici (`fetch`) maintenaient l'event loop en vie ; `server.unref()` et `process.on("exit")` ne suffisaient pas (le handler exit arrive après l'attente). Côté front, chaque fichier est un process tsx séparé (~1,1 s de boot + ~1,6 s d'import jsdom) exécuté en séquentiel.
+
+**Correctifs** :
+1. Serveur : hook `after()` de `node:test` dans chaque fichier — `server.closeAllConnections()` tue les keep-alive immédiatement à la fin des tests, puis `server.close()`. Fichier : 4,8 s → ~1 s. Suite : **32 s → 9 s** (103 pass, 3 skips webdist inchangés).
+2. Front : `web/scripts/run-tests.sh` — exécution parallèle des fichiers (xargs -P 8), **propagation d'échec vérifiée** (un test qui échoue → exit 1). Suite : **55 s → 16 s**. `npm test` dans `web/` pointe dessus ; `test:seq` conserve le séquentiel pour le débogage.
+
+**Fichiers** : `server/test/*.test.ts` (24 fichiers, hook after), `web/scripts/run-tests.sh`, `web/package.json`, `README.md`
+
+**État** : ✅ livré sur beta — 106/106 tests serveur, tous tests front verts, échec propagé prouvé.
+
+---
+
+## C-32 — Vague 6bis : correctifs de l'audit complet (4 workers, réalisé)
+
+Audit complet (sécurité, bugs, code mort, UI/UX — items S-A1..S-A5, B-A1..B-A5, D-A1..D-A4, U-B1..U-B4 détaillés dans la roadmap, vague 6bis) corrigés par 4 workers fusionnés séquentiellement sur beta.
+
+**Sécurité** : révocation immédiate des sessions au changement de rôle (S-A1) ; allowlist `MODOP_ALLOWED_HOSTS` pour `X-Forwarded-Host` (S-A2) ; payloads canvas/annotations bornés à 500 formes (S-A3) ; rate limiting 20/15 min sur les signalements terrain (S-A4) ; git interrogé en asynchrone dans la page déploiement, plus d'event loop bloquée (S-A5).
+
+**Bugs** : « Terminé ✓ » de la lecture guidée navigue vers la lecture classique (B-A1, + test) ; autosave des métadonnées 800 ms après la frappe avec badge « Enregistrement… » (B-A2, RF-16) ; uploads de photos parallèles avec progression et tolérance d'échec (B-A3) ; bandaux succès/erreur distincts dans le lecteur (B-A4) ; compression client renvoie le fichier brut si l'image n'est pas parsable (B-A5).
+
+**Code mort** : `photo-annotator.tsx` (398 lignes jamais rendues) et composant `AnnotatedPhoto` supprimés, avec leurs tests (D-A1/D-A2) ; `GET /api/admin/audit` expose enfin le journal (D-A3, + test admin 200 / auteur 403) ; dépendances de test déplacées en devDependencies (D-A4).
+
+**UI/UX** : lightbox plein écran sur les photos en lecture (U-B1, RF-31) ; stats admin lisibles — titre + référence au lieu de « workflow:12 » (U-B2) ; titres de liste repliés sur 2 lignes (U-B3) ; section « Journal d'audit » dans /stats (U-B4).
+
+**Fichiers** : serveur (`admin.ts`, `origin.ts`, `security.ts`, `deploy.ts`, `photos.ts`, `workflows.ts`, `stats.ts`, `app.ts`), front (`editor.tsx`, `guided-reader.tsx`, `reader.tsx`, `step-canvas-view.tsx`, `stats.tsx`, `list.tsx`, `api.ts`, `annotated-photo.tsx`), tests (`security.test.ts`, `guided-finish.test.ts`).
+
+**État** : ✅ livré sur beta — 106/106 tests serveur, tsc + build + tous tests front verts.
+
+---
+
+## C-31 — Désélection : clic/tap ailleurs que sur l'image (réalisé)
+
+**Problème** : une image (ou forme) sélectionnée dans le canevas d'édition ne pouvait être désélectionnée QUE par un clic souris sur le fond du canevas. Trois cas restaient bloqués : 1) au **tactile/stylo**, un tap sur le fond ne désélectionnait rien (le `return` C-19 court-circuitait tout traitement du fond au doigt) ; 2) **les formes** n'étaient jamais vidées par un clic fond (seules les photos l'étaient) ; 3) un clic **ailleurs dans l'éditeur** (champs, boutons, fond de page — hors canevas) laissait la sélection intacte.
+
+**Correctif** (`web/src/step-canvas.tsx`) :
+1. Un tap tactile/pen sur le fond démarre désormais une gesture `selrect` sans capture ni `preventDefault` : si le navigateur reprend le geste en scroll, **`pointercancel` restaure la sélection d'avant le geste** (sauvegardée dans `prevSel`) ; si c'est un vrai tap, la sélection est vidée immédiatement (sauf Maj). Le selrect tactile ne modifie plus la sélection en cours de geste (pas de sélection en direct au doigt).
+2. Le clic fond (souris comme tactile) vide **photos ET formes**, immédiatement au pointerdown (le rectangle de sélection ne réajambe la sélection qu'au relâchement s'il a une vraie surface, C-30 inchangé).
+3. Un listener `pointerdown` global (capture) vide la sélection quand le clic a lieu **hors du canevas** — les éléments marqués `data-keep-canvas-selection` (bouton « 🗑 Objets (n) » du bandeau d'édition) sont exclus pour rester fonctionnels.
+
+**Tests** : deux scénarios ajoutés à `web/src/lib/step-canvas-adaptive.test.ts` — « TAP TACTILE FOND = DÉSÉLECTION » et « CLIC HORS CANEVAS = DÉSÉLECTION » (sélection préalable prouvée par l'outline avant chaque geste).
+
+**Fichiers** : `web/src/step-canvas.tsx`, `web/src/pages/editor.tsx` (attribut `data-keep-canvas-selection` sur « 🗑 Objets »), `web/src/lib/step-canvas-adaptive.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + 15/15 tests front verts.
+
+---
+## C-01 — Étapes repliées trop hautes (réalisé)
+
+**Problème** : en mode replié, chaque carte d'étape empile la poignée de drag, les flèches ▲▼ et la corbeille 🗑 — la liste déborde verticalement et on voit peu d'étapes à l'écran.
+
+**Correctif** :
+- Flèches ▲▼ de réordonnancement retirées (le glisser-déposer de la poignée ⠿ et le sélecteur « … » du bandeau restent les deux moyens de réordonner).
+- Corbeille 🗑 retirée de la carte d'étape.
+- La suppression d'étape déménage dans la **palette d'outils du bandeau** (« + » → bouton « Supprimer l'étape », en rouge, ciblant l'étape active) — la modale de confirmation (F4) est conservée.
+
+**Fichiers** : `web/src/pages/editor.tsx`
+
+**État** : ✅ livré sur beta — build + tsc + 13 tests front verts.
+
+## C-02 — « Requête cross-site refusée » à la mise à jour (réalisé)
+
+**Problème** : après la vague 6, toutes les requêtes mutantes renvoient 403 « Requête cross-site refusée » quand Modop est servi via le **tunnel Cloudflare**. Cause : la config du tunnel force `httpHostHeader: localhost` — cloudflared réécrit le header `Host` en `localhost` tandis que le navigateur envoie `Origin: https://modop-beta.calironi.com`. L'anti-CSRF comparait `Origin` au `Host` réécrit → faux positif systémique.
+
+**Correctif (double)** :
+1. `assertSameOrigin` compare désormais l'`Origin` au **`X-Forwarded-Host`** (première valeur) sinon au `Host`, insensible à la casse. Un vrai cross-site derrière le même proxy reste refusé (test runtime).
+2. `scripts/hardening-tunnel.sh` n'écrit plus `httpHostHeader: localhost` — le tunnel préserve l'hôte public.
+
+**Si vous avez accès au CT** :
+```bash
+sed -i '/httpHostHeader/d' /etc/cloudflared/config.yml
+systemctl restart cloudflared
+```
+(ou relancer `bash scripts/hardening-tunnel.sh --tunnel-only`, qui resynchronise la config)
+
+**⚠️ Sans accès au CT (procédure dashboard Cloudflare uniquement)** — la porte de sortie : le code C-02 accepte déjà `X-Forwarded-Host`, que l'**ancienne** config du tunnel envoie (cloudflared y sauvegarde l'hôte original quand `httpHostHeader` réécrit le `Host`). Il suffit donc de faire passer la mise à jour, puis tout rentre dans l'ordre :
+
+1. Dashboard Cloudflare → **Rules → Overview → Create rule → Request Header Transform Rule**
+2. Expression : `http.host eq "modop-beta.calironi.com"`
+3. Action : **Remove** — nom d'en-tête : `Origin` (l'anti-CSRF déployé laisse passer les requêtes sans Origin)
+4. Dans Modop : **Mettre à jour depuis GitHub** → déploie le correctif C-02
+5. **Supprimer la règle Cloudflare** — le nouveau code honore X-Forwarded-Host, l'anti-CSRF refonctionne complètement ; la config cloudflared du CT n'a jamais besoin d'être modifiée
+
+**Fichiers** : `server/src/auth/origin.ts`, `scripts/hardening-tunnel.sh`, `server/test/security.test.ts`
+
+**État** : ✅ livré sur beta — 92/92 tests runtime (dont le scénario tunnel), tsc + build verts.
+
+## C-03 — Drag & drop des étapes ne fonctionne pas (réalisé)
+
+**Problème** : après C-01 (retrait des flèches ▲▼), le réordonnancement reposait uniquement sur le drag HTML5 (`draggable`) — qui **ne fonctionne pas au tactile** (limites connues des navigateurs mobiles ; point U1 de l'audit) et s'avérait fragile à la souris.
+
+**Correctif** : la poignée ⠿ passe en **Pointer Events** (même approche que le canevas, commit f766785) :
+- `pointerdown` sur la poignée → listeners `pointermove`/`pointerup`/`pointercancel` attachés au `window` (survivent aux re-renders React) ;
+- badge flottant « Déplacer "…" » suivant le doigt/curseur pendant le drag ;
+- au relâchement, la carte sous le pointeur est identifiée (`elementFromPoint` → `id="edit-step-<n>"`) → `moveStep(from, to)` (même API qu'avant) ;
+- annulation propre sur `pointercancel` ; `touch-action: none` localisé sur la poignée (le scroll de la page reste libre ailleurs).
+
+**Test** : `web/src/lib/step-drag.test.ts` — simule pointerdown/move/up en jsdom (étape 1 relâchée sur la carte 2) et prouve le `PUT /steps/reorder` avec l'ordre `[202, 101]`, plus l'absence d'attribut `draggable` sur la poignée.
+
+**Fichiers** : `web/src/pages/editor.tsx`, `web/src/lib/step-drag.test.ts`
+
+**État** : ✅ livré sur beta (`40e273d`) — tsc + build + 14/14 tests front verts.
+
+## C-04 — Boutons dupliqués en bas de l'éditeur (réalisé)
+
+**Problème** : « + Ajouter une étape » et « Publier Vn » apparaissaient deux fois — une fois dans le bandeau sticky (toujours accessible) et une fois en bas de la liste des étapes : redondance et bruit visuel en fin de page.
+
+**Correctif** : la rangée de boutons sous la liste des étapes est retirée. Les deux actions restent disponibles dans le bandeau sticky (« + étape » et « Publier », avec confirmation pour la publication).
+
+**Fichiers** : `web/src/pages/editor.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tests front verts (editor-smoke, editor-sticky, header-tools, step-drag, mobile-overflow).
+
+## C-05 — Bouton « Enregistrer les détails » retiré (réalisé)
+
+**Problème** : le bouton « Enregistrer les détails » en tête de l'éditeur entrait en conflit avec le modèle mental « tout se joue à la publication » — deux moments d'enregistrement à gérer.
+
+**Correctif** :
+- Bouton retiré (en mode création, le bouton « Créer » reste — il est nécessaire pour obtenir l'identifiant du document).
+- **La publication sauvegarde d'abord les métadonnées** (titre, famille, type, description) via `PUT /api/workflows/:id` avant le `POST /publish` — sinon les champs en cours d'édition n'auraient jamais été persistés (le serveur ne les enregistre pas seul).
+- Fonction `saveMeta` devenue morte : supprimée.
+
+**Note UX** : les métadonnées modifiées ne sont donc visibles des lecteurs qu'après publication ; le brouillon garde les valeurs en cours d'édition côté client (état React).
+
+**Fichiers** : `web/src/pages/editor.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tests front verts.
+
+## C-06 — Header éditeur fusionné avec les détails (réalisé)
+
+**Problème** : la page d'édition commençait par une carte « détails du document » puis, plus bas, un bandeau sticky d'outils — deux blocs visuellement distincts pour un même contexte ; le bouton « Détails » portait une icône ✉, le champ « aller à » était large, « + étape » était un bouton permanent du bandeau et « Publier » se fondait parmi les icônes.
+
+**Correctif** :
+- **Fusion** : la carte détails et le bandeau d'outils forment **une seule section sticky** — rangée 1 : titre du document + « Détails » (sans icône) + **« Publier » poussé à droite (`marginLeft: auto`) en couleur d'accent** (fond bleu `primaryBtn`) ; champs de détails dépliables ; rangée outils (étape active, replier, insertion, « … » réduit).
+- « Aller à l'étape » réduit (largeur 2.6rem, padding compact).
+- « + étape » déplacé dans la **palette d'outils dépliante** (« + » → photos, formes, couleurs, **+ étape**, pictos, suppression).
+- Les étapes restent sous la section sticky (défilement normal).
+
+**Fichiers** : `web/src/pages/editor.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tests front verts (editor-smoke, editor-sticky, header-tools, step-drag, mobile-overflow).
+
+## C-07 — Header sticky cassé par la fusion C-06 (réalisé)
+
+**Problème** : après la fusion C-06, le header n'était plus persistant au scroll. Cause : la liste des étapes (`<ol>`) s'était retrouvée **à l'intérieur** de la section sticky — un élément `position: sticky` aussi haut que son propre contenu n'a plus d'espace de défilement pour « coller » en haut : il défilait avec la page.
+
+**Correctif** : la section sticky (titre + détails + rangée d'outils) est refermée **avant** la liste des étapes. Celle-ci redevient un fragment séparé (`{!isNew && (<>...</>)}`) sous la section. Le header reste collé pendant le défilement des étapes.
+
+**Fichiers** : `web/src/pages/editor.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tests front verts.
+
+## C-08 — « Supprimer les objets » déplacé dans la palette d'outils (réalisé)
+
+**Problème** : le bouton « 🗑 Supprimer (n) » des objets sélectionnés (photos/formes du canevas) apparaissait dans la barre d'aide du canevas, sous l'étape — éloigné des autres actions et perdu dans le contenu.
+
+**Correctif** :
+- Le bouton inline du canevas est retiré.
+- `StepCanvas` expose son état de sélection (`onSelectionChange`) et sa fonction de suppression (`deleteActionRef`) à la page.
+- Le bouton « 🗑 Objets ({n}) » apparaît dans la **palette d'outils** du bandeau (à côté de « Supprimer l'étape »), uniquement quand des objets sont sélectionnés sur l'étape active, ciblant son canevas.
+- La suppression reste aussi possible par glisser-déposer sur la corbeille verticale à droite du canevas (inchangée).
+
+**Fichiers** : `web/src/step-canvas.tsx`, `web/src/pages/editor.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + 14/14 tests front verts.
+
+## C-09 — Numéros d'étapes + thème sombre persistant au rafraîchissement (réalisé)
+
+**Problème 1** : les cartes d'étapes de l'éditeur n'étaient pas numérotées (le lecteur l'était déjà).
+**Problème 2** : le mode sombre « sautait » à chaque rafraîchissement. Le code de thème (script inline de `index.html` + localStorage) est correct, mais le serveur ne posait **aucun en-tête de cache sur le HTML** : le navigateur pouvait rejouer un `index.html` périmé depuis son cache HTTP — sans le script inline — d'où le flash clair puis le retour sombre (le saut).
+
+**Correctif** :
+1. **Numéros d'étapes** : badge circulaire accentué (1, 2, 3…) entre la poignée de drag et le titre de chaque carte d'étape de l'éditeur.
+2. **Cache HTTP corrigé côté serveur** :
+   - `index.html` servi avec `Cache-Control: no-cache, no-store, must-revalidate` — toujours frais, le script de thème s'exécute avant le premier rendu ;
+   - `/assets/*` (fichiers empreintés par Vite) servis avec `maxAge: 1y, immutable` — cache long sans risque de péremption.
+
+**Fichiers** : `web/src/pages/editor.tsx`, `server/src/app.ts`
+
+**État** : ✅ livré sur beta — 92/92 tests serveur, tsc + build + 14/14 tests front verts.
+
+## C-10 — Page blanche après C-09 (régression corrigée en urgence)
+
+**Problème** : après C-09, toutes les pages étaient blanches. Cause : le middleware que j'avais ajouté appelait `next("static-assets")` — dans Express, **`next()` avec une chaîne la traite comme une ERREUR** et court-circuite tous les middlewares suivants vers le handler 500. Toutes les requêtes `/assets/*` (JS/CSS du front) renvoyaient donc 500 → page blanche.
+
+**Correctif** :
+- Middleware fautif supprimé. Le montage `app.use("/assets", express.static(...))` **avant** le static général suffit à attraper les `/assets/*` avec le cache long.
+- En corrigeant : découverte que `GET /` était servi par `express.static` (index.html par défaut) **avant** la route SPA qui posait le `no-store` — l'en-tête n'était donc jamais posé sur la racine. Ajout d'un middleware qui pose `Cache-Control: no-cache, no-store, must-revalidate` sur toute navigation sans extension (le HTML), avant le static.
+- **Nouveau test runtime** `static-cache.test.ts` : GET / → 200 + no-store ; asset JS → 200 + immutable. La régression page blanche (assets en 500) ne pourra plus repasser.
+
+**Fichiers** : `server/src/app.ts`, `server/test/static-cache.test.ts`
+
+**État** : ✅ livré sur beta — 94/94 tests serveur (dont 2 nouveaux), tsc OK.
+
+<!-- Prochains correctifs de la série :
+
+## C-11 — (titre à définir)
+-->
+
+## C-11 — Cycle de vie des signalements : résolution (réalisé)
+
+**Problème** : les signalements terrain s'accumulaient sans moyen de les traiter — aucun statut, aucune clôture.
+
+**Correctif** :
+- Table **`feedback`** dédiée (statut `open`/`resolved`, résolveur, date) — les signalements ne sont plus seulement des lignes d'audit.
+- **`PUT .../feedback/:id/resolve`** (auteur) : clôture tracée (`feedback_resolved` dans l'audit).
+- **Panneau du lecteur** (auteur) : compteur « N à traiter », badge rouge « à traiter » / vert « résolu par X », lien **« Corriger l'étape »** (vers l'éditeur) + bouton **« ✓ Résoudre »** ; les résolus restent visibles en atténué (historique).
+
+**Fichiers** : `server/src/db/schema.ts`, `server/src/routes/workflows.ts`, `web/src/api.ts`, `web/src/pages/reader.tsx`, `server/test/feedback.test.ts`
+
+**État** : ✅ livré sur beta — 100/100 tests serveur (dont cycle complet signaler → lister → résoudre → permissions lecteur/auteur), tsc + build verts.
+
+## C-12 — Bandeau de navigation épuré : menu hamburger (réalisé)
+
+**Problème** : la barre du haut accumulait les boutons (email, rôle, Comptes, Statistiques, Déploiement, thème, Déconnexion) — encombrée, surtout sur mobile.
+
+**Correctif** :
+- Le bandeau ne garde que **« Modop »** et le **bouton menu (trois barres)**, à droite.
+- Le menu déroulant regroupe : identité (email + rôle), **Modes opératoires** (accueil), **Comptes / Statistiques / Déploiement** (admin seulement), séparateur, bascule de thème, **Déconnexion** (en rouge).
+- Fermeture par clic extérieur, touche Échap, ou après navigation ; aria-expanded/haspop pour l'accessibilité.
+- Le bandeau est **sticky** ; les headers sticky de l'éditeur et du lecteur s'accrochent désormais **sous** lui (top 2.9rem) au lieu de se superposer.
+
+**Test** : `nav-menu.test.tsx` — bandeau épuré (liens absents menu fermé), ouverture, entrées par rôle, fermeture Échap.
+
+**Fichiers** : `web/src/nav.tsx`, `web/src/pages/editor.tsx`, `web/src/pages/reader.tsx`, `web/src/lib/nav-menu.test.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front + 100/100 serveur.
+
+## C-13 — Cartes de la liste compactées en une ligne (réalisé)
+
+**Problème** : chaque mode opératoire de l'accueil occupait jusqu'à trois lignes (titre/badges, badges famille/type sur une seconde ligne, wrap mobile des actions).
+
+**Correctif** : tout tient sur **une ligne** par carte :
+- badges famille/type remontés **inline** à côté de la référence (plus de bloc séparé) ;
+- titre à ellipsis (flex 1 1 10rem) : les longs titres ne font plus déborder la ligne ;
+- « Modifier »/« Supprimer » remplacés par icônes ✎ / 🗑 (aria-label conservé) ;
+- padding de carte réduit (0.45rem × 0.7rem) et typographie resserrée (0.72–0.95rem).
+Sur écran étroit, le wrap reste possible mais chaque élément est compact — la carte ne dépasse plus deux lignes au pire.
+
+**Fichiers** : `web/src/pages/list.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-14 — Cartes minimales + suppression dans l'éditeur à double validation (réalisé)
+
+**Problème** : 1) avec les badges, les cartes de la liste faisaient toujours deux lignes sur mobile ; 2) la suppression d'un MO se déclenchait depuis la liste (🗑 à côté du titre) — action destructrice trop accessible.
+
+**Correctif** :
+1. **Cartes minimales** : uniquement **titre** (ellipsé), **référence** et **✎** (édition, auteurs) — une seule ligne garantie, même sur mobile. Badges version/famille/type/à revoir retirés des cartes (le filtre « À revoir » et le lecteur restent les sources d'info). Le bouton 🗑 disparaît de la liste.
+2. **Suppression déplacée en bas de la page d'édition**, dans une zone dédiée (fond danger), avec **triple barrière** :
+   - clic « Supprimer le mode opératoire… » →
+   - avertissement détaillé (titre, référence, irréversibilité) + « Continuer… » →
+   - **case à cocher obligatoire** (« Je comprends que… ») + bouton « Supprimer définitivement » **désactivé tant que la case n'est pas cochée**. Le serveur a déjà sa propre confirmation serveur-côté (DELETE cascade) — la double validation UI protège de tout clic accidentel.
+
+**Fichiers** : `web/src/pages/list.tsx`, `web/src/pages/editor.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-15 — Titres de page réduits + thème persistant injecté côté serveur (réalisé)
+
+**Problème 1** : les titres de page (h1) prenaient trop de place.
+**Problème 2** : le thème sombre sautait encore au rafraîchissement malgré C-09 (cache HTTP corrigé) — un maillon restait dépendant du navigateur.
+
+**Correctifs** :
+1. **Titres** : règle globale `h1` à 1.05rem dans styles.css ; h1 inline réduits (comptes/déploiement/stats 1.05rem, lecteur 0.95–1.05rem, éditeur 1rem, login 1.3rem).
+2. **Thème — nouvelle approche, côté serveur** : le front pose un **cookie `modop-theme`** à chaque bascule ; le serveur **injecte `data-theme` directement dans le `<html>` servi**. Le premier rendu part avec le bon thème, **quoi que fassent les caches HTTP, le CDN Cloudflare ou le service worker** — plus aucun flash possible. Détail technique : `express.static` ne sert plus la racine (`index: false`) pour que la route d'injection prenne toutes les navigations ; le script inline (cookie → localStorage) reste en repli pour la toute première visite. Prouvé par test runtime : cookie `dark` → HTML contient `data-theme="dark"`.
+
+**Fichiers** : `web/src/styles.css`, pages (titres), `server/src/app.ts`, `web/src/theme.ts`, `web/index.html`, `server/test/static-cache.test.ts`
+
+**État** : ✅ livré sur beta — 101/101 tests serveur (dont 1 nouveau : injection thème), tsc + build + tests front.
+
+## C-16 — Pictos regroupés derrière un bouton unique (réalisé)
+
+**Problème** : les 7 pictos d'indication (Attention, Danger, EPI, Risque électrique, Point chaud, Outillage, Information) s'étalaient en permanence dans la palette d'outils — la rangée devenait longue, surtout sur mobile.
+
+**Correctif** :
+- Un seul bouton **⚠** dans la palette (compteur si l'étape active a des indications : « ⚠ (2) », fond accentué).
+- Le clic ouvre un **sous-menu déroulant** listant les pictos avec leur pastille couleur ; les actifs sont cochés (✓, fond teinté) — re-cliquer bascule (mêmes règles qu'avant).
+- Fermeture par clic extérieur ou **Échap** ; le compteur reste visible menu fermé.
+
+**Test** : `header-tools.test.ts` mis à jour (bouton ⚠ présent dans la palette).
+
+**Fichiers** : `web/src/pages/editor.tsx`, `web/src/lib/header-tools.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-17 — Header et bandeau nav solidaire au scroll (réalisé)
+
+**Problème** : le header sticky de l'éditeur (et du lecteur) restait en haut mais **se déplaçait par rapport au bandeau de navigation** en scrollant — le `top: 2.9rem` était une estimation fixe de la hauteur du nav, qui varie selon l'écran.
+
+**Correctif** : le nav **mesure lui-même sa hauteur** et la publie dans la variable CSS `--nav-h` (ResizeObserver + publication au montage) ; les headers sticky des pages s'accrochent à `top: var(--nav-h, 2.9rem)`. Les deux bandeaux restent désormais collés l'un sous l'autre, quel que soit le viewport ou les redimensionnements. Garde pour les environnements sans ResizeObserver (tests jsdom).
+
+**Fichiers** : `web/src/nav.tsx`, `web/src/pages/editor.tsx`, `web/src/pages/reader.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-18 — Barre de filtres repensée : recherche + bouton Filtres (réalisé)
+
+**Problème** : la ligne de filtres de l'accueil empilait recherche + 2 selects + bouton À revoir + Créer — longue, wrap inévitable sur mobile.
+
+**Correctif** :
+- **Une ligne** : champ de **recherche pleine largeur** + bouton **« Filtres »** + **« + »** (création, auteurs).
+- Le bouton Filtres affiche un **compteur d'actifs** (« Filtres (2) ») et ouvre un **panneau dépliable** regroupant : État, Famille, **Trier par** (modifié récemment / titre / référence / famille / date) et la case « À revoir » — plus un bouton **Effacer** quand des filtres sont actifs.
+- Le tri exploite le paramètre `sort` déjà supporté par l'API (whitelist serveur inchangée).
+
+**Test** : `browse-smoke` mis à jour — vérifie la barre épurée, l'ouverture du panneau et la présence état/tri.
+
+**Fichiers** : `web/src/pages/list.tsx`, `web/src/api.ts`, `web/src/lib/browse-smoke.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front + 101/101 serveur.
+
+## C-19 — Scroll fluide en édition : le canevas ne piège plus le doigt (réalisé)
+
+**Problème** : en mode édition, le scroll était haché/impossible sur mobile — chaque canevas d'étape portait `touch-action: none` sur **toute sa surface** : poser le doigt n'importe où (même sur le fond vide) avale le geste. Plusieurs étapes ouvertes = une suite de zones mortes au scroll.
+
+**Correctif — le geste n'est capturé que là où c'est nécessaire** :
+- **Fond du canevas** (sans outil actif) : `touch-action: pan-y` — un doigt sur le fond **scrolle la page nativement** (inertie du navigateur conservée) ; le `onPointerDown` tactile retourne immédiatement si aucun objet n'est touché.
+- **Objets** (photos, formes, poignée de redimensionnement) : `touch-action: none` conservé — déplacement et redimensionnement au doigt inchangés.
+- **Outil actif** (flèche/zone/texte) : canevas en `none` complet — le dessin prime sur le scroll.
+- La **sélection au rectangle** devient un geste souris ; au tactile on sélectionne en tapant l'objet (comportement déjà présent).
+- `scroll-behavior: smooth` global : navigations d'étapes (sélecteur « … », liens) fluides.
+
+**Fichiers** : `web/src/step-canvas.tsx`, `web/src/styles.css`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-20 — Header éditeur : « + » → « Outils », « … » → « Aller à… » (réalisé)
+
+**Correctif** : libellés explicites dans le bandeau de l'éditeur — le bouton de palette devient **« Outils »** (au lieu de l'icône +), le sélecteur de navigation affiche **« Aller à… »** (au lieu de « … »). L'option « … » du menu n'est plus mystérieuse sur mobile.
+
+**Fichiers** : `web/src/pages/editor.tsx`, `web/src/lib/header-tools.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-21 — Rangée outils sur une ligne + rectangle de sélection 100 % souris (réalisé)
+
+**Problème 1** : le bouton « Aller à… » était large et passait sur une 2e ligne du bandeau. **Problème 2** : au doigt sur la zone d'image, le geste créait un **rectangle de sélection** au lieu de scroller.
+
+**Correctifs** :
+1. **Le nom d'étape devient la liste déroulante** : le `<h2>` statique et le bouton « Aller à… » fusionnent en un **unique select** — l'étape active s'affiche dedans (▶), en choisir une autre y va (scroll fluide). La rangée ne contient plus que : sélecteur d'étape · plier/déplier · Outils — en `nowrap` (une ligne garantie).
+2. **Rectangle de sélection réservé à la souris** : le `selrect` ne démarre que si `pointerType === "mouse"`. Au doigt sur le fond du canevas, **plus aucun drag n'est amorcé** — le `touch-action: pan-y` fait scroller la page. (C-19 avait déjà ouvert la voie ; le résidu venait du selrect qui démarrait pour tout pointeur.)
+
+**Fichiers** : `web/src/pages/editor.tsx`, `web/src/step-canvas.tsx`, `web/src/lib/editor-sticky.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-22 — Boîte à outils en panneau flottant (réalisé)
+
+**Problème** : à l'ouverture de la palette « Outils », ses boutons s'inséraient dans la rangée du bandeau (flex) et **comprimaient latéralement la première ligne** (sélecteur d'étape rétréci).
+
+**Correctif** : la palette devient un **panneau flottant** (`position: absolute`, bord à bord sous la rangée, ombre + bordure) — elle se **pose par-dessus le contenu** au lieu de repousser la mise en page. La première ligne ne bouge plus d'un pixel, ouverte ou fermée. Fermeture par clic extérieur (en plus du bouton « Outils »).
+
+**Fichiers** : `web/src/pages/editor.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-23 — Boîte à outils utilisable sans étape + dernière étape protégée (réalisé)
+
+**Problème** : sans étape, la palette Outils ne s'ouvrait pas — impossible de créer la première étape depuis le bandeau. Par ailleurs supprimer toutes les étapes laissait un MO vide et inéditable.
+
+**Correctif (au plus simple)** :
+- La palette s'ouvre **toujours** ; sans étape, elle affiche « Créez d'abord une étape : » + le bouton **« + étape »** (les outils nécessitant une étape cible — photos, formes, pictos, suppression — sont masqués).
+- Le bouton « Supprimer l'étape » **disparaît quand il ne reste qu'une étape** : un mode opératoire garde toujours au moins une étape.
+
+**Fichiers** : `web/src/pages/editor.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-24 — « + étape » invisible sans étape : régression C-23 corrigée (réalisé)
+
+**Problème** : malgré C-23, le bouton « + étape » n'apparaissait pas dans la palette d'un MO sans étape — lors du réordonnancement du fragment JSX (C-23), le bouton s'était retrouvé **à l'intérieur** de la garde `steps.length > 0`, donc masqué précisément quand il fallait le montrer.
+
+**Correctif** : le bouton « + étape » (et son filet) est sorti de la garde — il apparaît **toujours** dans la palette, seule la rangée photos/formes/couleurs reste conditionnelle à la présence d'une étape. Test `empty-tools.test.tsx` ajouté : MO sans étape → palette ouvre, message d'accueil, bouton « + étape » présent (le cas ne pourra plus régresser).
+
+**Fichiers** : `web/src/pages/editor.tsx`, `web/src/lib/empty-tools.test.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-25 — Export DOCX professionnel avec canevas annoté (réalisé)
+
+**Problème** : l'export docx empilait les photos brutes sans les annotations (formes du canevas absentes), avec une mise en page et une police par défaut peu soignées.
+
+**Benchmark avant implémentation** (npm-compare, pkgpulse 2025-26) : pas d'outil open source clé en main « annotations export » — la composition canevas est du code métier (coordonnées Modop). Choix validés : **`@napi-rs/canvas`** (Canvas API en bindings Rust, sans dépendances système — recommandé face à node-canvas/Cairo et au palliatif SVG de sharp qui ne dessine pas de formes) et **`docx`** conservé pour le document (docxtemplater = modules images payants, officegen moins maintenu).
+
+**Correctif** :
+1. **`render/canvas-composite.ts`** : compose le canevas de chaque étape en **une seule image PNG serveur**, reproduisant exactement le rendu du lecteur (repère 240px, photos positionnées via display_x/y/w, formes par-dessus : flèches à pointe, rectangles, textes, couleurs conservées).
+2. **Export DOCX repensé** : page de garde structurée (titre, bandeau de métadonnées Version/Publiée/Par/Famille/Type/Responsable), **changelog de version**, en-tête et pied de page (titre + pagination), titres d'étapes soulignés accent, pictos sur bandeau coloré, canevas composé **pleine largeur net** (800px → 600 affichés), styles de document cohérents (Calibri).
+
+**Test** : cycle complet — upload photo positionnée + formes sur l'étape → publication → export → docx valide (zip PK) + PNG composé aux dimensions attendues.
+
+**Fichiers** : `server/src/render/canvas-composite.ts` (nouveau), `server/src/routes/export.ts`, `server/test/export.test.ts` ; dépendance `@napi-rs/canvas`
+
+**État** : ✅ livré sur beta — 102/102 tests serveur, tsc OK.
+
+## C-26 — Formes sélectionnables par-dessus les images (réalisé)
+
+**Problème** : en édition, une forme posée sur une photo était impossible à sélectionner/déplacer — le clic atteignait toujours la photo.
+
+**Cause** : le hit-test testait `photoHit` d'abord et ne consultait `shapeHit` **que si aucune photo n'était touchée** — inversant l'ordre de rendu (où le SVG des formes est dessiné au-dessus des `<img>`).
+
+**Correctif** : le hit-test suit l'ordre visuel — **formes d'abord, photos ensuite** (`shapeHit` prioritaire). Une forme sur une image se sélectionne et se déplace désormais ; les photos restent atteignables partout où il n'y a pas de forme.
+
+**Fichiers** : `web/src/step-canvas.tsx`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-27 — Corbeille de drag en carré, en haut à gauche (réalisé)
+
+**Changement** : la zone de suppression pendant un déplacement d'objet n'est plus la bande verticale à droite (qui entrait en conflit avec la poignée de redimensionnement des photos) mais un **carré en haut à gauche du canevas** (14 % de large, 56 px de haut, coin arrondi), affiché uniquement pendant le drag. Relâcher un objet dessus le supprime (« Relâchez ici » au survol).
+
+**Fichiers** : `web/src/step-canvas.tsx`, `web/src/lib/step-canvas-adaptive.test.ts` (clic fond déplacé hors zone)
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front.
+
+## C-29 — Corbeille : suppression seulement si le geste y est conduit (réalisé)
+
+**Problème** : un petit mouvement suffisait à supprimer un objet — notamment une photo posée en haut à gauche, qui démarre son drag **dans** la zone corbeille (C-27).
+
+**Correctif** : la suppression exige les deux conditions au relâchement — le pointeur est dans la corbeille **ET le point de départ du geste n'y était pas**. Le doigt doit avoir conduit l'objet depuis l'extérieur jusqu'à la corbeille ; un frôlement démarré dans la zone ne supprime plus. Le visuel « Relâchez ici » suit la même règle (pas de faux positif pour un objet déjà dans la zone).
+
+**Test** : scénario dédié dans `step-canvas-adaptive.test.ts` — photo posée en haut à gauche, sélection double-clic, frôlement complet dans la zone : la photo reste. (Au passage : le premier montage du test est démonté, ses listeners window polluaient les scénarios suivants.)
+
+**Fichiers** : `web/src/step-canvas.tsx`, `web/src/lib/step-canvas-adaptive.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front + 102/102 serveur.
+
+## C-30 — Désélection impossible + suppressions fantômes corrigées (réalisé)
+
+**Problèmes** : 1) impossible de désélectionner une photo par clic à côté ; 2) des objets **loin de la corbeille** étaient supprimés après un clic avec micro-mouvement.
+
+**Causes (deux bugs réels)** :
+1. Le seuil « geste = clic » du selrect était `≥ 0.01` — soit **2,4 px** en vertical : le micro-tremblement naturel d'un clic souris dépassait le seuil et le clic fond était traité en rectangle (sélection conservée) au lieu de vider. Désormais : un clic fond vide **toujours** ; le rectangle ne conserve que s'il a une vraie surface (~40×12 px minimum).
+2. **Stale closure** : le `up` lisait l'état `overTrash` figé à la création du listener — il pouvait contenir `true` résiduel d'un geste précédent ayant survolé la corbeille → suppression sans contact. Désormais le survol est suivi dans une **ref** (immunisée contre la péremption de closure), remise à zéro à chaque début de drag ; la suppression exige `overTrashRef && départ hors zone`.
+
+**Tests** : « PAS DE SUPPRESSION LOIN CORBEILLE » (drag + micro-mouvement loin de la zone : la photo reste) ajouté aux scénarios existants (double-clic, clic fond désélection, corbeille geste conduit).
+
+**Fichiers** : `web/src/step-canvas.tsx`, `web/src/lib/step-canvas-adaptive.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front + 102/102 serveur.

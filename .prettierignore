@@ -1,0 +1,8 @@
+node_modules/
+dist/
+web/dist/
+server/dist/
+server/db/
+server/data/
+package-lock.json
+docs/

@@ -1,0 +1,69 @@
+name: ci-cd
+
+on:
+  push:
+    branches: [beta, main]
+  pull_request:
+    branches: [beta, main]
+
+jobs:
+  server:
+    name: Serveur (typecheck + build + tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      # Monorepo npm workspaces : installation unique à la racine (lockfile racine),
+      # les scripts sont ensuite joués par workspace.
+      - name: Installer les dépendances
+        run: npm ci
+      - name: Lint
+        run: npm run lint -w server
+      - name: Typecheck
+        run: npm run typecheck -w server
+      - name: Build
+        run: npm run build -w server
+      - name: Tests runtime
+        run: npm test -w server
+      - name: Tests update.sh (déploiement)
+        run: bash scripts/test-update.sh
+
+  web:
+    name: Web (typecheck + build + tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Installer les dépendances
+        run: npm ci
+      - name: Lint
+        run: npm run lint -w web
+      - name: Typecheck
+        run: npm run typecheck -w web
+      - name: Build
+        run: npm run build -w web
+      - name: Tests front
+        run: npm test -w web
+
+  audit:
+    name: Audit dépendances (production, high+)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Installer les dépendances
+        run: npm ci
+      - name: npm audit (prod uniquement)
+        run: npm audit --omit=dev --audit-level=high

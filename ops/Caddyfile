@@ -1,0 +1,28 @@
+# Caddyfile Modop — reverse proxy TLS interne.
+# Placement : /etc/caddy/Caddyfile (sur le conteneur ou un CT dédié au proxy).
+# Caddy gère le certificat automatiquement (CA interne ou ACME).
+#
+# Install : apt install -y caddy && systemctl enable --now caddy
+
+modop.entreprise.fr {
+	# TLS automatique (certificat interne) — à adapter au domaine interne
+	encode gzip
+
+	# Passage du schéma réel au backend (cookies secure, HSTS)
+	reverse_proxy 127.0.0.1:3000 {
+		header_up X-Forwarded-Proto https
+	}
+
+	# Durcissement complémentaire
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	# Blocage des accès hors des plages LAN autorisées (adapter)
+	# @notlan not remote_ip 10.0.0.0/8 192.168.0.0/16
+	# respond @notlan 403
+}
