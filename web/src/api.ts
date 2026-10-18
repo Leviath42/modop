@@ -168,6 +168,22 @@ export const api = {
   async restoreVersion(id: number, number: number): Promise<void> {
     await handle<unknown>(await fetch(`/api/workflows/${id}/versions/${number}/restore`, { method: "POST" }));
   },
+  // C-73 : rognage — remplace le FICHIER d'une photo (ligne inchangée :
+  // position/taille/alt conservées) ; repointage = retour arrière.
+  async replacePhotoFile(photoId: number, file: File): Promise<Photo> {
+    const fd = new FormData();
+    fd.append("file", file);
+    return handle<Photo>(await fetch(`/api/photos/${photoId}/file`, { method: "PUT", body: fd }));
+  },
+  async repointPhotoFile(photoId: number, filename: string): Promise<Photo> {
+    return handle<Photo>(
+      await fetch(`/api/photos/${photoId}/file`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ filename }),
+      })
+    );
+  },
   // C-72 (#4/#5) : paramètres applicatifs (page Paramètres, admin).
   async getSettings(): Promise<{ readers_see_drafts: boolean; no_review_date_is_overdue: boolean }> {
     return handle(await fetch("/api/settings"));

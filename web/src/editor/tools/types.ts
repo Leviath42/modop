@@ -25,12 +25,17 @@ export interface ToolContext {
   insertColor: string;
   insertWidth: number;
   canvasSelection: number;
+  // C-73 : nombre de PHOTOS sélectionnées (rognage) et undo disponible.
+  photoSelected: number;
+  canUndoCrop: boolean;
   actions: {
     addStep(): void;
     openPhotoSource(which: "gallery" | "camera"): void;
     setInsertTool(t: Shape["type"] | null): void;
     setInsertColor(c: string): void;
     setInsertWidth(w: number): void;
+    requestCrop(): void;
+    undoCrop(): void;
     togglePreset(preset: PictoPreset): void;
     deleteActiveStep(): void;
     deleteCanvasSelection(): void;

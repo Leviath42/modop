@@ -32,6 +32,15 @@ export function publishRouter(db: Database.Database): Router {
       res.status(422).json({ error: "validation", message: "impossible de publier sans étape" });
       return;
     }
+    // C-73 : pas de publication avec une date de revue DÉPASSÉE — le document
+    // naîtrait immédiatement « à revoir ». L'auteur doit la mettre à jour.
+    const overdue = db
+      .prepare("SELECT review_due FROM workflows WHERE id = ?")
+      .get(wf.id) as { review_due: string | null } | undefined;
+    if (overdue?.review_due && overdue.review_due < new Date().toISOString().slice(0, 10)) {
+      res.status(422).json({ error: "validation", message: "date de revue dépassée — mettez-la à jour avant de publier" });
+      return;
+    }
     const snapshot = {
       workflow: db.prepare("SELECT * FROM workflows WHERE id = ?").get(wf.id),
       steps: steps.map((s) => ({

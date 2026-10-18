@@ -47,7 +47,8 @@ export default function StepCanvas({
   onSelectionChange,
   deleteActionRef,
   onInteract,
-  onCropPhoto,
+  onCropFile,
+  cropRequest = 0,
 }: {
   stepId: number;
   photos: CanvasPhoto[];
@@ -57,10 +58,12 @@ export default function StepCanvas({
   color?: string;
   strokeWidth?: number;
   onToolDone?: () => void;
-  onSelectionChange?: (count: number) => void;
+  onSelectionChange?: (sel: { photos: number[]; shapes: number[] }) => void;
   deleteActionRef?: (fn: () => void) => void;
   onInteract?: () => void;
-  onCropPhoto?: (photo: Photo, file: File, alt: string) => void | Promise<void>;
+  onCropFile?: (photo: Photo, file: File) => void | Promise<void>;
+  // C-73 : la barre d'outils demande l'ouverture du rognage (compteur).
+  cropRequest?: number;
 }) {
   const [objs, setObjs] = useState<CanvasPhoto[]>(photos);
   const [shapes, setShapes] = useState<Shape[]>(parseShapes(canvasShapes));
@@ -76,7 +79,7 @@ export default function StepCanvas({
   const lastTextCommitRef = useRef(0);
   const [selPhotos, setSelPhotos] = useState<Set<number>>(new Set());
   const [selShapes, setSelShapes] = useState<Set<number>>(new Set());
-  useEffect(() => { onSelectionChange?.(selPhotos.size + selShapes.size); }, [selPhotos, selShapes, onSelectionChange]);
+  useEffect(() => { onSelectionChange?.({ photos: [...selPhotos], shapes: [...selShapes] }); }, [selPhotos, selShapes, onSelectionChange]);
   // C-31 : un clic/tap HORS du canevas (champs de l'éditeur, fond de page)
   // désélectionne — avant, seule la zone canevas pouvait vider la sélection.
   useEffect(() => {
@@ -109,6 +112,20 @@ export default function StepCanvas({
   const dragMovedRef = useRef(false);
   const overTrashRef = useRef(false);
   const lastPhotoDownRef = useRef<{ idx: number; at: number } | null>(null);
+  // C-73 : la fonction openCrop est définie plus bas — l'effet de demande de
+  // rognage y accède par ref (ordre de déclaration).
+  const openCropRef = useRef<(() => void) | null>(null);
+  const lastCropReqRef = useRef(0);
+  // C-73 : demande de rognage depuis la barre d'outils (bouton Recadrer).
+  // Seul un NOUVEAU tick déclenche (ref du dernier traité) — un simple
+  // changement de sélection ne rouvre pas le rognage.
+  useEffect(() => {
+    if (cropRequest && cropRequest !== lastCropReqRef.current) {
+      lastCropReqRef.current = cropRequest;
+      if (selPhotos.size === 1) openCropRef.current?.();
+    }
+  }, [cropRequest, selPhotos.size]);
+
   const canvasRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setObjs(photos); }, [JSON.stringify(photos)]);
@@ -572,6 +589,7 @@ export default function StepCanvas({
     setCropRect({ x: bw * 0.08, y: bh * 0.08, w: bw * 0.84, h: bh * 0.84 });
     setCropFor(o);
   }
+  openCropRef.current = openCrop;
 
   useEffect(() => {
     if (!cropDrag || !cropFor) return;
@@ -606,7 +624,7 @@ export default function StepCanvas({
       const blob = await new Promise<Blob | null>((r) => c.toBlob(r, "image/jpeg", 0.92));
       if (!blob) throw new Error("encodage");
       const file = new File([blob], "rognee.jpg", { type: "image/jpeg" });
-      await onCropPhoto?.(cropFor.photo, file, cropFor.photo.alt ?? "");
+      await onCropFile?.(cropFor.photo, file);
       setCropFor(null);
       setSelPhotos(new Set());
     } catch { /* l'éditeur affiche l'erreur via onCropPhoto */ }
@@ -629,7 +647,7 @@ export default function StepCanvas({
         ref={canvasRef}
         onPointerDown={onPointerDown}
         onPointerUp={onToolPointerUp}
-        style={{ position: "relative", width: "100%", height: `${H}px`, background: "var(--surface-2, #f0f1f4)", borderRadius: "8px", overflow: "hidden", touchAction: (tool || selPhotos.size + selShapes.size > 0) ? "none" : "pan-y", cursor: tool ? "crosshair" : "default" }}
+        style={{ position: "relative", width: "100%", height: `${H}px`, background: "var(--surface-2, #f0f1f4)", borderRadius: "8px", overflow: "hidden", touchAction: "none", cursor: tool ? "crosshair" : "default" }}
       >
         {/* images */}
         {objs.map((o, i) => (
@@ -700,6 +718,7 @@ export default function StepCanvas({
         {textDraft && (
           <input autoFocus value={textDraft.value}
             onChange={(e) => setTextDraft({ ...textDraft, value: e.target.value })}
+            className="canvas-text-draft"
             placeholder="Texte…"
             aria-label="Texte à afficher sur l'étape"
             style={{
@@ -722,17 +741,6 @@ export default function StepCanvas({
             onBlur={() => { if (textDraft) commitText(); }} />
         )}
 
-        {/* C-72 (#1) : rognage de la photo sélectionnée */}
-        {!tool && selPhotos.size === 1 && !cropFor && onCropPhoto && (
-          <button
-            onClick={openCrop}
-            onPointerDown={(e) => e.stopPropagation()}
-            data-keep-canvas-selection="1"
-            className="absolute right-2 top-2 z-30 inline-flex items-center gap-1 rounded-md border border-border bg-surface px-2 py-1 text-xs text-foreground shadow-md"
-            aria-label="Recadrer la photo sélectionnée"
-            title="Recadrer la photo sélectionnée"
-          ><Crop size={14} aria-hidden="true" /> Recadrer</button>
-        )}
         {cropFor && (
           <div
             className="absolute inset-0 z-40 flex items-center justify-center bg-black/40"

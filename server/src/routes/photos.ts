@@ -121,6 +121,60 @@ export function deletePhotoRouter(db: Database.Database): Router {
   return r;
 }
 
+// C-73 : ROGNAGE — remplace le FICHIER d'une photo existante SANS toucher à
+// sa ligne : position, taille, alt et id sont conservés (le morceau rogné
+// reste au même endroit, à la même taille). Deux modes :
+//  - multipart « file » : nouveau binaire (jpg/png/webp sniffé) → nouveau nom ;
+//  - JSON { filename } : repointe vers un fichier EXISTANT du répertoire
+//    (retour arrière : l'ancien fichier n'est jamais supprimé au rognage —
+//    la purge des orphelins au démarrage le recyclera hors session).
+export function photoReplaceRouter(db: Database.Database): Router {
+  const r = Router();
+  const uploadMem = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
+
+  r.put("/:id/file", requireAuth("author"), uploadMem.single("file"), (req, res) => {
+    const photo = db.prepare("SELECT * FROM photos WHERE id = ?").get(Number(req.params.id)) as
+      | { id: number; filename: string }
+      | undefined;
+    if (!photo) {
+      res.status(404).json({ error: "not_found", message: "photo introuvable" });
+      return;
+    }
+    if (req.file) {
+      if (!ALLOWED.has(req.file.mimetype)) {
+        res.status(422).json({ error: "validation", message: "type de fichier non autorisé (jpeg, png, webp)" });
+        return;
+      }
+      const realType = sniffImage(req.file.buffer);
+      if (!realType || realType !== req.file.mimetype) {
+        res.status(422).json({ error: "validation", message: "contenu du fichier non conforme (jpeg, png, webp)" });
+        return;
+      }
+      const ext = req.file.mimetype === "image/png" ? ".png" : req.file.mimetype === "image/webp" ? ".webp" : ".jpg";
+      const filename = crypto.randomBytes(16).toString("hex") + ext;
+      fs.writeFileSync(path.join(photosDir(), filename), req.file.buffer);
+      db.prepare("UPDATE photos SET filename = ? WHERE id = ?").run(filename, photo.id);
+    } else if (typeof req.body?.filename === "string" && req.body.filename) {
+      const name = path.basename(req.body.filename);
+      if (!/^[\w.-]+$/.test(name) || !fs.existsSync(path.join(photosDir(), name))) {
+        res.status(422).json({ error: "validation", message: "fichier inexistant" });
+        return;
+      }
+      db.prepare("UPDATE photos SET filename = ? WHERE id = ?").run(name, photo.id);
+    } else {
+      res.status(422).json({ error: "validation", message: "fichier (multipart) ou filename (json) requis" });
+      return;
+    }
+    db
+      .prepare("UPDATE workflows SET updated_at = datetime('now') WHERE id = (SELECT workflow_id FROM steps WHERE id = (SELECT step_id FROM photos WHERE id = ?))")
+      .run(photo.id);
+    const updated = db.prepare("SELECT * FROM photos WHERE id = ?").get(photo.id);
+    res.json(updated);
+  });
+
+  return r;
+}
+
 export function staticPhotos(): express.RequestHandler {
   const mime: Record<string, string> = {
     ".jpg": "image/jpeg",

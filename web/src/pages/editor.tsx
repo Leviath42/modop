@@ -53,7 +53,12 @@ export default function EditorPage() {
   const dragGhostRef = useRef<HTMLDivElement | null>(null);
   const dragFromRef = useRef<number | null>(null);
   const [dragCursor, setDragCursor] = useState<{ x: number; y: number } | null>(null);
-  const [canvasSelection, setCanvasSelection] = useState(0);
+  const [canvasSel, setCanvasSel] = useState<{ photos: number[]; shapes: number[] }>({ photos: [], shapes: [] });
+  // C-73 : rognage — demande depuis la barre + pile de retour arrière
+  // (l'ancien fichier reste sur le disque : annulation tant que l'éditeur est ouvert).
+  const [cropTick, setCropTick] = useState(0);
+  const cropUndoStackRef = useRef<{ photoId: number; prevFilename: string }[]>([]);
+  const [cropUndoCount, setCropUndoCount] = useState(0);
   const canvasDeleteRef = useRef<(() => void) | null>(null);
   const [openSteps, setOpenSteps] = useState<Set<number>>(new Set());
   const [showMeta, setShowMeta] = useState(false);
@@ -280,8 +285,10 @@ export default function EditorPage() {
   }, [ownerEmail, accounts]);
 
   const toolCtx: ToolContext = {
-    isNew, steps, activeStepId, insertTool, insertColor, insertWidth, canvasSelection,
-    actions: { addStep, openPhotoSource, setInsertTool: selectInsertTool, setInsertColor, setInsertWidth, togglePreset, deleteActiveStep, deleteCanvasSelection },
+    isNew, steps, activeStepId, insertTool, insertColor, insertWidth,
+    canvasSelection: canvasSel.photos.length + canvasSel.shapes.length,
+    photoSelected: canvasSel.photos.length, canUndoCrop: cropUndoCount > 0,
+    actions: { addStep, openPhotoSource, setInsertTool: selectInsertTool, setInsertColor, setInsertWidth, togglePreset, deleteActiveStep, deleteCanvasSelection, requestCrop: () => setCropTick((t) => t + 1), undoCrop: () => void undoCrop() },
   };
 
   async function revertDraft() {
@@ -304,19 +311,32 @@ export default function EditorPage() {
   // C-72 (#1) : remplace une photo par sa version rognée — la nouvelle
   // photo HÉRITE de la position/taille de l'ancienne, puis l'ancienne est
   // supprimée (le fichier original reste couvert par les versions publiées).
-  async function cropPhoto(step: Step, oldPhoto: Photo, file: File, alt: string) {
+  // C-73 : remplace le FICHIER de la photo — même ligne, donc même position
+  // et même taille ; l'ancien fichier reste pour le retour arrière.
+  async function cropPhoto(photo: Photo, file: File) {
     setError(null);
     try {
-      const newPhoto = await api.uploadPhoto(step.id, file, alt);
-      const oldX = typeof oldPhoto.display_x === "number" ? oldPhoto.display_x : 0;
-      const oldY = typeof oldPhoto.display_y === "number" ? oldPhoto.display_y : 0.05;
-      const oldW = typeof oldPhoto.display_w === "number" ? oldPhoto.display_w : 1;
-      await api.saveLayout(newPhoto.id, "full", "left", oldX, oldY, oldW);
-      await api.deletePhoto(oldPhoto.id);
+      await api.replacePhotoFile(photo.id, file);
+      cropUndoStackRef.current = [...cropUndoStackRef.current, { photoId: photo.id, prevFilename: photo.filename }];
+      setCropUndoCount(cropUndoStackRef.current.length);
       const w = await api.getWorkflow(id!);
       setSteps(w.steps);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Recadrage impossible");
+    }
+  }
+
+  async function undoCrop() {
+    const last = cropUndoStackRef.current.pop();
+    if (!last) return;
+    setError(null);
+    try {
+      await api.repointPhotoFile(last.photoId, last.prevFilename);
+      setCropUndoCount(cropUndoStackRef.current.length);
+      const w = await api.getWorkflow(id!);
+      setSteps(w.steps);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Annulation du rognage impossible");
     }
   }
 
@@ -610,7 +630,7 @@ export default function EditorPage() {
                       color={insertColor}
                       strokeWidth={insertWidth}
                       onToolDone={() => setInsertTool(null)}
-                      onSelectionChange={activeStepId === step.id ? (n) => setCanvasSelection(n) : undefined}
+                      onSelectionChange={activeStepId === step.id ? setCanvasSel : undefined}
                       deleteActionRef={activeStepId === step.id ? (fn) => { canvasDeleteRef.current = fn; } : undefined}
                       photos={(step.photos ?? []).map((ph) => {
                         const w = typeof ph.display_w === "number" ? ph.display_w : ph.display_size === "full" ? 1 : ph.display_size === "large" ? 0.85 : ph.display_size === "small" ? 0.35 : 1;
@@ -623,7 +643,8 @@ export default function EditorPage() {
                       })}
                       canvasShapes={step.canvas ?? []}
                       onInteract={() => { if (activeStepId !== step.id) setActiveStepId(step.id); }}
-                      onCropPhoto={(photo, file, alt) => cropPhoto(step, photo, file, alt)}
+                      onCropFile={(photo, file) => cropPhoto(photo, file)}
+                      cropRequest={activeStepId === step.id ? cropTick : 0}
                       onPhotosChanged={async () => { const w = await api.getWorkflow(id!); setSteps(w.steps); }}
                     />
                     <div>
@@ -735,10 +756,15 @@ export default function EditorPage() {
           footer={
             <>
               <Button onClick={() => setConfirmPublish(false)} variant="outline">Annuler</Button>
-              <Button onClick={() => { setConfirmPublish(false); void publish(); }} variant="brand">Confirmer la publication</Button>
+              <Button onClick={() => { setConfirmPublish(false); void publish(); }} variant="brand" disabled={!!reviewDue && reviewDue < new Date().toISOString().slice(0, 10)}>Confirmer la publication</Button>
             </>
           }
         >
+          {reviewDue && reviewDue < new Date().toISOString().slice(0, 10) && (
+            <p role="alert" className="m-0 mb-3 rounded-md bg-warn-bg px-3 py-2 text-sm text-warn">
+              La date de revue ({reviewDue}) est dépassée — mettez-la à jour dans les détails avant de publier.
+            </p>
+          )}
           <p className="m-0 text-sm text-muted-foreground">
             Un snapshot immuable de cette version sera créé ({steps.length} étape{steps.length > 1 ? "s" : ""}). La version restera consultable et exportable même après vos modifications suivantes.
           </p>

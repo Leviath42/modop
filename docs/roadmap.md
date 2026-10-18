@@ -1,6 +1,6 @@
 # Modop — Roadmap
 
-*Dernière mise à jour : après C-72 — **troisième vague terrain livrée** (10 correctifs : rognage d'image, page Paramètres admin avec paramètres serveur [sans date = à revoir, brouillons visibles lecteurs], outil texte refondu, responsable par nom + alerte admin, pointe de flèche proportionnelle, sélection par contour, scroll mobile gelé à la sélection, vidéo en backlog) ; vagues C-70/C-71 ; refonte UI C-64→C-69 ; **priorité : fonctionnel et mode édition**, vague 10 en standby ; production maintenue sur `beta`.*
+*Dernière mise à jour : après C-73 — **rognage refondu** (remplacement du fichier en place : position/taille conservées, retour arrière via la barre, l'original n'est jamais supprimé pendant la session) + causes racine CSS corrigées (pastilles tactile 44px, saisie texte 16px iOS, scroll/pull-to-refresh) + publication bloquée si date de revue passée ; vagues C-70→C-72 ; refonte UI C-64→C-69 ; **priorité : fonctionnel et mode édition**, vague 10 en standby ; production maintenue sur `beta`.*
 
 L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archives/roadmap-v1-a-v6bis.md](archives/roadmap-v1-a-v6bis.md). La série de correctifs UI/UX (C-01 → C-51) est journalisée dans [correctifs.md](correctifs.md).
 

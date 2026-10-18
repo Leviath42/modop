@@ -64,6 +64,43 @@ test("layout photo : taille et position persistées et relues", async () => {
   assert.equal(badY2.status, 422, "y>10 rejeté");
 });
 
+// C-73 : rognage — remplacement du FICHIER en place (même ligne : position
+// conservée) + repointage (retour arrière vers l'ancien fichier).
+test("rognage : remplacement du fichier en place + retour arrière", async () => {
+  const wf = await call("POST", "/api/workflows", { title: "T2", reference: "MO-PL2" }, cookie);
+  const step = await call("POST", `/api/workflows/${wf.json.id}/steps`, { title: "S" }, cookie);
+  const fd = new FormData();
+  fd.append("file", new Blob([PNG_MIN], { type: "image/png" }), "p1.png");
+  fd.append("alt", "origine");
+  const up = await fetch(`${base}/api/steps/${step.json.id}/photos`, { method: "POST", headers: { cookie }, body: fd });
+  const photo = await up.json();
+
+  // position posée
+  await call("PUT", `/api/photos/${photo.id}/layout`, { display_size: "full", display_align: "left", display_x: 0.3, display_y: 1.2, display_w: 0.7 }, cookie);
+
+  // rognage : remplacement du fichier (multipart)
+  const fd2 = new FormData();
+  fd2.append("file", new Blob([PNG_MIN], { type: "image/png" }), "rognee.png");
+  const rep = await fetch(`${base}/api/photos/${photo.id}/file`, { method: "PUT", headers: { cookie }, body: fd2 });
+  assert.equal(rep.status, 200, "PUT file: " + rep.status);
+  const repJson = await rep.json();
+  assert.notEqual(repJson.filename, photo.filename, "nouveau fichier");
+  assert.equal(repJson.display_x, 0.3, "position X conservée");
+  assert.equal(repJson.display_y, 1.2, "position Y conservée (y>1 toléré)");
+  assert.equal(repJson.alt, "origine", "alt conservé");
+
+  // retour arrière : repointage vers l'ancien fichier (resté sur le disque)
+  const back = await call("PUT", `/api/photos/${photo.id}/file`, { filename: photo.filename }, cookie);
+  assert.equal(back.status, 200, "repointage: " + back.status + " " + JSON.stringify(back.json));
+  assert.equal(back.json.filename, photo.filename, "ancien fichier restauré");
+
+  // garde-fous : fichier inexistant / id inconnu
+  const bad = await call("PUT", `/api/photos/${photo.id}/file`, { filename: "inconnu.png" }, cookie);
+  assert.equal(bad.status, 422, "fichier inexistant rejeté");
+  const nf = await call("PUT", `/api/photos/999999/file`, { filename: "x.png" }, cookie);
+  assert.equal(nf.status, 404, "photo inconnue → 404");
+});
+
 process.on("exit", () => { server.close(); fs.rmSync("data", { recursive: true, force: true }); });
 after(() => { (server as unknown as { closeAllConnections?: () => void }).closeAllConnections?.(); return Promise.resolve(server.close()); });
 server.unref();

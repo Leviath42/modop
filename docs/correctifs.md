@@ -36,6 +36,30 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-73 — Quatrième vague de retour terrain : rognage refondu + causes racine CSS (réalisé)
+
+**Contexte** : retour sur C-72 — le rognage initial supprimait l'original (pas de retour arrière), le bouton vivait dans le canevas, la photo rognée ne restait pas en place ; pastilles et taille de saisie « toujours pas » corrigées ; drag vs scroll toujours conflictuel ; publication avec date passée.
+
+**Rognage refondu** (remplacement EN PLACE) :
+- **Serveur** : `PUT /api/photos/:id/file` — deux modes : multipart (nouveau binaire sniffé → nouveau nom de fichier, **la ligne photo est conservée** : id, position, taille, alt) et JSON `{filename}` (repointage vers un fichier existant = retour arrière). L'ancien fichier **n'est jamais supprimé au rognage** (la purge des orphelins au démarrage le recyclera hors session). Test runtime complet (remplacement, position conservée y>1, repointage, garde-fous 422/404).
+- **Bouton dans la barre d'outils** (« Recadrer », zone droite, visible quand une seule photo est sélectionnée — plus dans le canevas) + **« Annuler rognage »** (pile, visible tant qu'un retour est possible). Le canevas ouvre l'overlay sur demande de la barre (compteur, garde anti-réouverture).
+- **Le morceau rogné reste au même endroit, à la même taille** : conséquence directe du remplacement en place (même ligne = même layout).
+
+**Causes racine CSS** (les « toujours pas » s'expliquaient par des règles globales qui écrasaient les tailles) :
+- **Pastilles de couleur** : la règle tactile `button { min 44px }` les gonflait sur mobile (d'où « rétréci sur desktop seulement ») — exception `.color-swatch` (24 px sur tactile).
+- **Taille de saisie du texte** : la règle anti-zoom iOS `input { font-size: 16px !important }` gonflait le champ par rapport au texte posé (0.8rem) — exception `.canvas-text-draft` (fidèle au rendu final).
+- **Drag vs scroll / pull-to-refresh** : le canevas d'édition passe en `touch-action: none` **permanent** (le scroll se fait par le reste de la page) et `overscroll-behavior-y: contain` sur `html/body` neutralise le pull-to-refresh qui volait les gestes descendants.
+
+**Publication avec date de revue passée** : garde serveur (422 « date de revue dépassée ») + modale front (avertissement + bouton Confirmer désactivé).
+
+**Tests** : +1 test runtime serveur (121), suite front verte ( effet cropRequest restructuré après TDZ détecté par les tests), lint server+web, builds OK.
+
+**Fichiers** : `server/src/routes/{photos,publish}.ts`, `server/src/app.ts`, `server/test/photo-layout.test.ts`, `web/src/{api,step-canvas}.ts(x)`, `web/src/styles.css`, `web/src/pages/editor.tsx`, `web/src/editor/tools/{types.ts,definitions.tsx}`.
+
+**État** : livré sur beta.
+
+---
+
 ## C-72 — Troisième vague de retour terrain : 10 correctifs en deux lots (réalisé)
 
 **Contexte** : troisième liste du propriétaire. Lots : 7 correctifs (commit b4312e8) puis paramètres serveur + rognage.

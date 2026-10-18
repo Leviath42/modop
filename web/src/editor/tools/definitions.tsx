@@ -1,7 +1,9 @@
 import {
   ArrowUpRight,
   Camera,
+  Crop,
   Palette,
+  Undo2,
   Check,
   Image as ImageIcon,
   Plus,
@@ -155,7 +157,7 @@ const style: CommandDefinition = {
             aria-label={`Couleur ${c}`}
             aria-pressed={ctx.insertColor === c}
             title={`Couleur ${c}`}
-            className={cn("size-4 cursor-pointer rounded-full sm:size-5", ctx.insertColor === c ? "border-2 border-foreground" : "border border-border")}
+            className={cn("color-swatch size-4 cursor-pointer rounded-full sm:size-5", ctx.insertColor === c ? "border-2 border-foreground" : "border border-border")}
             style={{ background: c }}
           />
         ))}
@@ -244,6 +246,33 @@ const deleteSelection: CommandDefinition = {
   run: (ctx) => ctx.actions.deleteCanvasSelection(),
 };
 
+// C-73 : actions contextuelles du rognage — le bouton vit dans la barre
+// (plus dans le canevas), visible quand une seule photo est sélectionnée ;
+// l'annulation reste possible tant que l'éditeur est ouvert (l'ancien
+// fichier n'est jamais supprimé au rognage).
+const crop: CommandDefinition = {
+  id: "crop",
+  zone: "right",
+  label: "Recadrer",
+  aria: "Recadrer la photo sélectionnée",
+  title: "Recadrer la photo sélectionnée",
+  icon: () => <Crop size={16} aria-hidden="true" />,
+  isVisible: (ctx) => ctx.photoSelected === 1,
+  run: (ctx) => ctx.actions.requestCrop(),
+};
+
+const undoCrop: CommandDefinition = {
+  id: "undo-crop",
+  zone: "right",
+  label: "Annuler rognage",
+  aria: "Annuler le dernier rognage",
+  title: "Annuler le dernier rognage",
+  icon: () => <Undo2 size={16} aria-hidden="true" />,
+  isVisible: (ctx) => ctx.canUndoCrop,
+  run: (ctx) => ctx.actions.undoCrop(),
+};
+
+
 // Registre — ordre = ordre d'affichage. Ajouter un outil = une entrée ici.
 export const EDITOR_COMMANDS: CommandDefinition[] = [
   stepAdd,
@@ -256,4 +285,6 @@ export const EDITOR_COMMANDS: CommandDefinition[] = [
   shapeShortcut("text", "Texte", "t"),
   deleteStep,
   deleteSelection,
+  crop,
+  undoCrop,
 ];

@@ -163,6 +163,10 @@ input, select, textarea { font-size: 16px; }
    on force 16px sur tout contrôle de saisie, quel que soit le style inline. */
 @media (max-width: 699px) {
   input, select, textarea { font-size: 16px !important; }
+  /* C-73 : EXCEPTION — le champ de saisie du texte posé sur le canevas doit
+     être FIDÈLE au rendu final (0.8rem) : la règle 16px ci-dessus gonflait
+     la saisie par rapport au texte posé. */
+  input.canvas-text-draft { font-size: 0.8rem !important; }
 }
 /* Tactile : cibles confortables (reco Apple/Google : >= 44px) sur les
    boutons et poignées, sans changer le look desktop. */
@@ -170,6 +174,13 @@ input, select, textarea { font-size: 16px; }
   button {
     min-height: 44px;
     min-width: 44px;
+  }
+  /* C-73 : EXCEPTION — les pastilles de couleur du flyout Style restent
+     compactes sur mobile (la règle 44px les gonflait : « trop gros ») ;
+     la zone reste utilisable (grille, espacement). */
+  .color-swatch {
+    min-height: 1.5rem;
+    min-width: 1.5rem;
   }
   /* C-37 : boutons compacts de palette (icônes seules) — la règle 44px ne doit
      pas s'appliquer SEULEMENT à l'état touché : le bouton grandissait au clic
@@ -201,6 +212,9 @@ html, body {
   /* clip (et PAS hidden) : n'élève pas de scroll container, donc
      position: sticky continue de fonctionner dans toute la page */
   overflow-x: clip;
+  /* C-73 : le pull-to-refresh volait les gestes sur le canevas en édition
+     (drag vers le bas) — contenu, pas de rafraîchissement par glisser. */
+  overscroll-behavior-y: contain;
 }
 #root {
   max-width: 100%;
