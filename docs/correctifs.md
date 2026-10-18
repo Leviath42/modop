@@ -36,6 +36,26 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-57 — Vague 9 (fin) : CI fonctionnelle, lint web, audit, sauvegardes VACUUM INTO, branche de déploiement (réalisé)
+
+**Problème** : la CI livrée en C-56 était un brouillon non fonctionnel (jobs joués à la racine d'un monorepo workspaces, `npm run typecheck` inexistant côté serveur) ; `update.sh` restait cassé par la migration workspaces de C-56 (`npm ci` et lockfile cherchés dans `server/` et `web/`) ; la sauvegarde de la base copiait brutalement `.db` + `-wal` + `-shm` (image possiblement incohérente, résidus à gérer au rollback) ; pas de lint web, pas de porte `npm audit`, branche de déploiement en dur ; `test-ci-cd.sh` (test volontairement cassant poussé sur beta) traîné dans le dépôt.
+
+**Correctif** :
+1. **CI** (`.github/workflows/ci-cd.yml` réécrit) : `npm ci` unique à la racine puis scripts par workspace (`-w server` / `-w web`), portes **lint + typecheck + build + tests** des deux côtés, job **audit** (`npm audit --omit=dev --audit-level=high`), déclenché sur push et PR `beta`/`main`, badge README.
+2. **Lint/format** : `web/eslint.config.js` (typescript-eslint `recommended`, `no-unused-vars` avec convention `_`), scripts `lint`/`typecheck` côté web et `typecheck`/`format` côté serveur, Prettier configuré à la racine (`.prettierrc` + `.prettierignore`, style du code existant) — lint vert sur `server` et `web` (24 erreurs web corrigées : code mort, imports/variables inutilisés, deux `eslint-disable react-hooks` sans plugin correspondant).
+3. **Sauvegardes cohérentes** : `server/scripts/backup-db.mjs` — `VACUUM INTO` (snapshot en un seul fichier, WAL inclus, écriture impossible sur une sauvegarde existante) **+ `PRAGMA integrity_check`** de la copie ; `update.sh` sauvegarde, vérifie, et vérifie aussi la base **après restauration** (rollback) ; plus de `-wal`/`-shm` à recopier.
+4. **update.sh adapté aux workspaces** : `npm ci` à la racine (lockfile racine, garde-fou `better-sqlite3` résolu depuis la racine), plus de référence aux lockfiles supprimés ; idem `scripts/proxmox-install.sh`.
+5. **Branche de déploiement paramétrable** : `MODOP_DEPLOY_BRANCH` (env) > fichier `.deploy-branch` > `beta` par défaut — la production peut viser `main` sans toucher au script.
+6. **Nettoyages** : `test-ci-cd.sh` supprimé (il cassait volontairement le build et poussait sur beta), `jest`/`@types/jest` retirés du package.json racine (jamais utilisés — tests `node:test`), résidus non suivis retirés (`.github/eslintrc.json`, `.github/prettierrc`, `server/src/db/index.ts`), `.vscode/` ignoré.
+
+**Tests** : `server/test/backup-restore.test.ts` (3 tests runtime, vraie base better-sqlite3 : snapshot VACUUM INTO avec écritures WAL non checkpointées → restauration → `integrity_check` ok + données intactes ; refus d'écraser une sauvegarde ; détection d'une base corrompue) — suite serveur 117/117, lint vert server + web, build tsc + vite OK.
+
+**Fichiers** : `.github/workflows/ci-cd.yml`, `README.md`, `package.json` + `package-lock.json`, `.prettierrc` + `.prettierignore` (nouveaux), `.gitignore`, `web/eslint.config.js` (nouveau), `web/package.json`, `server/package.json`, `server/scripts/backup-db.mjs` (nouveau), `server/test/backup-restore.test.ts` (nouveau), `update.sh`, `scripts/proxmox-install.sh`, `web/src/step-canvas.tsx`, `web/src/pages/{editor,list,deploy}.tsx`, `web/src/lib/*.test.*` (suppressions de code mort), `test-ci-cd.sh` (supprimé), `docs/{guide-test-proxmox,roadmap,durcissement-securite}.md`
+
+**État** : livré sur beta.
+
+---
+
 ## C-56 — MFA TOTP admin (serveur) + outillage : workspaces npm, ESLint, CI, PRA (réalisé)
 
 **Problème** : issues #8 et #9 — aucun second facteur sur le login admin (auth maison), portes qualité purement manuelles (aucun CI), pas de lint automatisé, PRA non documentée.

@@ -1,11 +1,14 @@
 {
   "name": "modop",
+  "private": true,
   "workspaces": [
     "server",
     "web"
   ],
-  "devDependencies": {
-    "@types/jest": "^30.0.0",
-    "jest": "^30.5.2"
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "test": "npm test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "audit": "npm audit --omit=dev --audit-level=high"
   }
 }

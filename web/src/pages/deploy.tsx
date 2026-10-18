@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, ApiError } from "../api";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
 

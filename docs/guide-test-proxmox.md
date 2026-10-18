@@ -61,7 +61,7 @@ Protection intégrée : impossible de se rétrograder ou se désactiver soi-mêm
 
 Page **/deploy** (admin uniquement) :
 - version chargée (commit, auteur, date) et historique des 5 derniers commits ;
-- **« Mettre à jour depuis GitHub »** : sauvegarde de la base → `git reset --hard origin/beta` → `npm ci` si besoin → build → relance pm2 → healthcheck HTTP (l'app revient seule ; pendant le redémarrage la page affiche « serveur momentanément injoignable », puis le journal) ;
+- **« Mettre à jour depuis GitHub »** : sauvegarde cohérente de la base (**VACUUM INTO** + `integrity_check`) → `git reset --hard origin/<branche>` (`MODOP_DEPLOY_BRANCH`, défaut `beta`) → `npm ci` racine si besoin → build → relance pm2 → healthcheck HTTP (l'app revient seule ; pendant le redémarrage la page affiche « serveur momentanément injoignable », puis le journal) ;
 - **« Retour arrière »** : restaure la dernière sauvegarde de la base (10 conservées) ;
 - échec de healthcheck ⇒ tentative de relance de la version précédente et code d'erreur affiché.
 
@@ -77,7 +77,27 @@ pct exec modop -- bash -c "cd /opt/modop/server && npm test"   # 57 tests runtim
 
 - `/opt/modop/server/modop.db` — base SQLite
 - `/opt/modop/server/data/photos/` — photos
+- `/opt/modop/server/data/backups/` — sauvegardes horodatées prises par `update.sh` (**VACUUM INTO** : snapshot cohérent en un seul fichier, WAL inclus, vérifié par `PRAGMA integrity_check` ; 10 conservées)
 - Sauvegarde du conteneur entier : snapshot Proxmox habituel.
+
+Sauvegarde/vérification manuelles (mêmes outils que `update.sh`) :
+
+```bash
+cd /opt/modop && pm2 stop modop
+node server/scripts/backup-db.mjs backup server/modop.db server/data/backups/db-manuel.db
+node server/scripts/backup-db.mjs check  server/modop.db
+pm2 restart modop
+```
+
+## Supervision du healthcheck (Uptime Kuma)
+
+Observabilité minimale (vague 9) : le healthcheck `GET /api/health` est supervisé en continu avec alerte. Le plus simple sur Proxmox : un second conteneur LXC avec **Uptime Kuma** (image Docker `louislam/uptime-kuma`, ou LXC Debian + Node).
+
+1. Créer le moniteur : type **HTTP(s)**, URL `http://<ip-du-ct-modop>:3000/api/health`, intervalle 60 s (le healthcheck est quasi gratuit).
+2. **Notification** : brancher au moins un canal (e-mail SMTP, Gotify, ntfy…) — un monitoring sans notification ne prévient de rien.
+3. Option utile : un second moniteur sur `/` (code attendu 200) pour distinguer « API en vrac » et « front injoignable ».
+
+En cas d'alerte : `pm2 logs modop` sur le CT, puis si besoin `bash /opt/modop/update.sh rollback` (la dernière sauvegarde vérifiée est restaurée).
 
 ## Dépannage
 

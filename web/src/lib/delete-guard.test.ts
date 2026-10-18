@@ -51,7 +51,7 @@ console.log("C-46 (1/2) : section invisible d'un non-admin OK");
 
 // ===== 2/2 : ADMIN -> section visible, case DÉCOCHÉE, bouton désactivé =====
 asAdmin = true;
-const r2 = await mount();
+await mount();
 const doc = dom.window.document;
 const section = doc.querySelector('section[aria-label="Suppression du mode opératoire"]');
 if (!section) throw new Error("C-46 : la section suppression doit être visible d'un admin");

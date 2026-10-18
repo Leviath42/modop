@@ -44,7 +44,6 @@ root.render(
 await new Promise((r) => setTimeout(r, 400));
 
 const doc = dom.window.document;
-const html = doc.body.innerHTML;
 // C-49 : barre PERMANENTE — le bouton + étape est visible sans aucun clic
 const addBtn = [...doc.querySelectorAll("button")].find((b) => b.getAttribute("aria-label") === "Ajouter une étape");
 if (!addBtn) throw new Error("bouton + étape absent de la barre permanente (C-49)");

@@ -4,3 +4,4 @@ dist/
 *.db-*
 data/photos/
 web/dist/
+.vscode/

@@ -1,6 +1,6 @@
 import StepCanvas, { TOOLS, COLORS } from "../step-canvas";
 import type { Shape } from "../annotated-photo";
-import { PhotoIcon, ArrowIcon, RectIcon, TextIcon, PlusIcon, PublishIcon, CollapseIcon, ExpandIcon } from "../icons";
+import { PhotoIcon, ArrowIcon, RectIcon, TextIcon, PlusIcon, CollapseIcon, ExpandIcon } from "../icons";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError, type Step, type WorkflowDetail } from "../api";
@@ -279,11 +279,6 @@ export default function EditorPage() {
     }));
     setUploadProgress(null);
     if (firstError) setError(`Photo(s) non envoyée(s) : ${firstError}${list.length > 1 ? " (les autres ont été envoyées)" : ""}`);
-  }
-
-  async function removePhoto(step: Step, photoId: number) {
-    await api.deletePhoto(photoId);
-    setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, photos: s.photos.filter((p) => p.id !== photoId) } : s)));
   }
 
   async function publish() {
@@ -800,5 +795,3 @@ const secondaryBtn: React.CSSProperties = { padding: "0.35rem 0.7rem", borderRad
 const toolLabelBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.3rem 0.5rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.8rem", lineHeight: 1.2, minWidth: 0, cursor: "pointer" };
 const toolSep: React.CSSProperties = { width: "1px", height: "20px", background: "var(--border)", flexShrink: 0 };
 const iconBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.3rem 0.5rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.8rem", lineHeight: 1.2, minWidth: 0, cursor: "pointer" };
-const toolBtn: React.CSSProperties = { padding: "0.25rem 0.55rem", borderRadius: "5px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.85rem", lineHeight: 1.2, minWidth: 0 };
-const dangerBtn: React.CSSProperties = { padding: "0.3rem 0.5rem", borderRadius: "6px", border: "1px solid var(--danger-border)", background: "var(--danger-bg)", color: "var(--text)", fontSize: "0.9rem" };

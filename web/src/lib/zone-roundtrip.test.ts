@@ -71,7 +71,6 @@ if (Math.abs(rect.y1 - 400 / 240) > 0.01) throw new Error(`y1 sauvegardé = ${re
 // --- rechargement : remonter le composant avec les formes issues de l'API ---
 mount(savedShapes, null);
 await new Promise((r) => setTimeout(r, 120));
-const svg = (Array.from(dom.window.document.querySelectorAll("svg")) as unknown as { getAttribute: (a: string) => string | null }[]).find((s) => s.getAttribute("viewBox")?.startsWith("0 0"))!;
 const allRects = Array.from(dom.window.document.querySelectorAll("svg rect")) as unknown as { getAttribute: (a: string) => string }[];
 const rectEl = allRects[0];
 const y1px = Number(rectEl.getAttribute("y"));

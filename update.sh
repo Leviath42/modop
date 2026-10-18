@@ -4,28 +4,33 @@
 # Modop : serveur Express + front Vite buildé, SQLite better-sqlite3, pm2).
 #
 # Usage :
-#   bash /opt/modop/update.sh            # mise à jour depuis origin/beta
+#   bash /opt/modop/update.sh            # mise à jour depuis origin/<branche>
 #   bash /opt/modop/update.sh rollback   # restaure la dernière sauvegarde de la base
+#
+# Branche de déploiement : $MODOP_DEPLOY_BRANCH > fichier .deploy-branch >
+# "beta" par défaut (rétro-compatible homelab ; la production vise "main").
 #
 # Ordre des opérations (chaque étape s'arrête net en cas d'échec) :
 #   1. stop de l'app (la base ne doit pas être écrite pendant l'échange)
-#   2. sauvegarde horodatée de server/modop.db (10 dernières conservées)
+#   2. sauvegarde cohérente de server/modop.db : VACUUM INTO + integrity_check
+#      (fichier unique, WAL inclus — plus de copie .db/-wal/-shm), 10 dernières conservées
 #   3. git fetch + reset --hard origin/<branche>
-#   4. restauration de la base de production
-#   5. npm ci serveur + web (si package-lock a changé)
-#   6. build du front (vite build)
+#   4. restauration de la base de production (vérifiée)
+#   5. npm ci à la racine (monorepo workspaces : lockfile racine unique)
+#   6. build du front (vite build) et du serveur
 #   7. relance pm2 + healthcheck HTTP
 
 set -euo pipefail
 
 APP_DIR="/opt/modop"
 PM2_NAME="modop"
-BRANCH="${BRANCH:-$(cat "$APP_DIR/.deploy-branch" 2>/dev/null || true)}"
+BRANCH="${MODOP_DEPLOY_BRANCH:-$(cat "$APP_DIR/.deploy-branch" 2>/dev/null || true)}"
 BRANCH="${BRANCH:-beta}"
 PORT="${PORT:-3000}"
 BACKUP_DIR="$APP_DIR/server/data/backups"
 KEEP_BACKUPS=10
 DB_FILE="server/modop.db"
+BACKUP_TOOL="$APP_DIR/server/scripts/backup-db.mjs"
 
 cd "$APP_DIR"
 mkdir -p "$APP_DIR/server/data"
@@ -45,19 +50,18 @@ die() {
 # Mode rollback : restaurer la dernière sauvegarde de la base
 # ---------------------------------------------------------------------------
 if [ "${1:-}" = "rollback" ]; then
-  log "mode rollback"
+  log "mode rollback (branche $BRANCH)"
   LATEST=$(ls -1t "$BACKUP_DIR"/db-*.db 2>/dev/null | head -1 || true)
   [ -n "$LATEST" ] || die "aucune sauvegarde dans $BACKUP_DIR"
   pm2 stop "$PM2_NAME" 2>/dev/null || true
   rm -f "$DB_FILE-wal" "$DB_FILE-shm"
   cp "$LATEST" "$DB_FILE"
-  STAMP2=$(basename "$LATEST" .db)
-  [ -f "$BACKUP_DIR/$STAMP2.db-wal" ] && cp "$BACKUP_DIR/$STAMP2.db-wal" "$DB_FILE-wal" || true
-  [ -f "$BACKUP_DIR/$STAMP2.db-shm" ] && cp "$BACKUP_DIR/$STAMP2.db-shm" "$DB_FILE-shm" || true
+  node "$BACKUP_TOOL" check "$APP_DIR/$DB_FILE" \
+    || die "base restaurée incohérente (integrity_check) : $LATEST"
   pm2 restart "$PM2_NAME" --update-env 2>/dev/null \
     || pm2 start "$APP_DIR/server/ecosystem.config.cjs"
   pm2 save
-  log "base restaurée : $LATEST"
+  log "base restaurée et vérifiée : $LATEST"
   exit 0
 fi
 
@@ -69,43 +73,47 @@ BEFORE=$(git rev-parse --short HEAD)
 log "arrêt de l'application"
 pm2 stop "$PM2_NAME" 2>/dev/null || log "process pm2 absent, on continue"
 
-log "sauvegarde de la base (WAL inclus)"
+log "sauvegarde cohérente de la base (VACUUM INTO + integrity_check)"
 mkdir -p "$BACKUP_DIR"
 STAMP=$(date +%Y%m%d-%H%M%S)
-[ -f "$DB_FILE" ] && cp "$DB_FILE" "$BACKUP_DIR/db-$STAMP.db" || touch "$BACKUP_DIR/db-$STAMP.db"
-[ -f "$DB_FILE-wal" ] && cp "$DB_FILE-wal" "$BACKUP_DIR/db-$STAMP.db-wal" || true
-[ -f "$DB_FILE-shm" ] && cp "$DB_FILE-shm" "$BACKUP_DIR/db-$STAMP.db-shm" || true
-chmod 600 "$BACKUP_DIR"/db-$STAMP.db* 2>/dev/null || true
-ls -1t "$BACKUP_DIR"/db-*.db | tail -n +$((KEEP_BACKUPS + 1)) | xargs -r rm --
+BACKUP_FILE=""
+if [ -f "$DB_FILE" ]; then
+  BACKUP_FILE="$BACKUP_DIR/db-$STAMP.db"
+  node "$BACKUP_TOOL" backup "$APP_DIR/$DB_FILE" "$BACKUP_FILE" \
+    || die "la sauvegarde de la base a échoué"
+  chmod 600 "$BACKUP_FILE"
+  log "sauvegarde vérifiée : $BACKUP_FILE"
+else
+  log "aucune base à sauvegarder ($DB_FILE absent)"
+fi
+ls -1t "$BACKUP_DIR"/db-*.db 2>/dev/null | tail -n +$((KEEP_BACKUPS + 1)) | xargs -r rm --
+# résidus -wal/-shm des anciennes sauvegardes (avant VACUUM INTO)
+rm -f "$BACKUP_DIR"/db-*.db-wal "$BACKUP_DIR"/db-*.db-shm 2>/dev/null || true
 
-log "récupération du code ($BEFORE -> ?)"
+log "récupération du code ($BEFORE -> ?, branche $BRANCH)"
 git fetch origin "$BRANCH"
 git reset --hard "origin/$BRANCH"
 AFTER=$(git rev-parse --short HEAD)
 
 log "restauration de la base de production"
 rm -f "$DB_FILE-wal" "$DB_FILE-shm"
-cp "$BACKUP_DIR/db-$STAMP.db" "$DB_FILE"
-[ -f "$BACKUP_DIR/db-$STAMP.db-wal" ] && cp "$BACKUP_DIR/db-$STAMP.db-wal" "$DB_FILE-wal" || true
-[ -f "$BACKUP_DIR/db-$STAMP.db-shm" ] && cp "$BACKUP_DIR/db-$STAMP.db-shm" "$DB_FILE-shm" || true
-
-# npm ci si le lock a changé OU si node_modules est absent (installation
-# fraîche : un clone neuf n'a jamais de node_modules, et "le lock n'a pas
-# changé" ne doit pas empêcher l'installation).
-if ! git diff --quiet "$BEFORE" "$AFTER" -- server/package-lock.json || [ ! -d server/node_modules ]; then
-  log "serveur : npm ci (lock changé ou node_modules absent)"
-  (cd server && NODE_ENV=development npm ci) || die "npm ci serveur a échoué"
+if [ -n "$BACKUP_FILE" ]; then
+  cp "$BACKUP_FILE" "$DB_FILE"
 fi
-if ! git diff --quiet "$BEFORE" "$AFTER" -- web/package-lock.json || [ ! -d web/node_modules ]; then
-  log "web : npm ci (lock changé ou node_modules absent)"
-  (cd web && NODE_ENV=development npm ci) || die "npm ci web a échoué"
+
+# npm ci racine (monorepo npm workspaces : un seul lockfile à la racine) si le
+# lock a changé OU si node_modules est absent (un clone neuf n'en a jamais —
+# « le lock n'a pas changé » ne doit pas empêcher l'installation).
+if ! git diff --quiet "$BEFORE" "$AFTER" -- package-lock.json || [ ! -d node_modules ]; then
+  log "npm ci racine (lock changé ou node_modules absent)"
+  npm ci || die "npm ci a échoué"
 fi
 
 # Garde-fou : dépendances critiques résolues avant de relancer (un npm ci
 # partiel ou un dossier corrompu plantait le serveur en boucle pm2).
-(cd server && node -e "require.resolve('better-sqlite3')" 2>/dev/null) \
+node -e "require.resolve('better-sqlite3')" 2>/dev/null \
   || { log "better-sqlite3 introuvable : réinstallation complète"; \
-       (cd server && NODE_ENV=development npm ci) || die "npm ci serveur a échoué"; }
+       npm ci || die "npm ci a échoué"; }
 
 log "build du front"
 (cd web && npm run build) || die "build web a échoué"

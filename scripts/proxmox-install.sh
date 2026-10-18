@@ -47,11 +47,11 @@ cd "$APP_DIR"
 echo "$BRANCH" > .deploy-branch
 chmod +x update.sh
 
-log "dépendances serveur + build de production"
-(cd server && npm ci && npm run build) || die "build serveur"
+log "dépendances (npm workspaces, racine) + builds de production"
+npm ci || die "npm ci (racine)"
+(cd server && npm run build) || die "build serveur"
 
-log "dépendances web + build"
-(cd web && npm ci && npm run build) || die "build web"
+(cd web && npm run build) || die "build web"
 
 log "base + compte admin initial ($ADMIN_EMAIL)"
 cd server

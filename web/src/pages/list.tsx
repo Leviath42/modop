@@ -211,8 +211,5 @@ export default function ListPage() {
   );
 }
 
-const secondaryBtn: React.CSSProperties = { padding: "0.5rem 0.9rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)" };
-const primaryBtn: React.CSSProperties = { padding: "0.5rem 0.9rem", borderRadius: "6px", border: "none", background: "var(--accent)", color: "white" };
-
 // Modale de confirmation de suppression — focus piégé, Échap pour fermer,
 // focus rendu au bouton Supprimer à l'ouverture (accessibilité clavier, I4).\n

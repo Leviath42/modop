@@ -1,6 +1,6 @@
 # Modop — Roadmap
 
-*Dernière mise à jour : après C-54 — vagues 9 et 10 créées à partir des issues [#8](https://github.com/Leviath42/modop/issues/8) et [#9](https://github.com/Leviath42/modop/issues/9) (durcissement industriel, palier sécurité entreprise) ; **RF-79 (MFA TOTP)** ajouté à la spécification.*
+*Dernière mise à jour : après C-57 — **vague 9 terminée** (CI fonctionnelle, lint server+web, porte npm audit, sauvegardes VACUUM INTO vérifiées, `MODOP_DEPLOY_BRANCH`) ; reste côté propriétaire : déployer Uptime Kuma sur Proxmox et recevoir les premières PR Dependabot.*
 
 L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archives/roadmap-v1-a-v6bis.md](archives/roadmap-v1-a-v6bis.md). La série de correctifs UI/UX (C-01 → C-51) est journalisée dans [correctifs.md](correctifs.md).
 
@@ -45,15 +45,15 @@ L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archi
 Automatisation des portes qualité et cycle de déploiement — revue externe du 2026-10-17, par priorité :
 
 | # | Action | Priorité | État |
-|---|---|---|---|
-| 1 | **CI GitHub Actions** sur push/PR `beta` et `main` : jobs `server` (typecheck + build + tests runtime) et `web` (build + tests front), badge de statut dans le README | 🔴 | en cours — brouillon `.github/workflows/ci-cd.yml` présent mais **non fonctionnel** : `working-directory` absent (le repo est un monorepo workspaces, les jobs tournent à la racine), script `typecheck` inexistant côté serveur, porte lint absente |
-| 2 | **Lint et formatage automatisés** : ESLint (TS strict) + Prettier sur `server` et `web`, 4ᵉ porte qualité en CI, reformatage ponctuel en un commit dédié | 🔴 | en cours — dépendances posées et `eslint.config.js` serveur présent ; manque : config web, passage initial, porte CI |
-| 3 | **Supply-chain** : Dependabot (ou Renovate) + porte `npm audit --omit=dev --audit-level=high` en CI ; statuer sur `--ignore-scripts` pour `npm ci` (esbuild, better-sqlite3) | 🟠 | en cours — migration **npm workspaces** et **Dependabot** livrées en C-56 (lockfile racine unique, `.github/dependabot.yml`) ; reste la porte `npm audit` en CI + statuer sur `--ignore-scripts` |
-| 4 | **Branche de déploiement paramétrable** : `MODOP_DEPLOY_BRANCH` (défaut `beta` rétro-compatible pour l'homelab), production sur `main` ; à terme CT de recette sur `beta` + CT de prod sur `main` | 🟠 | à faire — `deploy.ts` suit toujours `origin/beta` en dur |
-| 5 | **Observabilité minimale** : supervision du healthcheck (ex. Uptime Kuma auto-hébergé sur le Proxmox) avec notification ; optionnel : endpoint `/metrics` | 🟡 | à faire |
-| 6 | **Sauvegardes SQLite cohérentes** : remplacer la copie de fichier par `VACUUM INTO` ou `.backup()` (better-sqlite3) dans `update.sh` ; test de restauration automatisé (`PRAGMA integrity_check`) | 🟡 | à faire |
+|---|---------------|---|---|
+| 1 | **CI GitHub Actions** sur push/PR `beta` et `main` : jobs `server` (typecheck + build + tests runtime) et `web` (build + tests front), badge de statut dans le README | 🔴 | ✅ livré (C-57) — `npm ci` racine + scripts par workspace, portes lint/typecheck/build/tests des deux côtés, badge README |
+| 2 | **Lint et formatage automatisés** : ESLint (TS strict) + Prettier sur `server` et `web`, 4ᵉ porte qualité en CI, reformatage ponctuel en un commit dédié | 🔴 | ✅ livré (C-57) — lint vert sur `server` et `web` en CI ; Prettier configuré (`.prettierrc` racine, scripts `format`) ; reformatage ponctuel du code existant non exécuté (à faire en commit dédié si souhaité) |
+| 3 | **Supply-chain** : Dependabot (ou Renovate) + porte `npm audit --omit=dev --audit-level=high` en CI ; statuer sur `--ignore-scripts` pour `npm ci` (esbuild, better-sqlite3) | 🟠 | ✅ livré (C-56 + C-57) — Dependabot actif, job `audit` en CI ; décision : **scripts d'install conservés** (better-sqlite3/esbuild en ont besoin — voir durcissement-securite.md § 5) |
+| 4 | **Branche de déploiement paramétrable** : `MODOP_DEPLOY_BRANCH` (défaut `beta` rétro-compatible pour l'homelab), production sur `main` ; à terme CT de recette sur `beta` + CT de prod sur `main` | 🟠 | ✅ livré (C-57) — env > `.deploy-branch` > `beta` ; update.sh + proxmox-install.sh adaptés aux workspaces au passage |
+| 5 | **Observabilité minimale** : supervision du healthcheck (ex. Uptime Kuma auto-hébergé sur le Proxmox) avec notification ; optionnel : endpoint `/metrics` | 🟡 | ✅ livré (doc) — procédure Uptime Kuma + notifications dans guide-test-proxmox.md ; **déploiement réel sur Proxmox à faire côté propriétaire** ; `/metrics` non retenu pour l'instant |
+| 6 | **Sauvegardes SQLite cohérentes** : remplacer la copie de fichier par `VACUUM INTO` ou `.backup()` (better-sqlite3) dans `update.sh` ; test de restauration automatisé (`PRAGMA integrity_check`) | 🟡 | ✅ livré (C-57) — `server/scripts/backup-db.mjs` (VACUUM INTO + integrity_check de la copie, contrôle aussi après restauration/rollback), 3 tests runtime (`server/test/backup-restore.test.ts`) |
 
-Critères d'acceptation (issue #8) : un push cassant typecheck/build/tests refusé par le CI ; lint vert sur `server` et `web` ; premières PR Dependabot reçues ; déploiement de production visant `main` ; healthcheck supervisé avec alerte ; une sauvegarde restaure une base `integrity_check = ok`.
+Critères d'acceptation (issue #8) : un push cassant typecheck/build/tests refusé par le CI (✅ CI fonctionnelle) ; lint vert sur `server` et `web` (✅) ; premières PR Dependabot reçues (⏳ côté GitHub) ; déploiement de production visant `main` (✅ `MODOP_DEPLOY_BRANCH`, à activer côté prod) ; healthcheck supervisé avec alerte (⏳ déploiement Uptime Kuma côté propriétaire, procédure prête) ; une sauvegarde restaure une base `integrity_check = ok` (✅ testé en runtime).
 
 ### Vague 10 — Palier sécurité entreprise (issue #9)
 

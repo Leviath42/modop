@@ -4,7 +4,7 @@ import React from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import EditorPage from "../pages/editor";
 import { AuthProvider } from "../auth-context";
-import type { Step, WorkflowDetail } from "../api";
+import type { Step } from "../api";
 
 // Le bandeau d'édition doit contenir la rangée d'outils d'insertion :
 // 📷 photos, ➶ flèche, ▭ zone, T texte, et les pictos d'attention —

@@ -1,5 +1,7 @@
 # Modop
 
+![CI](https://github.com/Leviath42/modop/actions/workflows/ci-cd.yml/badge.svg?branch=beta)
+
 Application web de création, publication et consultation de **modes opératoires** — pensée atelier : une étape, une photo, un pictogramme. Auto-hébergée (LXC Proxmox), consultable sur PC et mobile (PWA).
 
 ## Ce que ça fait

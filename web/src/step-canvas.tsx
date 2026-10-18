@@ -39,7 +39,6 @@ export default function StepCanvas({
   onPhotosChanged,
   tool: toolProp,
   color: colorProp,
-  onToolDone,
   onSelectionChange,
   deleteActionRef,
   onInteract,
@@ -244,7 +243,6 @@ export default function StepCanvas({
         overTrashRef.current = over;
         setOverTrash(over);
       } else if (drag.kind === "photo") {
-        const dx = p.x - drag.from.x, dy = p.y - drag.from.y;
         setObjs((arr) => arr.map((o, i) => {
           if (!drag.ids.includes(i)) return o;
           const g = drag.grabs[drag.ids.indexOf(i)];
@@ -346,7 +344,6 @@ export default function StepCanvas({
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", cancel);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drag]);
 
   function onPointerDown(e: React.PointerEvent) {
@@ -462,7 +459,6 @@ export default function StepCanvas({
     const move = (e: PointerEvent) => setPreview(pt(e));
     canvasRef.current?.addEventListener("pointermove", move);
     return () => canvasRef.current?.removeEventListener("pointermove", move);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingStart !== null]);
 
   const deleteSelection = () => {

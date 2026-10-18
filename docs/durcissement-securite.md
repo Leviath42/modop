@@ -53,4 +53,4 @@ gpg --batch --yes --recipient backup@entreprise.fr -o /tmp/modop-$(date +%F).db.
 
 ### 5. Point d'attention supply-chain
 
-`update.sh` lance `npm ci` (scripts d'install inclus). Pour un environnement strict : ajouter `npm audit --omit=dev` en porte qualité dans le CI et épingler les dépendances (`package-lock.json` versionné — déjà le cas).
+Décision (vague 9) : les **scripts d'installation de npm restent activés** (pas de `--ignore-scripts` sur `npm ci`). Rationale : `better-sqlite3` (binding natif) et `esbuild` (binaire, postinstall) en dépendent ; les désactiver casserait l'installation serveur. Compensation : lockfile racine versionné (`npm ci` reproduit exactement), Dependabot quotidien, **porte `npm audit --omit=dev --audit-level=high` en CI** (job `audit` de `.github/workflows/ci-cd.yml`).

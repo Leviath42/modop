@@ -29,7 +29,7 @@ const WORKFLOW = {
 };
 
 let reorderBody: unknown = null;
-let fetchCalls: string[] = [];
+const fetchCalls: string[] = [];
 (g as { fetch: unknown }).fetch = async (url: string, init?: RequestInit) => {
   if (String(url).includes("/steps/reorder")) {
     reorderBody = JSON.parse(String(init?.body));
@@ -75,7 +75,6 @@ if (cards.length < 2) throw new Error("cartes d'étapes introuvables");
 
 // Simuler le drag Pointer Events : down sur la poignée, up sur la carte 2
 const rect2 = { left: 10, top: 200, width: 300, height: 80 } as DOMRect;
-const elementFromPoint = dom.window.document.elementFromPoint;
 (dom.window.document as unknown as { elementFromPoint: (x: number, y: number) => Element | null }).elementFromPoint =
   (_x: number, _y: number) => dom.window.document.getElementById("edit-step-202") as unknown as Element;
 void rect2;

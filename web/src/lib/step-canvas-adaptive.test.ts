@@ -16,12 +16,8 @@ g.window = dom.window;
 g.document = dom.window.document;
 
 const calls: string[] = [];
-let lastPutBody: unknown = null;
-(g as { fetch: unknown }).fetch = async (url: string, init?: { method?: string; body?: string }) => {
+(g as { fetch: unknown }).fetch = async (url: string, _init?: { method?: string; body?: string }) => {
   calls.push(String(url));
-  if (init?.method === "PUT") {
-    try { lastPutBody = JSON.parse(init.body ?? "{}"); } catch { lastPutBody = null; }
-  }
   return { ok: true, status: 200, json: async () => ({}) } as unknown as Response;
 };
 

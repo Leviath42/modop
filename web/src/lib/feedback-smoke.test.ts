@@ -1,6 +1,5 @@
 import { JSDOM } from "jsdom";
 import { createRoot } from "react-dom/client";
-import { act } from "react";
 import React from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import ReaderPage from "../pages/reader";
@@ -24,13 +23,11 @@ const WORKFLOW = {
   ],
 };
 
-let feedbackPost: { url: string; body: unknown } | null = null;
 (g as { fetch: unknown }).fetch = async (url: string, init?: RequestInit) => {
   if (String(url).includes("/api/auth/me")) {
     return { ok: true, status: 200, json: async () => ({ id: 1, email: "op@usine.fr", role: "reader" }) } as unknown as Response;
   }
   if (String(url).includes("/feedback") && String(url).includes("5") && (init as { method?: string } | undefined)?.method === "POST") {
-    feedbackPost = { url: String(url), body: JSON.parse(String(init?.body)) };
     return { ok: true, status: 201, json: async () => ({ ok: true }) } as unknown as Response;
   }
   if (String(url).includes("/feedback")) {
