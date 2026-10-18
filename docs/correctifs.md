@@ -36,6 +36,25 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-56 — MFA TOTP admin (serveur) + outillage : workspaces npm, ESLint, CI, PRA (réalisé)
+
+**Problème** : issues #8 et #9 — aucun second facteur sur le login admin (auth maison), portes qualité purement manuelles (aucun CI), pas de lint automatisé, PRA non documentée.
+
+**Correctif** :
+1. **MFA TOTP (RF-79, transitoire)** : `server/src/auth/totp.ts` (lib `otpauth`) — quand `MODOP_TOTP_SECRET` est posé, le login local des comptes **admin** exige un code TOTP valide ; vérifié **après** le mot de passe, échecs tracés dans l'audit (`login_mfa_echec`), couvert par le rate-limit login ; lecteurs et SSO exemptés. Version par compte (QR, code de secours, anti-replay) + UI : vague 10.
+2. **Outillage** : migration **npm workspaces** (package.json racine, lockfile racine unique — `server/package-lock.json` retiré) ; ESLint (`eslint.config.js`, script `lint`) + Prettier côté serveur ; `tsconfig.test.json` pour le typecheck des tests.
+3. **CI / supply-chain** : `.github/workflows/ci-cd.yml` (jobs server/web sur push `beta`/`main`) — **brouillon non fonctionnel** (pas de `working-directory`, scripts appelés inexistants à la racine), correction tracée en vague 9 (issue #8) ; **Dependabot** configuré (`.github/dependabot.yml`, mises à jour npm quotidiennes).
+4. **PRA** : `docs/plan-de-reprise.md` (brouillon ; l'exercice chronométré reste à faire — vague 10, issue #9).
+5. Nettoyages : `deployRouter()` / `staticPhotos()` n'exigent plus le `db`, code mort et variables inutiles retirés, `photosDir()` résolu à chaque appel.
+
+**Tests** : `server/test/mfa-totp.test.ts` (7 tests runtime : MFA active, code valide/invalide, login admin sans code / mauvais code / bon code, lecteur sans TOTP) — suite serveur 111/111, build tsc OK, build + tests front OK.
+
+**Fichiers** : `server/src/auth/totp.ts` (nouveau), `server/src/routes/auth.ts`, `server/src/app.ts`, `server/src/routes/{deploy,export,photos}.ts`, `server/test/*` (mfa-totp nouveau + nettoyages), `server/package.json`, `package.json` + `package-lock.json` (racine, workspaces), `server/eslint.config.js` (nouveau), `server/tsconfig.test.json` (nouveau), `.github/workflows/ci-cd.yml` + `.github/dependabot.yml` (nouveaux), `docs/plan-de-reprise.md` (nouveau), `test-ci-cd.sh`
+
+**État** : livré sur beta.
+
+---
+
 ## C-55 — Doc optimisée pour sessions IA : AGENTS.md, routage documentaire, journal consulté par mot-clé (réalisé)
 
 **Problème** : une nouvelle session IA devait enchaîner README (section agents verbeuse), cahier des charges, roadmap et journal des correctifs (~800 lignes) pour se situer — orientation lente et coût en tokens élevé. Le projet meal_plan démontre l'approche inverse : un point d'entrée unique dense (stack, arborescence annotée, conventions) et des pointeurs vers les docs détaillées.

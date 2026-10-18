@@ -34,7 +34,7 @@ const PNG = Buffer.from(
 
 async function uploadPhoto(buf: Buffer, mime: string, extra?: Record<string, string>) {
   const fd = new FormData();
-  fd.append("file", new Blob([buf], { type: mime }), "photo.png");
+  fd.append("file", new Blob([new Uint8Array(buf)], { type: mime }), "photo.png");
   if (extra?.alt) fd.append("alt", extra.alt);
   const res = await fetch(`${base}/api/steps/${step.id}/photos`, { method: "POST", headers: { cookie }, body: fd });
   return { status: res.status, json: await res.json().catch(() => null) };

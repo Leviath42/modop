@@ -34,7 +34,6 @@ async function call(method: string, path: string, body?: object, cookie?: string
 async function login(email: string, password: string): Promise<string> {
   return (await call("POST", "/api/auth/login", { email, password })).cookie!;
 }
-let authorTempPassword = "auteurpass1";
 let authorFresh: string | null = null;
 const admin = await login("admin@modop.local", "adminpass1");
 const author = await login("auteur@modop.local", "auteurpass1");
@@ -92,7 +91,6 @@ test("reset password : mot de passe temporaire fonctionne, sessions révoquées"
   const reset = await call("POST", `/api/admin/users/${target.id}/reset-password`, undefined, admin);
   assert.equal(reset.status, 200);
   assert.ok(reset.json.temporaryPassword.length >= 8);
-    authorTempPassword = reset.json.temporaryPassword;
   // ancienne session morte
   const me = await call("GET", "/api/auth/me", undefined, oldSess);
   assert.equal(me.status, 401);

@@ -58,8 +58,6 @@ test("migration : annotations photo existantes converties vers le canevas", asyn
     step.json.id,
     JSON.stringify([{ type: "arrow", x1: 0.1, y1: 0.2, x2: 0.8, y2: 0.7, color: "#d0021b" }])
   );
-  // réouverture de la base (= createApp au boot) déclenche la conversion
-  const db2 = openDb(":memory:"); // pas la même base ; on simule via reopen du même fichier ? memory: on teste via la fonction de migration appelée par openDb
   // vérifions plutôt le GET : la conversion tourne dans openDb du serveur déjà démarré ;
   // ici on appelle openDb sur la base du serveur n'est pas possible (:memory: isolée).
   // Le comportement est couvert par le boot réel ; on valide juste la non-régression du GET.

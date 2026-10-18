@@ -85,7 +85,7 @@ test("suppression d'une étape recalcule les positions", async () => {
   const create = await call("POST", "/api/workflows", { title: "Nettoyage", reference: "MO-004" }, author);
   const id = create.json.id;
   const a = (await call("POST", `/api/workflows/${id}/steps`, { title: "A" }, author)).json.id;
-  const b = (await call("POST", `/api/workflows/${id}/steps`, { title: "B" }, author)).json.id;
+  await call("POST", `/api/workflows/${id}/steps`, { title: "B" }, author);
   const del = await call("DELETE", `/api/steps/${a}`, undefined, author);
   assert.equal(del.status, 200);
   const got = await call("GET", `/api/workflows/${id}`, undefined, author);

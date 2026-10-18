@@ -5,7 +5,6 @@ import bcrypt from "bcryptjs";
 import { createApp } from "../src/app.js";
 import http from "node:http";
 import fs from "node:fs";
-import path from "node:path";
 
 // Isolation : le trigger cherche update.sh à la racine du dépôt (cwd/..).
 // En test, cwd = server/ du dépôt réel qui CONTIENT update.sh — on intercepte

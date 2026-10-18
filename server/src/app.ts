@@ -54,7 +54,7 @@ export function createApp(db: Database.Database, webDist?: string): express.Expr
   app.use("/api/photos", deletePhotoRouter(db));
   app.use("/api/photos", annotationsRouter(db));
   app.use("/api/photos", photoLayoutRouter(db));
-  app.use("/api/deploy", process.env.MODOP_DEPLOY === "off" ? disabledDeployRouter() : deployRouter(db));
+  app.use("/api/deploy", process.env.MODOP_DEPLOY === "off" ? disabledDeployRouter() : deployRouter());
   app.use("/api/admin", adminRouter(db));
   app.use("/api/stats", statsRouter(db));
   app.use("/api/workflows", duplicateRouter(db));
@@ -67,7 +67,7 @@ export function createApp(db: Database.Database, webDist?: string): express.Expr
     }
     next();
   });
-  app.get("/photos/:filename", requireAuth("reader"), staticPhotos(db));
+  app.get("/photos/:filename", requireAuth("reader"), staticPhotos());
 
   // Handler d'erreurs : la cause est logguée côté serveur ; le client ne
   // reçoit jamais le détail (chemins, erreurs SQLite) — message générique.

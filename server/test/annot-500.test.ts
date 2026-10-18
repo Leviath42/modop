@@ -40,14 +40,9 @@ async function call(method: string, p: string, body?: unknown, cookie?: string, 
     body: isForm ? (body as FormData) : body ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
-  let json: unknown = null;
-  try { json = JSON.parse(text); } catch { /* réponse non JSON */ }
+  const json = (() => { try { return JSON.parse(text); } catch { return null; } })();
   return { status: res.status, json, text };
 }
-const login = await call("POST", "/api/auth/login", { email: "a@modop.local", password: "p" });
-const cookie = (login.headers ?? (login as { json?: { }})) ? "" : ""; // placeholder
-
-// refaire proprement le login avec getSetCookie
 const lres = await fetch(base + "/api/auth/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "a@modop.local", password: "p" }) });
 const sc = lres.headers.getSetCookie?.() ?? [];
 const ck = sc.find((c) => c.startsWith("modop_session="))!.split(";")[0];

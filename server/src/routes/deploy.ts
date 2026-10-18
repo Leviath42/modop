@@ -10,7 +10,6 @@ import { execFile, spawn } from "node:child_process";
 import { closeSync, existsSync, openSync, readFileSync, readSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { Router } from "express";
-import type Database from "better-sqlite3";
 import { requireAuth } from "../auth/middleware.js";
 
 interface CommitSummary {
@@ -158,7 +157,7 @@ async function getGitInfo() {
   return gitInfoCache;
 }
 
-export function deployRouter(db: Database.Database): Router {
+export function deployRouter(): Router {
   const r = Router();
 
   // Statut : accessible à tout utilisateur connecté (la version n'est pas

@@ -6,6 +6,7 @@ import { requireAuth } from "../auth/middleware.js";
 import { auditLog } from "../auth/audit.js";
 import { cookieSecure } from "../auth/security.js";
 import { getOidcConfig, makeState, makePkce, verifyState, exchangeCode, fetchUserInfo, roleFromClaims, discover } from "../auth/oidc.js";
+import { isTotpEnabled, validateTOTPCode } from "../auth/totp.js";
 
 const COOKIE = "modop_session";
 
@@ -122,6 +123,15 @@ export function authRouter(db: Database.Database): Router {
       auditLog(db, email.toLowerCase(), "login_echec", "user");
       res.status(401).json({ error: "unauthorized", message: "Identifiants invalides" });
       return;
+    }
+    // MFA : les comptes admin doivent fournir un code TOTP valide quand un secret est configuré.
+    if (isTotpEnabled() && user.role === "admin") {
+      const totp = typeof req.body?.totp === "string" ? req.body.totp : "";
+      if (!totp || !validateTOTPCode(totp)) {
+        auditLog(db, user.email, "login_mfa_echec", "user");
+        res.status(401).json({ error: "unauthorized", message: "Code TOTP requis ou invalide" });
+        return;
+      }
     }
     const token = createSession(db, user.id);
     auditLog(db, user.email, "login", "user");

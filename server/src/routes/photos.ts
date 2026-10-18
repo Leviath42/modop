@@ -52,12 +52,10 @@ export function purgeOrphanPhotos(db: Database.Database, dir: string): number {
 }
 
 function photosDir(): string {
-  const dir = process.env.MODOP_PHOTOS_DIR ?? path.resolve("data/photos");
+  const dir = path.resolve(process.env.MODOP_PHOTOS_DIR ?? "data/photos");
   fs.mkdirSync(dir, { recursive: true });
   return dir;
 }
-const PHOTOS_DIR = photosDir();
-
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp"]);
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -123,7 +121,7 @@ export function deletePhotoRouter(db: Database.Database): Router {
   return r;
 }
 
-export function staticPhotos(db: Database.Database): express.RequestHandler {
+export function staticPhotos(): express.RequestHandler {
   const mime: Record<string, string> = {
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",

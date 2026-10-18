@@ -59,4 +59,4 @@ web/src/lib/         tests front autonomes (jsdom, un fichier = un scénario, ex
 
 ## Travaux en cours (issues #8/#9 — vagues 9-10, voir roadmap)
 
-CI à corriger (working-directory manquant, script `typecheck` absent), `server/package-lock.json` à restaurer, ESLint/Prettier à compléter côté web, MFA TOTP par compte (UI sans champ `totp` : ne pas activer `MODOP_TOTP_SECRET` en production).
+CI à corriger (working-directory manquant, scripts appelés inexistants à la racine), ESLint/Prettier à compléter côté web, MFA TOTP par compte (UI sans champ `totp` : ne pas activer `MODOP_TOTP_SECRET` en production).

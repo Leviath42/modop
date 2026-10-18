@@ -1,0 +1,11 @@
+{
+  "name": "modop",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "jest": "^30.5.2"
+  }
+}
