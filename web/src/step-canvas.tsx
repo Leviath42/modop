@@ -191,26 +191,37 @@ export default function StepCanvas({
   // C-72 (#10) : validation unique de la saisie texte — cree, remplace
   // (edition) ou supprime (edition videe) puis ferme l'outil. Aucun changement
   // d'etape, aucun deplacement du champ.
+  // C-77 : garde anti-réentrance — le blur() déclenche le onBlur du champ,
+  // qui rappelait commitText (double sauvegarde du texte).
+  const committingRef = useRef(false);
   function commitText() {
-    if (!textDraft) return;
-    // C-74 : démonter un input FOCUSÉ fait sauter le focus du navigateur au
-    // champ suivant (le titre de l'étape d'après) et y scrolle — on rend
-    // explicitement le focus AVANT de démonter le champ.
-    (document.activeElement as HTMLElement | null)?.blur?.();
-    const v = textDraft.value.trim();
-    if (v) {
-      if (textDraft.editIndex != null) {
-        void saveShapes(shapes.map((sh, i) => i === textDraft.editIndex ? { ...sh, text: v } : sh));
-      } else {
-        void saveShapes([...shapes, { type: "text", x1: textDraft.x, y1: textDraft.y, text: v, color }]);
+    if (!textDraft || committingRef.current) return;
+    committingRef.current = true;
+    try {
+      // C-77 : le blur() seul ne suffit pas sur iOS — quand un input est
+      // démonté CLAVIER OUVERT, Safari re-focalise l'élément focusable SUIVANT
+      // dans l'ordre du DOM (le titre de l'étape d'après) et y scrolle.
+      // On pose explicitement le focus sur le CANEVAS avant le démontage :
+      // le focus ne peut plus « tomber » ailleurs.
+      (document.activeElement as HTMLElement | null)?.blur?.();
+      canvasRef.current?.focus?.();
+      const v = textDraft.value.trim();
+      if (v) {
+        if (textDraft.editIndex != null) {
+          void saveShapes(shapes.map((sh, i) => i === textDraft.editIndex ? { ...sh, text: v } : sh));
+        } else {
+          void saveShapes([...shapes, { type: "text", x1: textDraft.x, y1: textDraft.y, text: v, color }]);
+        }
+      } else if (textDraft.editIndex != null) {
+        void saveShapes(shapes.filter((_, i) => i !== textDraft.editIndex));
       }
-    } else if (textDraft.editIndex != null) {
-      void saveShapes(shapes.filter((_, i) => i !== textDraft.editIndex));
+      lastTextCommitRef.current = Date.now();
+      setTextDraft(null);
+      setTool(null);
+      onToolDone?.();
+    } finally {
+      committingRef.current = false;
     }
-    lastTextCommitRef.current = Date.now();
-    setTextDraft(null);
-    setTool(null);
-    onToolDone?.();
   }
 
   async function savePhotoLayout(photoId: number, x: number, y: number, w: number) {
@@ -658,6 +669,7 @@ export default function StepCanvas({
       {/* zone canevas : images + formes + interactions */}
       <div
         ref={canvasRef}
+        tabIndex={-1}
         onPointerDown={onPointerDown}
         onPointerUp={onToolPointerUp}
         style={{ position: "relative", width: "100%", height: `${H}px`, background: "var(--surface-2, #f0f1f4)", borderRadius: "8px", overflow: "hidden", touchAction: (tool || selPhotos.size + selShapes.size > 0) ? "none" : "pan-y", cursor: tool ? "crosshair" : "default" }}
@@ -732,17 +744,15 @@ export default function StepCanvas({
           <input autoFocus value={textDraft.value}
             onChange={(e) => setTextDraft({ ...textDraft, value: e.target.value })}
             className="canvas-text-draft"
-            size={Math.max(6, textDraft.value.length + 2)}
-            placeholder="Texte…"
             aria-label="Texte à afficher sur l'étape"
             style={{
               position: "absolute", left: `${textDraft.x * 100}%`, top: `${textDraft.y * REF_H}px`, transform: "translate(-50%, -50%)",
-              // #7 : style IDENTIQUE au texte posé (même padding, taille,
-              // graisse, rayon) — juste le curseur et un pointillé discret
-              // pour indiquer la saisie en cours.
+              // C-77 : GHOST fidèle au résultat — même fond/padding/taille/
+              // graisse/rayon que le texte posé ; largeur = contenu (vide =
+              // pastille au caret clignotant, aucun cadre supplémentaire).
               background: color, color: "white", padding: "0.15rem 0.4rem", borderRadius: "4px",
-              fontSize: "0.8rem", fontWeight: 600, border: "none", outline: "1.5px dashed rgba(255,255,255,0.9)",
-              caretColor: "white", minWidth: "5rem", maxWidth: "60%",
+              fontSize: "0.8rem", fontWeight: 600, border: "none", outline: "none",
+              caretColor: "white", width: `calc(${Math.max(1, textDraft.value.length)}ch + 0.8rem)`, maxWidth: "60%",
             }}
             onKeyDown={(e) => {
               e.stopPropagation(); // C-72 (#10) : aucune autre action ne doit suivre la validation
@@ -750,7 +760,14 @@ export default function StepCanvas({
                 e.preventDefault();
                 commitText();
               }
-              if (e.key === "Escape") { setTextDraft(null); setTool(null); }
+              if (e.key === "Escape") {
+                // C-77 : même discipline de focus que la validation — le
+                // canevas reprend le focus avant le démontage du champ.
+                (document.activeElement as HTMLElement | null)?.blur?.();
+                canvasRef.current?.focus?.();
+                setTextDraft(null);
+                setTool(null);
+              }
             }}
             onBlur={() => { if (textDraft) commitText(); }} />
         )}

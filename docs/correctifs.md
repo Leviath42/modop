@@ -36,6 +36,24 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-77 — Outil texte : focus verrouillé sur le canevas + champ fantôme fidèle (correctif C-74)
+
+**Problèmes persistants** :
+1. « Après avoir validé un texte, cela ramène au champ de l'étape suivante » — le `blur()` seul (C-74) ne suffit pas : quand un input est démonté **clavier ouvert**, iOS/Safari re-focalise l'élément focusable SUIVANT dans l'ordre du DOM (le titre de l'étape d'après) et y scrolle. Par ailleurs le `blur()` déclenchait le `onBlur` du champ → `commitText` réentrant (double sauvegarde du texte).
+2. Le champ de saisie ne ressemblait pas au résultat (largeur fixe `minWidth`, pointillé, placeholder).
+
+**Correctifs** :
+1. **Focus verrouillé** : le canevas devient focusable (`tabIndex={-1}`) ; à la validation (Enter, clic à côté, blur) comme à l'annulation (Échap), `blur()` puis **`canvasRef.focus()` AVANT le démontage** — le focus ne peut plus « tomber » sur le champ suivant. Garde anti-réentrance (`committingRef`) : plus de double sauvegarde.
+2. **Champ fantôme** : largeur = contenu (`width: calc(len × 1ch + 0.8rem)`, plafonnée à 60 %) — vide = pastille de la couleur du trait avec juste le caret clignotant (plus de placeholder ni `minWidth`) ; rempli = même fond, padding, taille, graisse et rayon que le texte posé ; le pointillé de saisie est supprimé (aucun cadre différé).
+
+**Tests** : suite front verte, 121/121 serveur (flaky S2 connu), lint, builds OK.
+
+**Fichiers** : `web/src/step-canvas.tsx`.
+
+**État** : livré sur beta.
+
+---
+
 ## C-76 — Rognage : panneau borné entre les deux barres, image ajustée (correctif C-75)
 
 **Problème** : l'overlay de rognage couvrait tout le canevas (solidaire de sa hauteur, potentiellement bien plus grand que l'écran) → cadrage demandait du scroll.
