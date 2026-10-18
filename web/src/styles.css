@@ -212,9 +212,11 @@ html, body {
   /* clip (et PAS hidden) : n'élève pas de scroll container, donc
      position: sticky continue de fonctionner dans toute la page */
   overflow-x: clip;
-  /* C-73 : le pull-to-refresh volait les gestes sur le canevas en édition
-     (drag vers le bas) — contenu, pas de rafraîchissement par glisser. */
-  overscroll-behavior-y: contain;
+  /* C-78 : le pull-to-refresh (tirer vers le bas) est RÉTABLI — le
+     overscroll-behavior:contain global de C-73 l'avait supprimé partout.
+     Les drags du canevas restent protégés par le touch-action conditionnel
+     (none dès qu'un outil est actif ou une sélection existe : le navigateur
+     ne peut pas démarrer le geste de rafraîchissement pendant un drag). */
 }
 #root {
   max-width: 100%;

@@ -36,6 +36,22 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-78 — Pull-to-refresh rétabli (correctif C-73)
+
+**Problème** (constat propriétaire, Android/Chrome) : plus moyen de rafraîchir en tirant vers le bas — le `overscroll-behavior-y: contain` posé globalement en C-73 avait supprimé le pull-to-refresh sur TOUTES les pages.
+
+**Correctif** : règle retirée (comportement natif rétabli). La protection d'origine est conservée par le **touch-action conditionnel** du canevas d'édition (C-74 : `none` dès qu'un outil est actif ou une sélection existe) — le navigateur ne peut pas démarrer le geste de rafraîchissement pendant un drag d'objet ; au repos, le pull-to-refresh redevient légitime.
+
+Nota : le correctif de focus de C-77 (focus explicite sur le canevas avant démontage du champ texte) vaut aussi pour Chrome/Android — la restauration de focus séquentielle existe dans les deux moteurs.
+
+**Tests** : suite front verte, 121/121 serveur, lint, builds OK.
+
+**Fichiers** : `web/src/styles.css`.
+
+**État** : livré sur beta.
+
+---
+
 ## C-77 — Outil texte : focus verrouillé sur le canevas + champ fantôme fidèle (correctif C-74)
 
 **Problèmes persistants** :
