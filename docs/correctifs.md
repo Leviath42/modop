@@ -49,7 +49,7 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 **Fichiers** : `update.sh`, `scripts/test-update.sh`, `docs/{correctifs,guide-test-proxmox}.md`
 
-**État** : livré sur beta.
+**État** : livré sur beta — le fallback a été écrit APRÈS observation de l'échec réel sur le CT (la version C-58 y a bloqué la sauvegarde) ; le CT est repassé sur un `npm ci` sain puis mis à jour normalement, incident clos.
 
 ---
 
@@ -62,11 +62,11 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 2. `update.sh` : le message d'échec de `npm ci` pointe vers le prérequis (make/g++ — Dépannage du guide).
 3. Guide : nouvelle ligne Dépannage (`gyp ERR! not found: make`).
 
-**Test** : non reproductible en local (outils présents / scripts d'install bloqués par npm 11) ; validé sur le CT par le propriétaire après `apt install -y make g++` (voir état).
+**Test** : non reproductible en local (outils présents / scripts d'install bloqués par npm 11) ; **validé sur le CT par le propriétaire** — `apt install -y make g++` puis `npm ci` racine OK (better-sqlite3 compilé), suite de remise en route complète.
 
 **Fichiers** : `scripts/proxmox-install.sh`, `update.sh`, `docs/{correctifs,guide-test-proxmox}.md`
 
-**État** : livré sur beta.
+**État** : livré sur beta, validé sur le CT.
 
 ---
 
@@ -93,7 +93,7 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ## C-58 — update.sh ne peut plus laisser l'application à l'arrêt (relance garantie) (réalisé)
 
-**Problème** : mise à jour déclenchée depuis **/deploy sur le CT — le serveur est resté injoignable**. Analyse (sans les logs du CT, à confirmer via `server/data/deploy.log`) : `set -euo pipefail` interrompt le script au premier échec, mais seules les étapes prévues passaient par `die()` — qui relance pm2. Un échec sur une commande **non gardée** (`git fetch`, `git reset`, `chmod`, purge des sauvegardes, `pm2 save`) tuait le script **après le `pm2 stop`**, avant toute relance : pm2 restait arrêté, serveur muet, jusqu'à une intervention manuelle. S'y ajoutait le risque structurel d'un script qui se réécrit lui-même (`git reset` remplace update.sh pendant son exécution ; bash bufférise les petits scripts mais relit le fichier au-delà de son tampon), et le cas « app qui crash en boucle faute de `node_modules` cohérent » (l'ancien `cd server && npm ci` pré-C-57, sans lockfile, pouvait vider `server/node_modules` avant d'échouer).
+**Problème** : mise à jour déclenchée depuis **/deploy sur le CT — le serveur est resté injoignable**. Analyse initiale sans les logs du CT, **confirmée depuis par les logs du CT** (l'incident complet est reconstitué en C-60/C-61 : l'ancien `cd server && npm ci` pré-C-57 a vidé `server/node_modules` avant d'échouer, puis le `npm ci` racine a échoué faute de `make` — app en crash-loop, et le script mourait avant toute relance)) : `set -euo pipefail` interrompt le script au premier échec, mais seules les étapes prévues passaient par `die()` — qui relance pm2. Un échec sur une commande **non gardée** (`git fetch`, `git reset`, `chmod`, purge des sauvegardes, `pm2 save`) tuait le script **après le `pm2 stop`**, avant toute relance : pm2 restait arrêté, serveur muet, jusqu'à une intervention manuelle. S'y ajoutait le risque structurel d'un script qui se réécrit lui-même (`git reset` remplace update.sh pendant son exécution ; bash bufférise les petits scripts mais relit le fichier au-delà de son tampon), et le cas « app qui crash en boucle faute de `node_modules` cohérent » (l'ancien `cd server && npm ci` pré-C-57, sans lockfile, pouvait vider `server/node_modules` avant d'échouer).
 
 **Correctif** :
 1. **`relaunch()` idempotent + `trap EXIT`** : toute sortie non nette du script (échec imprévu, `set -e` sur une commande non gardée) relance l'application avant de sortir — pm2 ne peut plus rester à l'arrêt, quelle que soit la cause de mort. `die()` partage la même relance (jamais de double relance).
