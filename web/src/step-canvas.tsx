@@ -572,9 +572,12 @@ export default function StepCanvas({
             aria-label="Texte à afficher sur l'étape"
             style={{
               position: "absolute", left: `${textDraft.x * 100}%`, top: `${textDraft.y * REF_H}px`, transform: "translate(-50%, -50%)",
+              // #7 : style IDENTIQUE au texte posé (même padding, taille,
+              // graisse, rayon) — juste le curseur et un pointillé discret
+              // pour indiquer la saisie en cours.
               background: color, color: "white", padding: "0.15rem 0.4rem", borderRadius: "4px",
-              fontSize: "0.8rem", fontWeight: 600, border: "2px solid white", outline: "none",
-              minWidth: "5rem", maxWidth: "60%", boxShadow: "0 2px 8px rgba(0,0,0,0.35)",
+              fontSize: "0.8rem", fontWeight: 600, border: "none", outline: "1.5px dashed rgba(255,255,255,0.9)",
+              caretColor: "white", minWidth: "5rem", maxWidth: "60%",
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && textDraft.value.trim()) {

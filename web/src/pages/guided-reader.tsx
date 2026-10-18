@@ -34,7 +34,7 @@ export default function GuidedReaderPage() {
       <main
         // C-70 : calquée sur les autres pages — colonne lisible et contrainte
         // (plus de plein écran illisible sur desktop).
-        className="mx-auto grid min-h-dvh w-full max-w-[560px] content-start gap-2.5 p-2.5 grid-rows-[auto_1fr] sm:p-6"
+        className="mx-auto grid min-h-dvh w-full max-w-[560px] content-start gap-2.5 p-2.5 sm:p-6"
         style={{ paddingBottom: "calc(4.6rem + env(safe-area-inset-bottom))" }}
       >
         <header className="flex min-w-0 flex-wrap items-center gap-2">

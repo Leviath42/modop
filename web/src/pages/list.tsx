@@ -170,11 +170,14 @@ export default function ListPage() {
           <p className="text-muted-foreground">Aucun mode opératoire.</p>
         ) : (
           (() => {
+            // #9 : les lecteurs ne voient pas les brouillons (paramètre
+            // serveur optionnel à venir — filtre front pour l'instant).
+            const visible = user?.role === "reader" ? workflows.filter((w) => w.state !== "draft") : workflows;
             // C-43 : regroupement — état (publiés d'abord) puis famille
             const groups = new Map<string, typeof workflows>();
             for (const st of ["published", "draft"]) {
-              for (const fam of [...new Set(workflows.filter((w) => w.state === st).map((w) => w.family || "Sans famille"))].sort((a, b) => a.localeCompare(b, "fr"))) {
-                groups.set(`${st}|${fam}`, workflows.filter((w) => w.state === st && (w.family || "Sans famille") === fam));
+              for (const fam of [...new Set(visible.filter((w) => w.state === st).map((w) => w.family || "Sans famille"))].sort((a, b) => a.localeCompare(b, "fr"))) {
+                groups.set(`${st}|${fam}`, visible.filter((w) => w.state === st && (w.family || "Sans famille") === fam));
               }
             }
             const card = (wf: (typeof workflows)[number]) => (

@@ -9,7 +9,7 @@ import { Badge } from "../components/ui/badge";
 import { Alert } from "../components/ui/dialog";
 import { Select, Textarea } from "../components/ui/input";
 import { cn } from "../lib/utils";
-import { ArrowUp, BookOpen, Download, Flag, TriangleAlert } from "lucide-react";
+import { ArrowUp, BookOpen, Download, Flag, Pencil, TriangleAlert } from "lucide-react";
 
 export default function ReaderPage() {
   const { id } = useParams<{ id: string }>();
@@ -102,6 +102,9 @@ export default function ReaderPage() {
               <Link to={`/workflow/${wf.id}/qr`} aria-label="Vignette QR imprimable" title="Vignette QR imprimable" className="text-xs text-link no-underline">QR</Link>
               {user && user.role !== "reader" && (
                 <Link to={`/workflow/${wf.id}/feedbacks`} aria-label="Remontées terrain de ce mode opératoire" title="Remontées terrain : à traiter et historique" className="inline-flex items-center gap-1 text-xs text-link no-underline"><Flag size={12} aria-hidden="true" /> Terrain</Link>
+              )}
+              {user && user.role !== "reader" && (
+                <Link to={`/workflow/${wf.id}/edit`} aria-label="Modifier ce mode opératoire" title="Modifier ce mode opératoire" className="inline-flex items-center gap-1 text-xs text-link no-underline"><Pencil size={12} aria-hidden="true" /> Éditer</Link>
               )}
             </span>
           </div>

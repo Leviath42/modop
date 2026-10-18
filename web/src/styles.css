@@ -225,7 +225,11 @@ li { list-style: none; }
 /* C-19 : navigations internes (liens d'étapes, retours en haut) fluides. */
 html { scroll-behavior: smooth; }
 
-/* RF-71 : impression de la vignette QR — la feuille seule, sans l'interface. */
+/* RF-71 : impression de la vignette QR — la feuille seule, sans l'interface.
+   C-71 : la feuille reste CLAIRE même en mode sombre (contraste du numéro de
+   document sur fond blanc) — couleurs forcées, priorité sur les utilitaires. */
+.qr-sheet { background: #ffffff !important; color: #2c3a43 !important; }
+.qr-sheet code { background: #e9edf0 !important; color: #2c3a43 !important; }
 @media print {
   .no-print { display: none !important; }
   nav { display: none !important; }

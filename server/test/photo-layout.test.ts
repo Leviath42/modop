@@ -51,6 +51,17 @@ test("layout photo : taille et position persistées et relues", async () => {
   assert.equal(bad.status, 422);
   const bad2 = await call("PUT", `/api/photos/${photo.id}/layout`, { display_w: 1.5 }, cookie);
   assert.equal(bad2.status, 422, "w>1 rejeté");
+
+  // C-71 : display_y > 1 est LÉGITIME (fraction de 240 px — canevas plus haut).
+  // Avant le correctif : 422 silencieux → positions de la 2e photo perdues.
+  const below = await call("PUT", `/api/photos/${photo.id}/layout`, { display_y: 1.75, display_x: 0.2, display_w: 1 }, cookie);
+  assert.equal(below.status, 200, "y=1.75 accepté (photo sous la première)");
+  const gotBelow = await call("GET", `/api/workflows/${wf.json.id}`, undefined, cookie);
+  assert.equal(gotBelow.json.steps[0].photos[0].display_y, 1.75, "y>1 persisté et relu");
+  const badY = await call("PUT", `/api/photos/${photo.id}/layout`, { display_y: -0.5 }, cookie);
+  assert.equal(badY.status, 422, "y négatif rejeté");
+  const badY2 = await call("PUT", `/api/photos/${photo.id}/layout`, { display_y: 12 }, cookie);
+  assert.equal(badY2.status, 422, "y>10 rejeté");
 });
 
 process.on("exit", () => { server.close(); fs.rmSync("data", { recursive: true, force: true }); });

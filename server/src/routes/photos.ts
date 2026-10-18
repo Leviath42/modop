@@ -156,12 +156,18 @@ export function photoLayoutRouter(db: Database.Database): Router {
     const ALIGNS = ["left", "center", "right"];
     const num01 = (v: unknown): boolean =>
       v === undefined || v === null || (typeof v === "number" && v >= 0 && v <= 1);
+    // C-71 : display_y est une fraction de 240 px de référence — un canevas
+    // plus haut produit des y > 1 LÉGITIMES (photo posée sous la première).
+    // L'ancienne validation [0,1] rejetait ces positions en silence côté
+    // front : les mises en page de canevas à plusieurs photos étaient perdues.
+    const numY = (v: unknown): boolean =>
+      v === undefined || v === null || (typeof v === "number" && v >= 0 && v <= 10);
     if (
       (display_size !== undefined && !SIZES.includes(display_size)) ||
       (display_align !== undefined && !ALIGNS.includes(display_align)) ||
-      !num01(display_x) || !num01(display_y) || !num01(display_w)
+      !num01(display_x) || !numY(display_y) || !num01(display_w)
     ) {
-      res.status(422).json({ error: "validation", message: "position/taille : nombres entre 0 et 1 (ou null)" });
+      res.status(422).json({ error: "validation", message: "position/taille : x/w entre 0 et 1, y entre 0 et 10 (ou null)" });
       return;
     }
     db.prepare(

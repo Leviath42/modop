@@ -330,7 +330,7 @@ export default function EditorPage() {
             <Label className="grid min-w-0 gap-1 text-muted-foreground">Description
               <Textarea value={description} onChange={(e) => { setDescription(e.target.value); setMetaSaved(false); }} rows={2} className="min-h-0" />
             </Label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-[auto_1fr]">
               <Label className="grid min-w-0 gap-1 text-muted-foreground">À revoir le
                 <Input type="date" value={reviewDue} onChange={(e) => { setReviewDue(e.target.value); setMetaSaved(false); }} />
               </Label>
@@ -353,8 +353,8 @@ export default function EditorPage() {
                       <button key={u.id} type="button" role="option" aria-selected={u.email === ownerEmail}
                         onMouseDown={(e) => { e.preventDefault(); setOwnerEmail(u.email); setMetaSaved(false); setOwnerOpen(false); }}
                         className="flex min-w-0 items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-muted">
+                        {/* #8 : seulement Prénom Nom — l'email remplit le champ à la sélection */}
                         <span className="truncate font-medium">{[u.first_name, u.last_name].filter(Boolean).join(" ") || "(sans nom)"}</span>
-                        <span className="ml-auto shrink-0 truncate text-xs text-muted-foreground">{u.email}</span>
                       </button>
                     ))}
                   </div>
@@ -505,6 +505,17 @@ export default function EditorPage() {
                     className="min-h-0"
                     aria-label={`Description étape ${i + 1}`}
                   />
+                  {/* #12 : indications rendues à l'identique du mode lecture —
+                      effet immédiat visible pendant l'édition. */}
+                  {step.pictos.length > 0 && (
+                    <div className="grid gap-1.5">
+                      {step.pictos.map((p, k) => (
+                        <p key={k} className="m-0 flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-bold uppercase tracking-wide text-foreground" style={{ background: `${p.color}1f`, borderLeft: `5px solid ${p.color}` }}>
+                          <TriangleAlert size={16} aria-hidden="true" style={{ color: p.color }} /> {p.label}
+                        </p>
+                      ))}
+                    </div>
+                  )}
                   {uploadProgress?.stepId === step.id && (
                     <p role="status" className="m-0 text-sm text-muted-foreground">
                       Envoi des photos… {uploadProgress.done}/{uploadProgress.total}
