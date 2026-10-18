@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, ApiError, type AdminUser } from "../api";
+import { api, ApiError, type AdminUser, type Workflow } from "../api";
 import { useAuth } from "../auth-context";
 import { cn } from "../lib/utils";
 import NavBar from "../nav";
@@ -28,6 +28,8 @@ export default function AdminPage() {
   const [editActive, setEditActive] = useState(1);
 
   const [tempPassword, setTempPassword] = useState<{ email: string; password: string } | null>(null);
+  // C-72 (#3) : alerte admin — MO sans responsable attribué.
+  const [noOwnerCount, setNoOwnerCount] = useState(0);
 
   const isAdmin = user?.role === "admin";
 
@@ -42,6 +44,11 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (isAdmin) void refresh();
+    if (isAdmin) {
+      api.listWorkflows()
+        .then((wfs: Workflow[]) => setNoOwnerCount(wfs.filter((w) => !w.owner_email).length))
+        .catch(() => setNoOwnerCount(0));
+    }
   }, [isAdmin, refresh]);
 
   async function createUser() {
@@ -111,6 +118,11 @@ export default function AdminPage() {
       <NavBar />
       <main className="mx-auto grid max-w-[820px] grid-cols-1 gap-4 p-4">
         <h1 className="text-lg font-semibold tracking-tight">Comptes utilisateurs</h1>
+        {noOwnerCount > 0 && (
+          <p role="status" className="m-0 rounded-md bg-warn-bg px-3 py-2 text-sm text-warn">
+            {noOwnerCount} mode{noOwnerCount > 1 ? "s" : ""} opératoire{noOwnerCount > 1 ? "s" : ""} sans responsable attribué — à pourvoir depuis l'éditeur (Détails → Responsable).
+          </p>
+        )}
         {error && <p role="alert" className="m-0 rounded-md bg-error-bg px-3 py-2 text-sm text-error break-words">{error}</p>}
         {notice && <p className="m-0 rounded-md bg-ok-bg px-3 py-2 text-sm text-ok break-words">{notice}</p>}
         {tempPassword && (

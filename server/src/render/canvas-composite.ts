@@ -95,15 +95,17 @@ export async function composeStepCanvas(
       const y2 = (s.y2 ?? s.y1 + 0.2) * REF_H;
       const dx = x2 - x1, dy = y2 - y1;
       const len = Math.hypot(dx, dy) || 1;
-      const ax = x2 - (dx / len) * 14, ay = y2 - (dy / len) * 14;
+      // C-72 (#6) : pointe proportionnelle a l'epaisseur du trait
+      const head = ctx.lineWidth * 4.7; // ~14px pour width 3 (rendu historique)
+      const ax = x2 - (dx / len) * head, ay = y2 - (dy / len) * head;
       ctx.beginPath();
       ctx.moveTo(x1, y1);
       ctx.lineTo(ax, ay);
       ctx.stroke();
       ctx.beginPath();
       ctx.moveTo(x2, y2);
-      ctx.lineTo(ax - (dy / len) * 6, ay + (dx / len) * 6);
-      ctx.lineTo(ax + (dy / len) * 6, ay - (dx / len) * 6);
+      ctx.lineTo(ax - (dy / len) * head * 0.43, ay + (dx / len) * head * 0.43);
+      ctx.lineTo(ax + (dy / len) * head * 0.43, ay - (dx / len) * head * 0.43);
       ctx.closePath();
       ctx.fill();
     } else if (s.type === "rect") {

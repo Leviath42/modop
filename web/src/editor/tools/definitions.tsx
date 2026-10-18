@@ -147,7 +147,7 @@ const style: CommandDefinition = {
   run: (_ctx, ui) => ui.setOpen(!ui.open),
   flyout: (ctx, _ui) => (
     <div role="menu" aria-label="Style du trait" className="grid gap-2">
-      <div className="grid grid-cols-4 gap-1.5">
+      <div className="grid grid-cols-4 gap-1">
         {COLORS.map((c) => (
           <button
             key={c}
@@ -155,7 +155,7 @@ const style: CommandDefinition = {
             aria-label={`Couleur ${c}`}
             aria-pressed={ctx.insertColor === c}
             title={`Couleur ${c}`}
-            className={cn("size-5 cursor-pointer rounded-full sm:size-6", ctx.insertColor === c ? "border-2 border-foreground" : "border border-border")}
+            className={cn("size-4 cursor-pointer rounded-full sm:size-5", ctx.insertColor === c ? "border-2 border-foreground" : "border border-border")}
             style={{ background: c }}
           />
         ))}
@@ -165,7 +165,7 @@ const style: CommandDefinition = {
         <input
           type="range"
           min={1}
-          max={6}
+          max={10}
           step={1}
           value={ctx.insertWidth}
           onChange={(e) => ctx.actions.setInsertWidth(Number(e.target.value))}

@@ -68,7 +68,10 @@ export default function StepCanvas({
   useEffect(() => { if (colorProp) setColor(colorProp); }, [colorProp]);
   const [pendingStart, setPendingStart] = useState<{ x: number; y: number } | null>(null);
   const [preview, setPreview] = useState<{ x: number; y: number } | null>(null);
-  const [textDraft, setTextDraft] = useState<{ x: number; y: number; value: string } | null>(null);
+  const [textDraft, setTextDraft] = useState<{ x: number; y: number; value: string; editIndex?: number } | null>(null);
+  // C-72 (#10) : anti-rouverture — un clic qui valide la saisie ne doit pas
+  // rouvrir un NOUVEAU champ au meme endroit (blur puis pointerup).
+  const lastTextCommitRef = useRef(0);
   const [selPhotos, setSelPhotos] = useState<Set<number>>(new Set());
   const [selShapes, setSelShapes] = useState<Set<number>>(new Set());
   useEffect(() => { onSelectionChange?.(selPhotos.size + selShapes.size); }, [selPhotos, selShapes, onSelectionChange]);
@@ -166,6 +169,27 @@ export default function StepCanvas({
     } finally { setBusy(false); }
   }
 
+  // C-72 (#10) : validation unique de la saisie texte — cree, remplace
+  // (edition) ou supprime (edition videe) puis ferme l'outil. Aucun changement
+  // d'etape, aucun deplacement du champ.
+  function commitText() {
+    if (!textDraft) return;
+    const v = textDraft.value.trim();
+    if (v) {
+      if (textDraft.editIndex != null) {
+        void saveShapes(shapes.map((sh, i) => i === textDraft.editIndex ? { ...sh, text: v } : sh));
+      } else {
+        void saveShapes([...shapes, { type: "text", x1: textDraft.x, y1: textDraft.y, text: v, color }]);
+      }
+    } else if (textDraft.editIndex != null) {
+      void saveShapes(shapes.filter((_, i) => i !== textDraft.editIndex));
+    }
+    lastTextCommitRef.current = Date.now();
+    setTextDraft(null);
+    setTool(null);
+    onToolDone?.();
+  }
+
   async function savePhotoLayout(photoId: number, x: number, y: number, w: number) {
     try {
       await api.saveLayout(photoId, "full", "left", x, y, w);
@@ -209,12 +233,15 @@ export default function StepCanvas({
         const d = Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
         if (d < 10 + (s.width ?? 2)) return i;
       } else if (s.type === "rect" && s.w !== undefined && s.h !== undefined) {
-        const inside = p.x >= s.x1 && p.x <= s.x1 + s.w && p.y >= s.y1 && p.y <= s.y1 + s.h;
         const nearX = p.x >= s.x1 - tolX && p.x <= s.x1 + s.w + tolX;
         const nearY = p.y >= s.y1 - tolY && p.y <= s.y1 + s.h + tolY;
         const onBorder = nearX && nearY &&
           (p.x <= s.x1 + tolX || p.x >= s.x1 + s.w - tolX || p.y <= s.y1 + tolY || p.y >= s.y1 + s.h - tolY);
-        if (inside || onBorder) return i;
+        // C-72 (#9) : CONTOUR UNIQUEMENT — la surface du rectangle laisse
+        // passer le clic vers les objets/photo derriere (annotations sur
+        // photo). Le deplacement reste possible par le contour (large de
+        // ~10 px de tolerance autour des lignes).
+        if (onBorder) return i;
       } else {
         if (Math.hypot(p.x - s.x1, p.y - s.y1) < Math.max(0.05, tolX * 4)) return i;
       }
@@ -468,7 +495,20 @@ export default function StepCanvas({
     onInteract?.();               // C-41 : poser un outil rend l'étape active
     const p = pt(e);
     if (tool === "text") {
-      setTextDraft({ x: p.x, y: p.y, value: "" });
+      // C-72 (#10) : saisie en cours → un clic ailleurs VALIDE le texte saisi
+      // et ferme l'outil (avant : le champ se déplaçait et se vidait).
+      if (textDraft) { commitText(); return; }
+      // anti-rouverture : le pointerup qui suit le blur d'une validation
+      // ne doit pas ouvrir un nouveau champ à l'endroit cliqué.
+      if (Date.now() - lastTextCommitRef.current < 300) return;
+      // clic sur un texte existant → ÉDITION (avant : nouveau champ par-dessus)
+      const sh = shapeHit(p);
+      const hit = sh >= 0 ? shapes[sh] : null;
+      if (hit && hit.type === "text" && hit.text) {
+        setTextDraft({ x: hit.x1, y: hit.y1, value: hit.text, editIndex: sh });
+      } else {
+        setTextDraft({ x: p.x, y: p.y, value: "" });
+      }
       return;
     }
     // C-71 (#6) : création en UN CLIC-GLISSÉ — le départ est posé au
@@ -525,7 +565,7 @@ export default function StepCanvas({
         ref={canvasRef}
         onPointerDown={onPointerDown}
         onPointerUp={onToolPointerUp}
-        style={{ position: "relative", width: "100%", height: `${H}px`, background: "var(--surface-2, #f0f1f4)", borderRadius: "8px", overflow: "hidden", touchAction: tool ? "none" : "pan-y", cursor: tool ? "crosshair" : "default" }}
+        style={{ position: "relative", width: "100%", height: `${H}px`, background: "var(--surface-2, #f0f1f4)", borderRadius: "8px", overflow: "hidden", touchAction: (tool || selPhotos.size + selShapes.size > 0) ? "none" : "pan-y", cursor: tool ? "crosshair" : "default" }}
       >
         {/* images */}
         {objs.map((o, i) => (
@@ -548,8 +588,8 @@ export default function StepCanvas({
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
           <defs>
             {[...new Set(shapes.filter((s) => s.type === "arrow").map((s) => s.color))].concat(pendingStart && tool === "arrow" ? [color] : []).map((c) => (
-              <marker key={c} id={`cs-ah-${stepId}-${c.replace("#", "")}`} markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="userSpaceOnUse">
-                <path d="M0,0 L10,5 L0,10 z" fill={c} />
+              <marker key={c} id={`cs-ah-${stepId}-${c.replace("#", "")}`} markerWidth="4.5" markerHeight="4.5" refX="3.6" refY="2.25" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L4.5,2.25 L0,4.5 z" fill={c} />
               </marker>
             ))}
           </defs>
@@ -608,19 +648,14 @@ export default function StepCanvas({
               caretColor: "white", minWidth: "5rem", maxWidth: "60%",
             }}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && textDraft.value.trim()) {
-                void saveShapes([...shapes, { type: "text", x1: textDraft.x, y1: textDraft.y, text: textDraft.value.trim(), color }]);
-                setTextDraft(null); setTool(null); onToolDone?.();
+              e.stopPropagation(); // C-72 (#10) : aucune autre action ne doit suivre la validation
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commitText();
               }
               if (e.key === "Escape") { setTextDraft(null); setTool(null); }
             }}
-            onBlur={() => {
-              if (textDraft.value.trim()) {
-                void saveShapes([...shapes, { type: "text", x1: textDraft.x, y1: textDraft.y, text: textDraft.value.trim(), color }]);
-                onToolDone?.();
-              }
-              setTextDraft(null); setTool(null);
-            }} />
+            onBlur={() => { if (textDraft) commitText(); }} />
         )}
 
         {/* carré de suppression pendant un drag — en haut à gauche (C-27) */}

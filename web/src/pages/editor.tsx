@@ -67,6 +67,10 @@ export default function EditorPage() {
   const [confirmRevert, setConfirmRevert] = useState(false);
   const [reviewDue, setReviewDue] = useState("");
   const [ownerEmail, setOwnerEmail] = useState("");
+  // C-72 (#3) : le champ AFFICHE « Prénom Nom », la donnée stockée reste
+  // l'email. Un responsable inconnu est interdit : la saisie libre filtre,
+  // seules les suggestions committent ; sinon le champ se vide.
+  const [ownerDisplay, setOwnerDisplay] = useState("");
   // #5 : suggestions de responsable — recherche par nom ET email (les
   // datalists natifs ne montraient pas les Prénom/Nom de façon fiable).
   const [ownerOpen, setOwnerOpen] = useState(false);
@@ -115,7 +119,7 @@ export default function EditorPage() {
     if (isNew || !wfId || metaSaved) return;
     const t = setTimeout(async () => {
       try {
-        await api.updateWorkflow(wfId, { title, category, family, description, review_due: reviewDue || null, owner_email: ownerEmail });
+        await api.updateWorkflow(wfId, { title, category, family, description, review_due: reviewDue || null, owner_email: ownerEmail || null });
         setMetaSaved(true);
       } catch {
         /* l'indicateur reste "à enregistrer" ; la publication retentera */
@@ -259,11 +263,20 @@ export default function EditorPage() {
   function deleteCanvasSelection() { canvasDeleteRef.current?.(); }
 
   const ownerSuggestions = useMemo(() => {
-    const q = ownerEmail.trim().toLowerCase();
+    const q = ownerDisplay.trim().toLowerCase();
     const list = q
       ? accounts.filter((u) => `${u.first_name ?? ""} ${u.last_name ?? ""} ${u.email}`.toLowerCase().includes(q))
       : accounts;
     return list.slice(0, 6);
+  }, [ownerDisplay, accounts]);
+  const ownerNameOf = (email: string) => {
+    const u = accounts.find((x) => x.email === email);
+    return u ? ([u.first_name, u.last_name].filter(Boolean).join(" ") || u.email) : email;
+  };
+  // quand l'email commis change (chargement, restauration) ou que les
+  // comptes arrivent, l'affichage se resynchronise sur le nom.
+  useEffect(() => {
+    setOwnerDisplay(ownerEmail ? ownerNameOf(ownerEmail) : "");
   }, [ownerEmail, accounts]);
 
   const toolCtx: ToolContext = {
@@ -292,7 +305,7 @@ export default function EditorPage() {
     if (!wf) return;
     setError(null);
     try {
-      await api.updateWorkflow(wf.id, { title, category, family, description, review_due: reviewDue || null, owner_email: ownerEmail });
+      await api.updateWorkflow(wf.id, { title, category, family, description, review_due: reviewDue || null, owner_email: ownerEmail || null });
       const { number } = await api.publishWorkflow(wf.id, changelog);
       setNotice(`Publié en V${number}`);
       setTimeout(() => setNotice(null), 2500);
@@ -363,12 +376,30 @@ export default function EditorPage() {
                 <Label htmlFor="owner-email" className="text-muted-foreground">Responsable</Label>
                 <Input
                   id="owner-email"
-                  type="email"
-                  value={ownerEmail}
-                  onChange={(e) => { setOwnerEmail(e.target.value); setMetaSaved(false); setOwnerOpen(true); }}
+                  type="text"
+                  value={ownerDisplay}
+                  onChange={(e) => { setOwnerDisplay(e.target.value); setOwnerEmail(""); setMetaSaved(false); setOwnerOpen(true); }}
                   onFocus={() => setOwnerOpen(true)}
-                  onBlur={() => setTimeout(() => setOwnerOpen(false), 150)}
-                  placeholder="Rechercher un responsable…"
+                  onBlur={() => {
+                    // C-72 (#3) : seul un compte CONNU peut être responsable —
+                    // une saisie non résolue vide le champ (plutôt qu'un email
+                    // libre jamais attribuable).
+                    const raw = ownerDisplay.trim().toLowerCase();
+                    const resolved = raw
+                      ? accounts.find((u) => u.email.toLowerCase() === raw || [u.first_name, u.last_name].filter(Boolean).join(" ").toLowerCase() === raw)
+                      : undefined;
+                    if (resolved) {
+                      setOwnerEmail(resolved.email);
+                      setOwnerDisplay([resolved.first_name, resolved.last_name].filter(Boolean).join(" ") || resolved.email);
+                      setMetaSaved(false);
+                    } else if (raw) {
+                      setOwnerDisplay("");
+                      setOwnerEmail("");
+                      setMetaSaved(false);
+                    }
+                    setTimeout(() => setOwnerOpen(false), 150);
+                  }}
+                  placeholder="Rechercher un responsable (nom ou prénom)…"
                   aria-label="Responsable — rechercher parmi les comptes"
                   autoComplete="off"
                 />
@@ -376,7 +407,7 @@ export default function EditorPage() {
                   <div role="listbox" aria-label="Comptes responsables" className="absolute top-full z-40 grid max-h-48 w-full min-w-0 gap-0.5 overflow-y-auto rounded-md border border-border bg-surface p-1 shadow-lg">
                     {ownerSuggestions.map((u) => (
                       <button key={u.id} type="button" role="option" aria-selected={u.email === ownerEmail}
-                        onMouseDown={(e) => { e.preventDefault(); setOwnerEmail(u.email); setMetaSaved(false); setOwnerOpen(false); }}
+                        onMouseDown={(e) => { e.preventDefault(); setOwnerEmail(u.email); setOwnerDisplay([u.first_name, u.last_name].filter(Boolean).join(" ") || u.email); setMetaSaved(false); setOwnerOpen(false); }}
                         className="flex min-w-0 items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-muted">
                         {/* #8 : seulement Prénom Nom — l'email remplit le champ à la sélection */}
                         <span className="truncate font-medium">{[u.first_name, u.last_name].filter(Boolean).join(" ") || "(sans nom)"}</span>

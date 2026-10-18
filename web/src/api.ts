@@ -136,7 +136,7 @@ export const api = {
       })
     );
   },
-  async updateWorkflow(id: number, data: Partial<Pick<Workflow, "title" | "description" | "category" | "family" | "review_due" | "owner_email">>): Promise<Workflow> {
+  async updateWorkflow(id: number, data: Partial<Pick<Workflow, "title" | "description" | "category" | "family" | "review_due">> & { owner_email?: string | null }): Promise<Workflow> {
     return handle<Workflow>(
       await fetch(`/api/workflows/${id}`, {
         method: "PUT",

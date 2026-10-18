@@ -94,8 +94,8 @@ export default function StepCanvasView({ photos, shapes }: { photos: Photo[]; sh
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
         <defs>
           {[...new Set(sh.filter((s) => s.type === "arrow").map((s) => s.color))].map((c) => (
-            <marker key={c} id={`rv-ah-${c.replace("#", "")}`} markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="userSpaceOnUse">
-              <path d="M0,0 L10,5 L0,10 z" fill={c} />
+            <marker key={c} id={`rv-ah-${c.replace("#", "")}`} markerWidth="4.5" markerHeight="4.5" refX="3.6" refY="2.25" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L4.5,2.25 L0,4.5 z" fill={c} />
             </marker>
           ))}
         </defs>
