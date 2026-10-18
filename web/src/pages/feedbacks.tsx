@@ -7,6 +7,7 @@ import { Badge } from "../components/ui/badge";
 import { Button, buttonVariants } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { cn } from "../lib/utils";
+import { Check } from "lucide-react";
 
 // C-35 : historique complet des remontées terrain d'un mode opératoire —
 // page dédiée (auteur+). Le lecteur n'affiche plus la section : seul un
@@ -78,7 +79,7 @@ export default function FeedbacksPage() {
           {canAct && f.status === "open" && (
             <>
               <Link to={`/workflow/${wf.id}/edit`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "no-underline")}>Corriger l'étape</Link>
-              <Button size="sm" onClick={() => void resolve(f)}>✓ Résoudre</Button>
+              <Button size="sm" onClick={() => void resolve(f)}><Check size={14} aria-hidden="true" /> Résoudre</Button>
             </>
           )}
         </div>
@@ -104,7 +105,7 @@ export default function FeedbacksPage() {
         <section aria-label="À traiter" className="grid gap-2">
           <h2 className="m-0 flex items-center gap-2 text-base">À traiter <Badge variant="error">{open.length}</Badge></h2>
           {open.length === 0 ? (
-            <p className="m-0 rounded-lg bg-ok-bg px-3 py-2 text-sm text-ok">Aucune remontée à traiter — tout est lu ✓</p>
+            <p className="m-0 rounded-lg bg-ok-bg px-3 py-2 text-sm text-ok">Aucune remontée à traiter — tout est lu</p>
           ) : (
             <ul className="grid gap-2">
               {open.map((f) => card(f, user?.role !== "reader"))}

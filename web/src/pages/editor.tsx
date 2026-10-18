@@ -1,6 +1,6 @@
 import StepCanvas, { COLORS } from "../step-canvas";
 import type { Shape } from "../annotated-photo";
-import { CollapseIcon, ExpandIcon } from "../icons";
+import { Camera, ChevronDown, ChevronRight, FoldVertical, GripVertical, Image as ImageIcon, TriangleAlert, UnfoldVertical } from "lucide-react";
 import { EditorBottomBar } from "../editor/bottom-bar";
 import type { PictoPreset, ToolContext } from "../editor/tools/registry";
 import { useEffect, useRef, useState } from "react";
@@ -372,7 +372,7 @@ export default function EditorPage() {
                 size="icon"
                 title={openSteps.size === steps.length && steps.length > 0 ? "Tout replier" : "Tout ouvrir"}
                 aria-label="Tout replier ou ouvrir"
-              >{openSteps.size === steps.length && steps.length > 0 ? <CollapseIcon /> : <ExpandIcon />}</Button>
+              >{openSteps.size === steps.length && steps.length > 0 ? <FoldVertical size={16} /> : <UnfoldVertical size={16} />}</Button>
             </div>
             )}
         </section>
@@ -434,7 +434,7 @@ export default function EditorPage() {
                       className="cursor-grab select-none px-1.5 py-1 text-muted-foreground"
                       style={{ touchAction: "none" }}
                     >
-                      ⠿
+                      <GripVertical size={16} aria-hidden="true" />
                     </span>
                     
                     <span aria-hidden="true" className="inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-bold text-foreground">{i + 1}</span>
@@ -454,7 +454,7 @@ export default function EditorPage() {
                       size="sm"
                       className={cn("min-w-9 px-2.5", openSteps.has(step.id) && "bg-accent")}
                     >
-                      {openSteps.has(step.id) ? "▾" : "▸"}
+                      {openSteps.has(step.id) ? <ChevronDown size={16} aria-hidden="true" /> : <ChevronRight size={16} aria-hidden="true" />}
                     </Button>
                     
                   </div>
@@ -477,8 +477,8 @@ export default function EditorPage() {
                   {(step.photos ?? []).length === 0 && (
                       <div role="note" className="flex flex-wrap items-center gap-1.5 rounded bg-warn-bg px-2 py-1 text-xs text-warn">
                         <span>Cette étape n'a pas de photo — une photo bien cadrée remplace un paragraphe de texte.</span>
-                        <button onClick={() => fileRefs.current[step.id]?.click()} className="rounded-md border border-border bg-surface px-2 py-1 text-xs text-foreground">🖼 Galerie</button>
-                        <button onClick={() => cameraRefs.current[step.id]?.click()} className="rounded-md border border-border bg-surface px-2 py-1 text-xs text-foreground">📷 Prendre une photo</button>
+                        <button onClick={() => fileRefs.current[step.id]?.click()} className="inline-flex items-center gap-1 rounded-md border border-border bg-surface px-2 py-1 text-xs text-foreground"><ImageIcon size={14} aria-hidden="true" /> Galerie</button>
+                        <button onClick={() => cameraRefs.current[step.id]?.click()} className="inline-flex items-center gap-1 rounded-md border border-border bg-surface px-2 py-1 text-xs text-foreground"><Camera size={14} aria-hidden="true" /> Prendre une photo</button>
                       </div>
                     )}
            <div className="grid gap-1.5">
@@ -544,7 +544,7 @@ export default function EditorPage() {
               ) : !confirmDeleteDoc2 ? (
                 <div className="grid gap-2">
                   <p className="m-0 text-sm font-semibold">
-                    ⚠ Supprimer « {title || wf?.title} » ({reference || wf?.reference}) ?
+                    <span className="inline-flex items-center gap-1.5"><TriangleAlert size={16} aria-hidden="true" /> Supprimer « {title || wf?.title} »</span> ({reference || wf?.reference}) ?
                   </p>
                   <p className="m-0 text-sm text-muted-foreground">
                     Toutes les étapes, photos, versions et exports seront définitivement supprimés. Cette action est irréversible.

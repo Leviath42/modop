@@ -4,6 +4,7 @@ import { api, ApiError, type Workflow } from "../api";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
 import { Badge } from "../components/ui/badge";
+import { ChevronRight, Pencil } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Input, Label, Select } from "../components/ui/input";
@@ -161,7 +162,7 @@ export default function ListPage() {
                     </Link>
                     <code className="shrink-0 rounded bg-surface-2 px-1 py-0.5 text-xs">{wf.reference}</code>
                     {user && user.role !== "reader" && (
-                      <Link to={`/workflow/${wf.id}/edit`} aria-label={`Modifier ${wf.title}`} title="Modifier" className="shrink-0 text-sm text-muted-foreground no-underline">✎</Link>
+                      <Link to={`/workflow/${wf.id}/edit`} aria-label={`Modifier ${wf.title}`} title="Modifier" className="shrink-0 no-underline"><Pencil size={14} aria-hidden="true" /></Link>
                     )}
                   </div>
                 </Card>
@@ -184,7 +185,7 @@ export default function ListPage() {
                       aria-label={`${stateLabel} — ${stateCollapsed ? "déplier" : "replier"}`}
                       className="mt-4 mb-1 flex w-full cursor-pointer items-center gap-1.5 border-none bg-transparent p-0 text-left text-sm uppercase tracking-wide text-muted-foreground"
                     >
-                      <span aria-hidden="true" className={cn("text-xs transition-transform", stateCollapsed ? "" : "rotate-90")}>▸</span>
+                      <ChevronRight size={14} aria-hidden="true" className={cn("transition-transform", stateCollapsed ? "" : "rotate-90")} />
                       {stateLabel}
                       <Badge variant={st === "published" ? "ok" : "warn"}>{stateCount}</Badge>
                     </button>
@@ -201,7 +202,7 @@ export default function ListPage() {
                             aria-label={`${fam} — ${famCollapsed ? "déplier" : "replier"}`}
                             className="mt-1 mb-1.5 flex w-full cursor-pointer items-center gap-1.5 border-none bg-transparent p-0 text-left text-sm font-semibold text-foreground"
                           >
-                            <span aria-hidden="true" className={cn("text-xs transition-transform", famCollapsed ? "" : "rotate-90")}>▸</span>
+                            <ChevronRight size={14} aria-hidden="true" className={cn("transition-transform", famCollapsed ? "" : "rotate-90")} />
                             {fam}
                             <span className="text-xs font-normal text-muted-foreground">({items.length})</span>
                           </button>

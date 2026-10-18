@@ -36,6 +36,20 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-68 — Icônes : jeu unique Lucide, suppression des emojis (réalisé)
+
+**Problème** (constat propriétaire) : de nombreux emojis/glyphes décoratifs (🖼 📷 🗑 ⚠ ✓ ⠿ ✎ ✕ ⚑ ⇥ ⬇ ▸) avaient été posés au fil des correctifs UI, avant qu'un jeu d'icônes n'existe puis pour tout ce qu'il ne couvrait pas — rendu amateur, incohérent et dépendant de la police emoji du système.
+
+**Correctif** : adoption de **Lucide** (lucide.dev — open source ISC, le jeu standard de shadcn/ui, 1500+ icônes au trait `currentColor`, importables à l'unité/tree-shakeables, cohérent avec le style de l'existant). Remplacement systématique : nav (Menu/Sun/Moon), accueil et comptes (Pencil, ChevronRight), lecteur et lecture guidée (BookOpen, Flag, Download, TriangleAlert, X, Check), terrain (Check), barre d'outils (Plus, Image, Camera, Shapes, ArrowUpRight, Square, Type, Trash2, TriangleAlert, Check), éditeur (GripVertical, ChevronDown/Right, FoldVertical/UnfoldVertical), canevas (Trash2 corbeille de drag, X lightbox). `web/src/icons.tsx` (SVG maison hétérogènes) **supprimé**. Conservés : le marqueur « ▶ » des `<option>` (pas de SVG possible dans un `option`, invariant testé C-34) et les couleurs de pictos (données métier persistées).
+
+**Tests** : `editor-sticky` et `header-tools` adaptés (boutons de pli identifiés par aria-label au lieu des glyphes ▸/▾) ; suite front verte, lint server+web, 117/117 tests serveur, build web OK (+~4 kB gzip).
+
+**Fichiers** : `web/src/{nav,step-canvas,step-canvas-view}.tsx` (supprimé : `web/src/icons.tsx`), `web/src/pages/{list,reader,guided-reader,feedbacks,admin,editor}.tsx`, `web/src/editor/tools/definitions.tsx`, 3 fichiers de tests ; dépendance `lucide-react`.
+
+**État** : livré sur beta.
+
+---
+
 ## C-67 — Palette d'outils : barre basse fixe + registre de commandes modulaire (spec)
 
 **Contexte** : spec fournie par le propriétaire ([spec-palette-outils.md](spec-palette-outils.md)) — revoir en profondeur l'utilisation des outils : barre basse unifiée desktop/mobile (modèle Figma), flyouts extensibles au-dessus du bouton, contextualité par mutation, raccourcis clavier, et une **architecture par registre** pour créer les outils au fur et à mesure.

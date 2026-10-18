@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { api, type Photo } from "./api";
 import { parseShapes, type Shape } from "./annotated-photo";
 
@@ -72,7 +73,7 @@ export default function StepCanvas({
     const onDocDown = (e: PointerEvent) => {
       const el = canvasRef.current;
       if (!el || el.contains(e.target as Node)) return;
-      // boutons qui agissent SUR la sélection (ex. « 🗑 Objets ») : conservés
+      // boutons qui agissent SUR la sélection (ex. « Objets ») : conservés
       const t = e.target as Element;
       if (t.closest?.("[data-keep-canvas-selection]")) return;
       setSelPhotos(new Set());
@@ -594,7 +595,7 @@ export default function StepCanvas({
             borderBottomRightRadius: "8px",
             display: "flex", alignItems: "center", justifyContent: "center", zIndex: 25, pointerEvents: "none",
             fontSize: "0.9rem", color: "var(--error-text)", fontWeight: 600,
-          }}>{overTrash ? "Relâchez ici" : "🗑"}</div>
+          }}>{overTrash ? "Relâchez ici" : <Trash2 size={18} aria-hidden="true" />}</div>
         )}
       </div>
 

@@ -1,6 +1,6 @@
 # Modop — Roadmap
 
-*Dernière mise à jour : après C-67 — **palette d'outils refondue** (spec du propriétaire intégrée : registre de commandes modulaire + barre basse fixe, flyouts, raccourcis clavier — ajouter un outil = une entrée au registre) ; refonte UI C-64→C-66 (Tailwind v4, tokens palette, bandeau meal_plan) ; **priorité : fonctionnel et mode édition**, vague 10 en standby ; vague 9 terminée code + ops (Uptime Kuma déployé, supervisé depuis Home Assistant) ; production maintenue sur `beta` ; reste côté propriétaire : recevoir les premières PR Dependabot.*
+*Dernière mise à jour : après C-68 — **icônes : jeu unique Lucide** (emojis supprimés, `icons.tsx` retiré) ; palette d'outils refondue (C-67 : registre de commandes + barre basse fixe) ; refonte UI C-64→C-66 (Tailwind v4, tokens palette, bandeau meal_plan) ; **priorité : fonctionnel et mode édition**, vague 10 en standby ; vague 9 terminée code + ops (Uptime Kuma déployé, supervisé depuis Home Assistant) ; production maintenue sur `beta` ; reste côté propriétaire : recevoir les premières PR Dependabot.*
 
 L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archives/roadmap-v1-a-v6bis.md](archives/roadmap-v1-a-v6bis.md). La série de correctifs UI/UX (C-01 → C-51) est journalisée dans [correctifs.md](correctifs.md).
 

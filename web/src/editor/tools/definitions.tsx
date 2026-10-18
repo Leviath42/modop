@@ -1,15 +1,27 @@
-import { ArrowIcon, PhotoIcon, PlusIcon, RectIcon, SHAPE_ICONS, TextIcon } from "../../icons";
+import {
+  ArrowUpRight,
+  Camera,
+  Check,
+  Image as ImageIcon,
+  Plus,
+  Shapes,
+  Square,
+  Trash2,
+  TriangleAlert,
+  Type,
+  type LucideIcon,
+} from "lucide-react";
 import { COLORS } from "../../step-canvas";
 import { cn } from "../../lib/utils";
 import type { PictoPreset, CommandDefinition, ToolContext } from "./types";
 
-// Icône générique du groupe Formes (aucun outil actif) : carré + cercle.
-const ShapesIcon = () => (
-  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
-    <rect x="3.5" y="3.5" width="9" height="9" rx="1.5" />
-    <circle cx="16" cy="16" r="4.5" />
-  </svg>
-);
+// Icônes du groupe Formes (clé = type de forme) — un seul jeu pour la barre
+// (bouton parent, flyout) et cohérent avec le rendu posé sur le canevas.
+const SHAPE_ICONS: Record<string, LucideIcon> = {
+  arrow: ArrowUpRight,
+  rect: Square,
+  text: Type,
+};
 
 export const PICTO_PRESETS: PictoPreset[] = [
   { kind: "attention", label: "Attention", color: "#f5a623" },
@@ -33,7 +45,7 @@ const stepAdd: CommandDefinition = {
   aria: "Ajouter une étape",
   title: "Ajouter une étape (E)",
   shortcut: "e",
-  icon: () => <PlusIcon />,
+  icon: () => <Plus size={16} />,
   isVisible: () => true,
   run: (ctx) => ctx.actions.addStep(),
 };
@@ -46,16 +58,16 @@ const photo: CommandDefinition = {
   aria: "Photos",
   title: "Photos : galerie ou appareil photo (P)",
   shortcut: "p",
-  icon: () => <PhotoIcon />,
+  icon: () => <ImageIcon size={16} />,
   isVisible: () => true,
   run: (_ctx, ui) => ui.setOpen(!ui.open),
   flyout: (ctx, ui) => (
     <div role="menu" aria-label="Source de la photo" className="grid min-w-44 gap-1">
       <button role="menuitem" onClick={() => { ctx.actions.openPhotoSource("gallery"); ui.setOpen(false); }} className={menuItem}>
-        <span aria-hidden="true">🖼</span> Depuis la galerie
+        <ImageIcon size={16} aria-hidden="true" /> Depuis la galerie
       </button>
       <button role="menuitem" onClick={() => { ctx.actions.openPhotoSource("camera"); ui.setOpen(false); }} className={menuItem}>
-        <span aria-hidden="true">📷</span> Prendre une photo
+        <Camera size={16} aria-hidden="true" /> Prendre une photo
       </button>
     </div>
   ),
@@ -72,7 +84,7 @@ const shapes: CommandDefinition = {
   shortcut: "f",
   icon: (ctx) => {
     const Icon = ctx.insertTool ? SHAPE_ICONS[ctx.insertTool] : null;
-    return Icon ? <Icon /> : <ShapesIcon />;
+    return Icon ? <Icon size={16} /> : <Shapes size={16} />;
   },
   isVisible: () => true,
   isActive: (ctx) => ctx.insertTool !== null,
@@ -80,9 +92,9 @@ const shapes: CommandDefinition = {
   flyout: (ctx, _ui) => (
     <div role="menu" aria-label="Formes" className="grid min-w-44 gap-1">
       {([
-        { kind: "arrow", label: "Flèche", shortcut: "A", Icon: ArrowIcon },
-        { kind: "rect", label: "Zone", shortcut: "R", Icon: RectIcon },
-        { kind: "text", label: "Texte", shortcut: "T", Icon: TextIcon },
+        { kind: "arrow", label: "Flèche", shortcut: "A", Icon: ArrowUpRight },
+        { kind: "rect", label: "Zone", shortcut: "R", Icon: Square },
+        { kind: "text", label: "Texte", shortcut: "T", Icon: Type },
       ] as const).map(({ kind, label, shortcut, Icon }) => (
         <button
           key={kind}
@@ -92,8 +104,8 @@ const shapes: CommandDefinition = {
           title={`${label} (${shortcut})`}
           className={cn(menuItem, ctx.insertTool === kind && "border-primary bg-accent font-medium")}
         >
-          <Icon /><span className="flex-1">{label}</span>
-          {ctx.insertTool === kind && <span aria-hidden="true" className="text-ok">✓</span>}
+          <Icon size={16} /><span className="flex-1">{label}</span>
+          {ctx.insertTool === kind && <Check size={16} aria-hidden="true" className="text-ok" />}
         </button>
       ))}
       <div className="mt-1 flex items-center gap-1.5 border-t border-border-soft pt-1.5" data-color-pop>
@@ -137,7 +149,7 @@ const indications: CommandDefinition = {
   aria: "Indications",
   title: "Indications de l'étape : attention, danger, EPI… (I)",
   shortcut: "i",
-  icon: () => <span aria-hidden="true" className="text-sm leading-none">⚠</span>,
+  icon: () => <TriangleAlert size={16} aria-hidden="true" />,
   isVisible: () => true,
   isActive: (ctx) => activePresetCount(ctx) > 0,
   badge: (ctx) => { const n = activePresetCount(ctx); return n > 0 ? String(n) : null; },
@@ -159,7 +171,7 @@ const indications: CommandDefinition = {
             >
               <span aria-hidden="true" className="size-[0.7rem] shrink-0 rounded-full" style={{ background: preset.color }} />
               <span className="flex-1 text-xs">{preset.label}</span>
-              {on && <span aria-hidden="true" className="text-ok">✓</span>}
+              {on && <Check size={16} aria-hidden="true" className="text-ok" />}
             </button>
           );
         })}
@@ -175,7 +187,7 @@ const deleteStep: CommandDefinition = {
   label: "Supprimer l'étape",
   title: "Supprimer l'étape affichée (confirmation demandée)",
   danger: true,
-  icon: () => <span aria-hidden="true" className="text-sm leading-none">🗑</span>,
+  icon: () => <Trash2 size={16} aria-hidden="true" />,
   isVisible: (ctx) => ctx.steps.length > 1,
   run: (ctx) => ctx.actions.deleteActiveStep(),
 };
@@ -187,7 +199,7 @@ const deleteSelection: CommandDefinition = {
   title: "Supprimer les objets sélectionnés du canevas de l'étape affichée",
   danger: true,
   keepCanvasSelection: true,
-  icon: () => <span aria-hidden="true" className="text-sm leading-none">🗑</span>,
+  icon: () => <Trash2 size={16} aria-hidden="true" />,
   isVisible: (ctx) => ctx.canvasSelection > 0,
   badge: (ctx) => ctx.canvasSelection > 0 ? String(ctx.canvasSelection) : null,
   run: (ctx) => ctx.actions.deleteCanvasSelection(),

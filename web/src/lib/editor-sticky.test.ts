@@ -52,7 +52,9 @@ const html = dom.window.document.getElementById("root")!.innerHTML;
 
 // Sticky exprimé en classe Tailwind depuis la refonte UI (au lieu d'un style inline).
 if (!/class="[^"]*\bsticky\b/.test(html)) throw new Error("bandeau non sticky");
-if (!/(▾|▸)/.test(html)) throw new Error("bouton réduire/développer absent");
+// Chevrons Lucide depuis la refonte icônes (C-68) : les boutons de pli
+// sont identifiés par leur aria-label.
+if (!/Replier l'étape|Ouvrir l'étape/.test(html)) throw new Error("bouton réduire/développer absent");
 if (!/Tout (ouvrir|replier)/.test(html)) throw new Error("title réduire/développer absent");
 // C-21 : le nom d'étape EST la liste déroulante (rôle Aller à intégré).
 if (!/aria-label="Étape affichée/.test(html)) throw new Error("sélecteur d'étape absent");

@@ -54,7 +54,7 @@ const html = doc.body.innerHTML;
 // 0. bandeau documentaire : nom de l'étape, Publier, réduire/développer, sticky
 if (!html.includes("Dévisser")) throw new Error("nom de l'étape active absent du bandeau");
 if (!/Publier( V\d)?</.test(html)) throw new Error("bouton Publier absent du bandeau");
-if (!/(▾|▸)</.test(html)) throw new Error("bouton réduire/développer absent du bandeau");
+if (!/Replier l'étape|Ouvrir l'étape/.test(html)) throw new Error("bouton réduire/développer absent du bandeau");
 // Sticky exprimé en classe Tailwind (refonte UI C-65).
 if (!/class="[^"]*\bsticky\b/.test(html)) throw new Error("bandeau non sticky");
 

@@ -8,6 +8,7 @@ import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Select, Textarea } from "../components/ui/input";
 import { cn } from "../lib/utils";
+import { BookOpen, Download, Flag, TriangleAlert } from "lucide-react";
 
 export default function ReaderPage() {
   const { id } = useParams<{ id: string }>();
@@ -90,10 +91,10 @@ export default function ReaderPage() {
               V{versionParam} (publiée)
             </span>
           )}
-          <Link to={`/workflow/${wf.id}/guided`} aria-label="Mode lecture guidée" title="Lecture guidée : une étape par écran" className="text-xs text-link no-underline">⇥ Guidé</Link>
+          <Link to={`/workflow/${wf.id}/guided`} aria-label="Mode lecture guidée" title="Lecture guidée : une étape par écran" className="inline-flex items-center gap-1 text-xs text-link no-underline"><BookOpen size={12} aria-hidden="true" /> Guidé</Link>
           <Link to={`/workflow/${wf.id}/qr`} aria-label="Vignette QR imprimable" title="Vignette QR imprimable" className="text-xs text-link no-underline">QR</Link>
           {user && user.role !== "reader" && (
-            <Link to={`/workflow/${wf.id}/feedbacks`} aria-label="Remontées terrain de ce mode opératoire" title="Remontées terrain : à traiter et historique" className="text-xs text-link no-underline">⚑ Terrain</Link>
+            <Link to={`/workflow/${wf.id}/feedbacks`} aria-label="Remontées terrain de ce mode opératoire" title="Remontées terrain : à traiter et historique" className="inline-flex items-center gap-1 text-xs text-link no-underline"><Flag size={12} aria-hidden="true" /> Terrain</Link>
           )}
         </header>
         {wf.state === "published" && (
@@ -118,7 +119,7 @@ export default function ReaderPage() {
               <p className="flex flex-wrap gap-1">
                 {step.pictos.map((p, k) => (
                   <span key={k} className="rounded px-2 py-0.5 text-sm font-semibold" style={{ background: `${p.color}22`, borderLeft: `4px solid ${p.color}` }}>
-                    ⚠ {p.label}
+                    <TriangleAlert size={12} aria-hidden="true" /> {p.label}
                   </span>
                 ))}
               </p>
@@ -161,7 +162,7 @@ export default function ReaderPage() {
         </p>
         {user && user.role !== "reader" && wf.state === "published" && (
           <p className="mt-4 text-center">
-            <a href={api.exportUrl(wf.id)} className="text-link">⬇ Exporter en .docx</a>
+            <a href={api.exportUrl(wf.id)} className="inline-flex items-center gap-1 text-link"><Download size={14} aria-hidden="true" /> Exporter en .docx</a>
           </p>
         )}
       </main>

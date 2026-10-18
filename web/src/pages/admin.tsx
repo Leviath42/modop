@@ -8,6 +8,7 @@ import { Button } from "../components/ui/button";
 import { Card, CardHeader, CardTitle } from "../components/ui/card";
 import { Input, Label, Select } from "../components/ui/input";
 import { Modal } from "../components/ui/dialog";
+import { Pencil } from "lucide-react";
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -158,7 +159,7 @@ export default function AdminPage() {
                   aria-label={`Modifier le compte ${u.email}`}
                   title="Modifier le compte (Prénom, Nom, rôle, activation)"
                   className="h-7 w-7 shrink-0 text-base"
-                >✎</Button>
+                ><Pencil size={14} aria-hidden="true" /></Button>
               </span>
               <Select
                 value={u.role}

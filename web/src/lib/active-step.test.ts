@@ -40,7 +40,7 @@ root.render(React.createElement(AuthProvider, null, React.createElement(MemoryRo
 await new Promise((r) => setTimeout(r, 200));
 const doc = dom.window.document;
 
-// déplier les deux étapes (clic sur les boutons ▸)
+// déplier les deux étapes (clic sur les boutons de pli)
 const toggles = Array.from(doc.querySelectorAll('button[aria-label^="Ouvrir l\'étape"]')) as HTMLElement[];
 if (toggles.length < 2) throw new Error(`boutons d'ouverture attendus (2), trouvés ${toggles.length}`);
 toggles[0].click();

@@ -4,6 +4,7 @@ import { api, ApiError, type WorkflowDetail } from "../api";
 import NavBar from "../nav";
 import StepCanvasView from "../step-canvas-view";
 import { Button } from "../components/ui/button";
+import { Check, TriangleAlert, X } from "lucide-react";
 
 // RF-72 — lecture guidée : une étape par écran, boutons en zone pouce,
 // indicateur de progression. Entrée : /workflow/:id/read?guided=1.
@@ -35,7 +36,7 @@ export default function GuidedReaderPage() {
         style={{ paddingBottom: "calc(4.6rem + env(safe-area-inset-bottom))" }}
       >
         <header className="flex flex-wrap items-center gap-2">
-          <Link to={`/workflow/${id}/read`} aria-label="Lecture classique" className="text-xl no-underline">✕</Link>
+          <Link to={`/workflow/${id}/read`} aria-label="Lecture classique" className="text-xl no-underline"><X size={22} aria-hidden="true" /></Link>
           <h1 className="m-0 min-w-[6rem] flex-1 truncate text-base">
             {wf.title} <code className="rounded bg-surface-2 px-1.5 py-0.5 text-[0.75em]">{wf.reference}</code>
           </h1>
@@ -51,7 +52,7 @@ export default function GuidedReaderPage() {
             <p className="flex flex-wrap gap-1">
               {step.pictos.map((p, i) => (
                 <span key={i} className="rounded px-2 py-0.5 text-sm font-semibold" style={{ background: `${p.color}22`, borderLeft: `4px solid ${p.color}` }}>
-                  ⚠ {p.label}
+                  <TriangleAlert size={12} aria-hidden="true" /> {p.label}
                 </span>
               ))}
             </p>
@@ -74,7 +75,7 @@ export default function GuidedReaderPage() {
             <Button
               onClick={() => navigate(`/workflow/${id}/read`)}
               className="h-auto min-w-0 flex-[1.4] py-3.5 text-base font-semibold"
-            >Terminé ✓</Button>
+            ><Check size={16} aria-hidden="true" /> Terminé</Button>
           ) : (
             <Button
               onClick={() => { setIdx((v) => v + 1); window.scrollTo({ top: 0 }); }}

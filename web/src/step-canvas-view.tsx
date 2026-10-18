@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { X } from "lucide-react";
 import { parseShapes, type Shape } from "./annotated-photo";
 import type { Photo } from "./api";
 
@@ -27,8 +28,8 @@ function Lightbox({ photo, onClose }: { photo: Photo; onClose: () => void }) {
       <button
         onClick={onClose}
         aria-label="Fermer la photo plein écran"
-        style={{ position: "absolute", top: "0.8rem", right: "0.9rem", width: "2.6rem", height: "2.6rem", borderRadius: "50%", border: "1px solid rgba(255,255,255,0.5)", background: "rgba(0,0,0,0.5)", color: "white", fontSize: "1.2rem", cursor: "pointer" }}
-      >✕</button>
+        style={{ position: "absolute", top: "0.8rem", right: "0.9rem", width: "2.6rem", height: "2.6rem", borderRadius: "50%", border: "1px solid rgba(255,255,255,0.5)", background: "rgba(0,0,0,0.5)", color: "white", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+      ><X size={18} aria-hidden="true" /></button>
     </div>
   );
 }
