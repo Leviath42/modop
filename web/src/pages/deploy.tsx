@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import { cn } from "../lib/utils";
 
 interface CommitSummary {
   hash: string;
@@ -86,72 +89,78 @@ export default function DeployPage() {
   return (
     <>
       <NavBar />
-      <main style={{ maxWidth: "720px", minWidth: 0, width: "100%", margin: "0 auto", padding: "1rem", boxSizing: "border-box" }}>
-        <section style={{ background: "var(--surface)", borderRadius: "10px", padding: "1.2rem", boxShadow: "0 1px 4px rgba(0,0,0,0.1)", display: "grid", gap: "1rem", minWidth: 0 }}>
-          <h1 style={{ margin: 0, fontSize: "1.05rem" }}>Déploiement</h1>
+      <main className="mx-auto box-border w-full min-w-0 max-w-[720px] p-4">
+        <section className="grid min-w-0 gap-4 rounded-lg bg-surface p-5 shadow-sm">
+          <h1 className="m-0 text-lg font-semibold">Déploiement</h1>
 
           {!status ? (
-            <p style={{ color: "var(--text-muted)" }}>Chargement de l'état…</p>
+            <p className="text-muted-foreground">Chargement de l'état…</p>
           ) : (
             <>
-              <div>
-                <p style={{ margin: "0.2rem 0" }}>
-                  Version chargée : <code style={{ background: "var(--surface-2)", padding: "0.1rem 0.4rem", borderRadius: "4px", overflowWrap: "anywhere" }}>{status.currentCommit ?? "inconnu"}</code>
-                  {status.commitAuthor && <span style={{ color: "var(--text-muted)" }}> — {status.commitAuthor}</span>}
+              <div className="min-w-0">
+                <p className="my-1 min-w-0">
+                  Version chargée : <code className="rounded-md bg-surface-2 px-1.5 py-0.5">{status.currentCommit ?? "inconnu"}</code>
+                  {status.commitAuthor && <span className="text-muted-foreground"> — {status.commitAuthor}</span>}
                 </p>
-                {status.commitSubject && <p style={{ margin: "0.2rem 0", fontWeight: 600 }}>{status.commitSubject}</p>}
-                {status.commitDate && <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.85rem" }}>Daté du {formatDateTime(status.commitDate)}</p>}
+                {status.commitSubject && <p className="my-1 min-w-0 font-semibold">{status.commitSubject}</p>}
+                {status.commitDate && <p className="m-0 text-sm text-muted-foreground">Daté du {formatDateTime(status.commitDate)}</p>}
               </div>
 
               {isAdmin ? (
-                <div style={{ borderTop: "1px solid var(--border-soft)", paddingTop: "0.8rem", display: "grid", gap: "0.6rem" }}>
-                  <h2 style={{ margin: 0, fontSize: "1rem" }}>Actions</h2>
+                <div className="grid gap-2.5 border-t border-border-soft pt-3">
+                  <h2 className="m-0 text-base font-semibold">Actions</h2>
                   {!confirming && (
-                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                      <button onClick={() => setConfirming("update")} disabled={running} style={primaryBtn}>
+                    <div className="flex flex-wrap gap-2">
+                      <Button onClick={() => setConfirming("update")} disabled={running}>
                         {running ? "Déploiement en cours…" : "Mettre à jour depuis GitHub"}
-                      </button>
-                      <button onClick={() => setConfirming("rollback")} disabled={running} style={secondaryBtn}>
+                      </Button>
+                      <Button variant="destructive" onClick={() => setConfirming("rollback")} disabled={running}>
                         Retour arrière (base)
-                      </button>
+                      </Button>
                     </div>
                   )}
                   {confirming && (
-                    <div style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "0.8rem", display: "grid", gap: "0.6rem" }}>
-                      <p style={{ margin: 0, fontSize: "0.9rem" }}>
+                    <div className="grid gap-2.5 rounded-lg border border-border p-3">
+                      <p className="m-0 text-sm">
                         {confirming === "update"
                           ? "Mettre à jour l'application depuis GitHub (branche configurée sur ce serveur : beta) ? Une sauvegarde de la base est faite avant ; le serveur redémarre pendant l'opération."
                           : "Restaurer la dernière sauvegarde de la base ? Les données créées depuis seront perdues. Le code reste à la version courante."}
                       </p>
-                      <div style={{ display: "flex", gap: "0.5rem" }}>
-                        <button onClick={() => void trigger(confirming)} style={primaryBtn}>Confirmer</button>
-                        <button onClick={() => setConfirming(null)} style={secondaryBtn}>Annuler</button>
+                      <div className="flex gap-2">
+                        <Button onClick={() => void trigger(confirming)}>Confirmer</Button>
+                        <Button variant="outline" onClick={() => setConfirming(null)}>Annuler</Button>
                       </div>
                     </div>
                   )}
                   {feedback && (
-                    <p style={{ margin: 0, color: feedback.success ? "var(--ok-text)" : "var(--error-text)", fontSize: "0.9rem" }}>
+                    <p className={cn("m-0 text-sm", feedback.success ? "text-ok" : "text-error")}>
                       {feedback.message}
                     </p>
                   )}
                 </div>
               ) : (
-                <p style={{ borderTop: "1px solid var(--border-soft)", paddingTop: "0.8rem", color: "var(--text-muted)", fontSize: "0.85rem", margin: 0 }}>
+                <p className="m-0 border-t border-border-soft pt-3 text-sm text-muted-foreground">
                   Seul un administrateur peut déclencher une mise à jour ou un retour arrière.
                 </p>
               )}
 
               {status.recentCommits.length > 0 && (
-                <div style={{ borderTop: "1px solid var(--border-soft)", paddingTop: "0.8rem" }}>
-                  <h2 style={{ margin: "0 0 0.4rem", fontSize: "0.95rem" }}>Historique récent</h2>
-                  <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: "0.2rem" }}>
+                <div className="border-t border-border-soft pt-3">
+                  <h2 className="mb-1.5">Historique récent</h2>
+                  <ul className="grid gap-1">
                     {status.recentCommits.map((c) => {
                       const isCurrent = status.currentCommit !== null && c.hash.startsWith(status.currentCommit);
                       return (
-                        <li key={c.hash} style={{ fontSize: "0.82rem", display: "flex", gap: "0.5rem", flexWrap: "wrap", color: isCurrent ? "var(--text)" : "var(--text-muted)", fontWeight: isCurrent ? 600 : 400 }}>
-                          <code style={{ overflowWrap: "anywhere" }}>{c.hash}</code>
-                          <span style={{ flex: 1, minWidth: "120px", overflowWrap: "anywhere" }}>{c.subject}</span>
-                          {isCurrent && <span style={{ color: "var(--ok-text)", fontSize: "0.75rem" }}>(chargé)</span>}
+                        <li
+                          key={c.hash}
+                          className={cn(
+                            "flex min-w-0 flex-wrap gap-2 text-sm text-muted-foreground",
+                            isCurrent && "font-semibold text-foreground"
+                          )}
+                        >
+                          <code>{c.hash}</code>
+                          <span className="min-w-[120px] flex-1 wrap-anywhere">{c.subject}</span>
+                          {isCurrent && <span className="text-xs text-ok">(chargé)</span>}
                         </li>
                       );
                     })}
@@ -159,26 +168,26 @@ export default function DeployPage() {
                 </div>
               )}
 
-              <div style={{ borderTop: "1px solid var(--border-soft)", paddingTop: "0.8rem", fontSize: "0.85rem", color: "var(--text-muted)" }}>
+              <div className="border-t border-border-soft pt-3 text-sm text-muted-foreground">
                 <strong>Dernier déploiement :</strong> {lastRunLabel} démarré le {formatDateTime(status.startedAt)}
                 {status && !status.running && status.exitCode !== null
                   ? status.exitCode === 0
-                    ? " — terminé avec succès"
-                    : ` — échec (code ${status.exitCode})`
+                    ? <Badge variant="ok" className="ml-1">terminé avec succès</Badge>
+                    : <Badge variant="error" className="ml-1">échec (code {status.exitCode})</Badge>
                   : status?.running
-                    ? " — en cours"
-                    : ""}
+                    ? <Badge variant="warn" className="ml-1">en cours</Badge>
+                    : null}
                 {connectionLost && (
-                  <p style={{ color: "var(--warn-text)", margin: "0.3rem 0 0" }}>
+                  <p className="mt-1 text-warn">
                     Serveur momentanément injoignable (redémarrage en cours ?), nouvelle tentative…
                   </p>
                 )}
               </div>
 
               {status.logTail && (
-                <div style={{ borderTop: "1px solid var(--border-soft)", paddingTop: "0.8rem" }}>
-                  <h2 style={{ margin: "0 0 0.4rem", fontSize: "0.95rem" }}>Journal</h2>
-                  <pre style={{ margin: 0, background: "var(--log-bg)", border: "1px solid var(--border-soft)", borderRadius: "8px", padding: "0.8rem", fontSize: "0.75rem", lineHeight: 1.5, maxHeight: "260px", height: "auto", width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box", overflowY: "scroll", overflowX: "hidden", whiteSpace: "pre-wrap", wordBreak: "break-all", overflowWrap: "anywhere", display: "block", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
+                <div className="border-t border-border-soft pt-3">
+                  <h2 className="mb-1.5">Journal</h2>
+                  <pre className="m-0 box-border min-w-0 w-full max-w-full max-h-[260px] overflow-y-scroll overflow-x-hidden whitespace-pre-wrap break-all wrap-anywhere rounded-lg border border-border-soft bg-log px-3 py-3 font-mono text-sm leading-normal">
                     {status.logTail}
                   </pre>
                 </div>
@@ -186,11 +195,8 @@ export default function DeployPage() {
             </>
           )}
         </section>
-        {user && <p style={{ textAlign: "center", fontSize: "0.8rem", color: "var(--text-muted)" }}>Connecté en tant que {user.email} ({user.role})</p>}
+        {user && <p className="text-center text-sm text-muted-foreground">Connecté en tant que {user.email} ({user.role})</p>}
       </main>
     </>
   );
 }
-
-const primaryBtn: React.CSSProperties = { padding: "0.6rem 1rem", borderRadius: "6px", border: "none", background: "var(--accent)", color: "white", fontSize: "0.95rem" };
-const secondaryBtn: React.CSSProperties = { padding: "0.6rem 1rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.95rem" };

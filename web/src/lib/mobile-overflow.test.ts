@@ -32,11 +32,12 @@ root.render(
 await new Promise((r) => setTimeout(r, 150));
 const html = dom.window.document.getElementById("root")!.innerHTML;
 
-// 1. champs : width 100% + minWidth 0 présents
-const inputCount = (html.match(/width: ?"?100%/g) || []).length;
-if (inputCount < 3) throw new Error(`champs pleine largeur absents (${inputCount} occurrences de 100%)`);
-if (!/min-width: ?0|minWidth: ?0/.test(html.replace(/width: 100%;/g, "width:100%;"))) {
-  // minWidth 0 est dans les styles React inline : vérifier via le style compilé
+// 1. champs : pleine largeur + minWidth 0 présents (classes Tailwind w-full /
+//    min-w-0 depuis la refonte UI — l'invariant anti-débordement est le même)
+const inputCount = (html.match(/w-full/g) || []).length;
+if (inputCount < 3) throw new Error(`champs pleine largeur absents (${inputCount} occurrences de w-full)`);
+if (!/min-w-0/.test(html)) {
+  // min-w-0 est présent dans les classes : vérifier dans le rendu
 }
 
 // 2. aucun minWidth px > 100 dans le rendu

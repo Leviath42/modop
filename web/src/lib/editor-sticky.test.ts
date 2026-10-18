@@ -50,7 +50,8 @@ root.render(
 await new Promise((r) => setTimeout(r, 300));
 const html = dom.window.document.getElementById("root")!.innerHTML;
 
-if (!html.includes("position: sticky")) throw new Error("bandeau non sticky");
+// Sticky exprimé en classe Tailwind depuis la refonte UI (au lieu d'un style inline).
+if (!/class="[^"]*\bsticky\b/.test(html)) throw new Error("bandeau non sticky");
 if (!/(▾|▸)/.test(html)) throw new Error("bouton réduire/développer absent");
 if (!/Tout (ouvrir|replier)/.test(html)) throw new Error("title réduire/développer absent");
 // C-21 : le nom d'étape EST la liste déroulante (rôle Aller à intégré).

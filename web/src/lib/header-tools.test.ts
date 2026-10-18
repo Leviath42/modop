@@ -50,7 +50,8 @@ const html = dom.window.document.getElementById("root")!.innerHTML;
 if (!html.includes("Dévisser")) throw new Error("nom de l'étape active absent du header");
 if (!/Publier( V\d)?</.test(html)) throw new Error("bouton Publier absent du header");
 if (!/(▾|▸)</.test(html)) throw new Error("bouton réduire/développer absent du header");
-if (!/position: sticky/.test(html)) throw new Error("header non sticky");
+// Sticky exprimé en classe Tailwind depuis la refonte UI (au lieu d'un style inline).
+if (!/class="[^"]*\bsticky\b/.test(html)) throw new Error("header non sticky");
 
 // 1. la barre d'outils est VISIBLE SANS clic (plus de bouton « Outils »)
 if (!html.includes('aria-label="Photos"')) throw new Error("bouton Photos absent (barre permanente attendue, C-49)");

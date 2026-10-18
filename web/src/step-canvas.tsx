@@ -546,7 +546,7 @@ export default function StepCanvas({
             const W = canvasRef.current?.clientWidth ?? 800;
             return <rect x={Math.min(selRect.x1, selRect.x2) * W} y={Math.min(selRect.y1, selRect.y2) * REF_H}
               width={Math.abs(selRect.x2 - selRect.x1) * W} height={Math.abs(selRect.y2 - selRect.y1) * REF_H}
-              fill="rgba(31,78,156,0.08)" stroke="var(--accent)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeDasharray="4 3" />;
+              fill="var(--accent)" fillOpacity="0.08" stroke="var(--accent)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeDasharray="4 3" />;
           })()}
         </svg>
 

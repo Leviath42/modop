@@ -1,19 +1,49 @@
-/* Base — règles UI/UX de meal_plan appliquées à Modop.
-   Principe directeur : la PAGE ne doit JAMAIS scroller horizontalement,
-   quel que soit le contenu. Les contenus longs se replient dans leurs cadres. */
+/* Fondation UI Modop — Tailwind v4 + design tokens.
+   Palette : docs/palette-couleurs.md · Guide : docs/Guide interface utilisateur.md
+   - Thème porté par <html data-theme="..."> (light par défaut, dark en surcharge).
+   - Toute couleur passe par les tokens ci-dessous, JAMAIS en dur dans les composants.
+   - Compatibilité : les anciens noms (--accent, --surface, --text…) restent
+     définis et remappés sur la nouvelle palette — le code non migré (styles
+     inline) change donc de peau automatiquement.
+   Principe structurel inchangé : la PAGE ne doit JAMAIS scroller horizontalement. */
+@import "tailwindcss";
+
+/* Mode sombre : piloté par data-theme sur <html> (et non la classe dark),
+   pour rester compatible avec theme.ts / le script inline de index.html. */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
 :root {
   font-family: system-ui, sans-serif;
 
-  /* Palette claire (par défaut) */
-  --bg: #f5f6f8;
-  --text: #1a1c20;
+  /* Palette officielle (docs/palette-couleurs.md) */
+  --bleu-gris: #517485;        /* couleur primaire */
+  --orange: #e84e0f;           /* accent principal */
+  --bleu-gris-clair: #96a9b1;  /* fonds et surfaces secondaires */
+  --anthracite: #2c3a43;       /* texte / contraste */
+
+  /* Thème clair (défaut) */
+  --bg: #f4f6f7;
+  --text: #2c3a43;
   --text-muted: #5b6470;
   --surface: #ffffff;
-  --surface-2: #eef0f4;
-  --accent: #1f4e9c;
-  --accent-bg: #eaf1fb;
-  --border: #c9ccd3;
-  --border-soft: #e5e7eb;
+  --surface-2: #e9edf0;
+  --accent: #517485;           /* couleur d'action : liens, focus, bandeau */
+  --accent-bg: #e8eef1;        /* fond teinté bleu-gris */
+  --border: #c3ccd2;
+  --border-soft: #dfe4e8;
+  --primary: #517485;
+  --primary-foreground: #ffffff;
+  --secondary: #96a9b1;
+  --secondary-foreground: #16232a;
+  /* Orange : décoratif par défaut (icônes, bordures, indicateurs) ; pour un
+     texte ou un fond portant du texte, utiliser la variante "strong" — le
+     contraste blanc sur #e84e0f est de 3,8:1 (WCAG insuffisant en texte
+     courant), blanc sur #c7410b atteint 5:1. */
+  --brand: #e84e0f;
+  --brand-strong: #c7410b;
+  --brand-strong-foreground: #ffffff;
+  --destructive: #b30000;
+  --destructive-foreground: #ffffff;
   --error-text: #b30000;
   --error-bg: #fdeaea;
   --ok-text: #1d6b2e;
@@ -23,19 +53,35 @@
   --danger-bg: #fff5f5;
   --danger-border: #e0b4b4;
   --log-bg: #f2f3f5;
+  /* Couleurs complémentaires (catégories, états — avec parcimonie) */
+  --cat-yellow: #d8da00;
+  --cat-green: #65b32e;
+  --cat-teal: #38b6ab;
+  --cat-blue: #008ed5;
+  --cat-indigo: #4d55a2;
+  --cat-pink: #c24f97;
 }
 
 /* Mode sombre (issue #2) — activé via data-theme sur <html>. */
 html[data-theme="dark"] {
-  --bg: #12151a;
-  --text: #e6e8ec;
-  --text-muted: #a2aab6;
-  --surface: #1e232b;
-  --surface-2: #2a303a;
-  --accent: #4d7fd7;
-  --accent-bg: #1d2b45;
-  --border: #3a4150;
-  --border-soft: #333a46;
+  --bg: #15191d;
+  --text: #e4e8ea;
+  --text-muted: #9daab3;
+  --surface: #1f262c;
+  --surface-2: #2a333b;
+  --accent: #96a9b1;
+  --accent-bg: #243037;
+  --border: #3b454e;
+  --border-soft: #333d45;
+  --primary: #96a9b1;
+  --primary-foreground: #141f25;
+  --secondary: #38434c;
+  --secondary-foreground: #e4e8ea;
+  --brand: #f2661f;
+  --brand-strong: #ff7a45;
+  --brand-strong-foreground: #21100a;
+  --destructive: #ff9b9b;
+  --destructive-foreground: #2a0d0d;
   --error-text: #ff9b9b;
   --error-bg: #3a2020;
   --ok-text: #7fd08d;
@@ -45,6 +91,51 @@ html[data-theme="dark"] {
   --danger-bg: #2a1a1a;
   --danger-border: #6b3a3a;
   --log-bg: #171b21;
+}
+
+/* Exposition Tailwind v4 : chaque token devient un utilitaire (bg-primary,
+   text-muted-foreground, border-border…). inline = suit la var à l'exécution,
+   donc le mode sombre s'applique partout sans recompiler. */
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text);
+  --color-muted: var(--surface-2);
+  --color-muted-foreground: var(--text-muted);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-border-soft: var(--border-soft);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent-bg);
+  --color-accent-foreground: var(--text);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-strong-foreground: var(--brand-strong-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-error: var(--error-text);
+  --color-error-bg: var(--error-bg);
+  --color-ok: var(--ok-text);
+  --color-ok-bg: var(--ok-bg);
+  --color-warn: var(--warn-text);
+  --color-warn-bg: var(--warn-bg);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-border: var(--danger-border);
+  --color-log: var(--log-bg);
+  --color-cat-yellow: var(--cat-yellow);
+  --color-cat-green: var(--cat-green);
+  --color-cat-teal: var(--cat-teal);
+  --color-cat-blue: var(--cat-blue);
+  --color-cat-indigo: var(--cat-indigo);
+  --color-cat-pink: var(--cat-pink);
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
 }
 
 /* --- Mobile (bonnes pratiques : inputs >= 16px évitent le zoom auto iOS Safari,
@@ -129,12 +220,9 @@ li { list-style: none; }
 
 /* I2 : focus visible pour la navigation clavier (sans doubler le look au clic). */
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
-
-/* I3 : le bandeau éditeur déplié (palette 2 lignes) dépasse le scroll-margin
-   de 5.5rem — marge portée à 8rem pour ne jamais masquer le haut d'une étape. */
 
 /* RF-71 : impression de la vignette QR — la feuille seule, sans l'interface. */
 @media print {
@@ -143,10 +231,10 @@ li { list-style: none; }
   .qr-sheet { box-shadow: none !important; border: 1px solid #ccc; }
 }
 
-/* Titres de page compacts : les h1 inline restent prioritaires où
-   explicitement stylés ; ce réglage borne les h1 "nus". */
-h1 { font-size: 1.05rem; margin: 0.4rem 0 0.6rem; }
-h2 { font-size: 0.95rem; }
-
 /* C-19 : navigations internes (liens d'étapes, retours en haut) fluides. */
 html { scroll-behavior: smooth; }
+
+/* Titres de page compacts : les h1 stylés explicitement (Tailwind ou inline)
+   restent prioritaires ; ce réglage borne les h1 "nus" du code non migré. */
+h1 { font-size: 1.05rem; margin: 0.4rem 0 0.6rem; }
+h2 { font-size: 0.95rem; }

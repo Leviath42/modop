@@ -46,9 +46,11 @@ await new Promise((r) => setTimeout(r, 100));
 // C-36 : la barre de navigation est FIXÉE en bas de l'écran
 const nav = doc.querySelector('nav[aria-label="Navigation entre étapes"]') as HTMLElement | null;
 if (!nav) throw new Error("nav de navigation introuvable");
-if (nav.style.position !== "fixed") throw new Error(`la nav doit être position:fixed, obtenue ${nav.style.position}`);
-if (nav.style.bottom !== "0px") throw new Error(`la nav doit être collée au bas (bottom: 0), obtenue ${nav.style.bottom}`);
-if (!nav.style.background) throw new Error("la nav fixe doit avoir un fond opaque");
+// C-36 : la barre de navigation est FIXÉE en bas de l'écran (exprimée en
+// classes Tailwind depuis la refonte UI — mêmes invariants qu'en inline)
+if (!/\bfixed\b/.test(nav.className)) throw new Error(`la nav doit être position:fixed, obtenue ${nav.className}`);
+if (!/\bbottom-0\b/.test(nav.className)) throw new Error(`la nav doit être collée au bas (bottom-0), obtenue ${nav.className}`);
+if (!/bg-background|bg-surface|bg-card/.test(nav.className)) throw new Error("la nav fixe doit avoir un fond opaque");
 if (!doc.body.textContent?.includes("Précédent")) throw new Error("bouton Précédent absent de la barre");
 
 // le composant doit avoir navigué : plus de boutons de navigation guidée dans le rendu

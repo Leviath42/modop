@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 
 interface Stats {
   workflows: number;
@@ -34,9 +35,9 @@ export default function StatsPage() {
       .catch((e) => setError(e instanceof ApiError ? e.message : "Erreur de chargement"));
   }, [isAdmin]);
 
-  if (!isAdmin) return (<><NavBar /><main style={{ padding: "2rem" }}><p>Seul un administrateur peut voir les statistiques.</p></main></>);
-  if (error) return (<><NavBar /><main style={{ padding: "2rem" }}><p role="alert" style={{ color: "var(--error-text)" }}>{error}</p></main></>);
-  if (!stats) return (<><NavBar /><main style={{ padding: "2rem" }}>Chargement…</main></>);
+  if (!isAdmin) return (<><NavBar /><main className="p-8"><p>Seul un administrateur peut voir les statistiques.</p></main></>);
+  if (error) return (<><NavBar /><main className="p-8"><p role="alert" className="text-error">{error}</p></main></>);
+  if (!stats) return (<><NavBar /><main className="p-8">Chargement…</main></>);
 
   const cards: { label: string; value: number }[] = [
     { label: "Modes opératoires", value: stats.workflows },
@@ -50,64 +51,83 @@ export default function StatsPage() {
   return (
     <>
       <NavBar />
-      <main style={{ maxWidth: "820px", margin: "0 auto", padding: "1rem", display: "grid", gap: "1rem" }}>
-        <h1 style={{ margin: 0, fontSize: "1.05rem" }}>Statistiques</h1>
-        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(8rem, 1fr))", gap: "0.6rem" }} aria-label="Chiffres clés">
+      <main className="mx-auto grid max-w-[820px] grid-cols-1 gap-4 p-4">
+        <h1 className="text-lg font-semibold tracking-tight">Statistiques</h1>
+        <section className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-2" aria-label="Chiffres clés">
           {cards.map((c) => (
-            <div key={c.label} style={{ background: "var(--surface)", borderRadius: "10px", padding: "0.8rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "grid", gap: "0.2rem" }}>
-              <span style={{ fontSize: "1.6rem", fontWeight: 700 }}>{c.value}</span>
-              <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{c.label}</span>
-            </div>
+            <Card key={c.label} className="p-3 sm:p-3">
+              <CardHeader className="gap-1 p-0 sm:gap-1 sm:p-0">
+                <CardTitle className="text-2xl font-bold">{c.value}</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 sm:p-0">
+                <CardDescription className="text-xs">{c.label}</CardDescription>
+              </CardContent>
+            </Card>
           ))}
         </section>
-        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(15rem, 1fr))", gap: "0.6rem" }}>
-          <div style={{ background: "var(--surface)", borderRadius: "10px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
-            <h2 style={{ margin: "0 0 0.4rem", fontSize: "0.95rem" }}>Les plus consultés</h2>
-            <ol style={{ margin: 0, paddingLeft: "1.2rem", fontSize: "0.9rem", display: "grid", gap: "0.2rem" }}>
-              {stats.topViewed.length === 0 && <li style={{ color: "var(--text-muted)" }}>Aucune consultation</li>}
-              {stats.topViewed.map((t) => <li key={t.target}>{t.label || t.target.replace("workflow:", "MO #")} — {t.n} vues</li>)}
-            </ol>
-          </div>
-          <div style={{ background: "var(--surface)", borderRadius: "10px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
-            <h2 style={{ margin: "0 0 0.4rem", fontSize: "0.95rem" }}>Les plus exportés</h2>
-            <ol style={{ margin: 0, paddingLeft: "1.2rem", fontSize: "0.9rem", display: "grid", gap: "0.2rem" }}>
-              {stats.topExported.length === 0 && <li style={{ color: "var(--text-muted)" }}>Aucun export</li>}
-              {stats.topExported.map((t) => <li key={t.target}>{t.label || t.target.replace("workflow:", "MO #")} — {t.n}</li>)}
-            </ol>
-          </div>
-          <div style={{ background: "var(--surface)", borderRadius: "10px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
-            <h2 style={{ margin: "0 0 0.4rem", fontSize: "0.95rem" }}>Auteurs les plus actifs</h2>
-            <ol style={{ margin: 0, paddingLeft: "1.2rem", fontSize: "0.9rem", display: "grid", gap: "0.2rem" }}>
-              {stats.topPublishers.length === 0 && <li style={{ color: "var(--text-muted)" }}>Aucune publication</li>}
-              {stats.topPublishers.map((t) => <li key={t.actor_email}>{t.actor_email} — {t.n}</li>)}
-            </ol>
-          </div>
+        <section className="grid grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] gap-2">
+          <Card>
+            <CardHeader className="px-4 py-3 pb-0 sm:px-4 sm:py-3 sm:pb-0">
+              <CardTitle>Les plus consultés</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 py-3 sm:px-4 sm:py-3">
+              <ol className="m-0 grid gap-1 pl-5 text-sm">
+                {stats.topViewed.length === 0 && <li className="text-muted-foreground">Aucune consultation</li>}
+                {stats.topViewed.map((t) => <li key={t.target} className="min-w-0 break-words">{t.label || t.target.replace("workflow:", "MO #")} — {t.n} vues</li>)}
+              </ol>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="px-4 py-3 pb-0 sm:px-4 sm:py-3 sm:pb-0">
+              <CardTitle>Les plus exportés</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 py-3 sm:px-4 sm:py-3">
+              <ol className="m-0 grid gap-1 pl-5 text-sm">
+                {stats.topExported.length === 0 && <li className="text-muted-foreground">Aucun export</li>}
+                {stats.topExported.map((t) => <li key={t.target} className="min-w-0 break-words">{t.label || t.target.replace("workflow:", "MO #")} — {t.n}</li>)}
+              </ol>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="px-4 py-3 pb-0 sm:px-4 sm:py-3 sm:pb-0">
+              <CardTitle>Auteurs les plus actifs</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 py-3 sm:px-4 sm:py-3">
+              <ol className="m-0 grid gap-1 pl-5 text-sm">
+                {stats.topPublishers.length === 0 && <li className="text-muted-foreground">Aucune publication</li>}
+                {stats.topPublishers.map((t) => <li key={t.actor_email} className="min-w-0 break-words">{t.actor_email} — {t.n}</li>)}
+              </ol>
+            </CardContent>
+          </Card>
         </section>
-        <section style={{ background: "var(--surface)", borderRadius: "10px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
-          <h2 style={{ margin: "0 0 0.4rem", fontSize: "0.95rem" }}>Activité récente</h2>
-          <ul style={{ margin: 0, paddingLeft: "0", listStyle: "none", fontSize: "0.85rem", display: "grid", gap: "0.25rem" }}>
-            {stats.recentActivity.map((a, i) => (
-              <li key={i} style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                <span style={{ color: "var(--text-muted)" }}>{a.at}</span>
-                <strong>{a.actor_email}</strong>
-                <span>{a.action}{a.target ? ` → ${a.label || a.target}` : ""}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-        {audit && audit.length > 0 && (
-          <section style={{ background: "var(--surface)", borderRadius: "10px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }} aria-label="Journal d'audit">
-            <h2 style={{ margin: "0 0 0.4rem", fontSize: "0.95rem" }}>Journal d'audit (200 dernières actions)</h2>
-            <ul style={{ margin: 0, paddingLeft: "0", listStyle: "none", fontSize: "0.85rem", display: "grid", gap: "0.25rem", maxHeight: "26rem", overflowY: "auto" }}>
-              {audit.map((a) => (
-                <li key={a.id} style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                  <span style={{ color: "var(--text-muted)", flexShrink: 0 }}>{a.at}</span>
-                  <strong style={{ flexShrink: 0 }}>{a.actor_email}</strong>
-                  <span>{a.action}{a.target ? ` → ${a.target}` : ""}{a.detail ? ` (${a.detail})` : ""}</span>
+        <Card>
+          <CardHeader className="px-4 py-3 pb-0 sm:px-4 sm:py-3 sm:pb-0">
+            <CardTitle>Activité récente</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 py-3 sm:px-4 sm:py-3">
+            <ul className="m-0 grid gap-1 text-sm">
+              {stats.recentActivity.map((a, i) => (
+                <li key={i} className="flex min-w-0 flex-wrap gap-2">
+                  <span className="min-w-0 text-muted-foreground">{a.at}</span>
+                  <strong className="min-w-0 font-semibold break-words">{a.actor_email}</strong>
+                  <span className="min-w-0 break-words">{a.action}{a.target ? ` → ${a.label || a.target}` : ""}</span>
                 </li>
               ))}
             </ul>
-          </section>
+          </CardContent>
+        </Card>
+        {audit && audit.length > 0 && (
+          <Card aria-label="Journal d'audit">
+            <CardHeader className="px-4 py-3 pb-2 sm:px-4 sm:py-3 sm:pb-2">
+              <CardTitle>Journal d'audit (200 dernières actions)</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 py-3 sm:px-4 sm:py-3">
+              {/* pré-formaté monospace : le wrap long est assuré par styles.css (pre, code) */}
+              <pre className="m-0 max-h-[26rem] min-w-0 overflow-y-auto rounded-md bg-log p-3 font-mono text-sm">
+                {audit.map((a) => `${a.at}  ${a.actor_email}  ${a.action}${a.target ? ` → ${a.target}` : ""}${a.detail ? ` (${a.detail})` : ""}`).join("\n")}
+              </pre>
+            </CardContent>
+          </Card>
         )}
       </main>
     </>

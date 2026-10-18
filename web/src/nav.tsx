@@ -66,56 +66,62 @@ export default function NavBar() {
 
   const menuLabel = theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre";
 
-  const menuItem: React.CSSProperties = {
-    display: "flex", alignItems: "center", gap: "0.55rem",
-    width: "100%", padding: "0.55rem 0.9rem",
-    background: "transparent", border: "none",
-    color: "var(--text)", fontSize: "0.9rem", textAlign: "left",
-    cursor: "pointer", textDecoration: "none", lineHeight: 1.2,
-  };
+  const menuItem =
+    "flex w-full items-center gap-2.5 rounded-md px-3 py-2.5 text-left text-sm text-foreground no-underline hover:bg-accent";
 
   return (
-    <nav ref={navRef} style={{ position: "sticky", top: 0, zIndex: 300, display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.5rem 0.8rem", background: "var(--accent)", color: "white" }}>
-      <Link to="/" style={{ color: "white", fontWeight: 700, textDecoration: "none", fontSize: "1.05rem", flexShrink: 0 }}>
+    <nav
+      ref={navRef}
+      className="sticky top-0 z-[300] flex items-center gap-2 bg-primary px-3 py-2 text-primary-foreground shadow-sm"
+    >
+      <Link
+        to="/"
+        className="flex shrink-0 items-center gap-1.5 text-lg font-bold text-primary-foreground no-underline"
+      >
+        <span aria-hidden="true" className="inline-block size-2.5 rounded-sm bg-brand" />
         Modop
       </Link>
-      <div ref={menuRef} style={{ position: "relative", marginLeft: "auto" }}>
+      <div ref={menuRef} className="relative ml-auto">
         <button
           onClick={() => setMenuOpen((v) => !v)}
           aria-expanded={menuOpen}
           aria-haspopup="menu"
           aria-label="Menu"
           title="Menu"
-          style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "2.2rem", height: "2.2rem", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.5)", background: "transparent", color: "white", lineHeight: 1 }}
+          className="inline-flex size-9 items-center justify-center rounded-md text-primary-foreground hover:bg-white/10 focus-visible:outline-white"
         >
           <BarsIcon />
         </button>
         {menuOpen && (
-          <div role="menu" aria-label="Menu de navigation" style={{ position: "absolute", right: 0, top: "calc(100% + 0.4rem)", minWidth: "15rem", maxWidth: "calc(100vw - 1.6rem)", background: "var(--surface)", color: "var(--text)", borderRadius: "10px", boxShadow: "0 6px 24px rgba(0,0,0,0.25)", padding: "0.4rem", display: "grid", gap: "0.1rem" }}>
-            <p style={{ margin: "0.3rem 0.9rem 0.5rem", fontSize: "0.85rem", color: "var(--text-muted)", overflowWrap: "anywhere" }}>
-              {user.email} <span style={{ opacity: 0.7 }}>({user.role})</span>
+          <div
+            role="menu"
+            aria-label="Menu de navigation"
+            className="absolute right-0 top-[calc(100%+0.4rem)] grid min-w-60 max-w-[calc(100vw-1.5rem)] gap-0.5 rounded-lg border border-border bg-surface p-1.5 text-foreground shadow-xl"
+          >
+            <p className="mx-2 mt-1 mb-1.5 text-sm break-anywhere text-muted-foreground">
+              {user.email} <span className="opacity-70">({user.role})</span>
             </p>
-            <Link role="menuitem" to="/" onClick={() => setMenuOpen(false)} style={menuItem}>Modes opératoires</Link>
+            <Link role="menuitem" to="/" onClick={() => setMenuOpen(false)} className={menuItem}>Modes opératoires</Link>
             {user.role === "admin" && (
               <>
-                <Link role="menuitem" to="/admin" onClick={() => setMenuOpen(false)} style={menuItem}>Comptes</Link>
-                <Link role="menuitem" to="/stats" onClick={() => setMenuOpen(false)} style={menuItem}>Statistiques</Link>
-                <Link role="menuitem" to="/deploy" onClick={() => setMenuOpen(false)} style={menuItem}>Déploiement</Link>
+                <Link role="menuitem" to="/admin" onClick={() => setMenuOpen(false)} className={menuItem}>Comptes</Link>
+                <Link role="menuitem" to="/stats" onClick={() => setMenuOpen(false)} className={menuItem}>Statistiques</Link>
+                <Link role="menuitem" to="/deploy" onClick={() => setMenuOpen(false)} className={menuItem}>Déploiement</Link>
               </>
             )}
-            <span style={{ height: "1px", background: "var(--border-soft)", margin: "0.3rem 0.6rem" }} aria-hidden="true" />
+            <span className="mx-2 my-1 h-px bg-border-soft" aria-hidden="true" />
             <button
               role="menuitem"
               onClick={() => { setMenuOpen(false); setTheme(toggleTheme()); }}
               aria-label={menuLabel}
-              style={{ ...menuItem, cursor: "pointer" }}
+              className={menuItem}
             >
               {theme === "dark" ? <SunIcon /> : <MoonIcon />} {menuLabel}
             </button>
             <button
               role="menuitem"
               onClick={async () => { setMenuOpen(false); await logout(); navigate("/login"); }}
-              style={{ ...menuItem, color: "var(--error-text)" }}
+              className={menuItem + " text-destructive"}
             >
               Déconnexion
             </button>

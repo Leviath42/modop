@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError, type AdminUser } from "../api";
 import { useAuth } from "../auth-context";
+import { cn } from "../lib/utils";
 import NavBar from "../nav";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Card, CardHeader, CardTitle } from "../components/ui/card";
+import { Input, Label, Select } from "../components/ui/input";
+import { Modal } from "../components/ui/dialog";
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -19,13 +25,6 @@ export default function AdminPage() {
   const [editLastName, setEditLastName] = useState("");
   const [editRole, setEditRole] = useState<AdminUser["role"]>("reader");
   const [editActive, setEditActive] = useState(1);
-  // fermeture Échap de la modale
-  useEffect(() => {
-    if (!editUser) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setEditUser(null); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [editUser]);
 
   const [tempPassword, setTempPassword] = useState<{ email: string; password: string } | null>(null);
 
@@ -99,7 +98,7 @@ export default function AdminPage() {
     return (
       <>
         <NavBar />
-        <main style={{ padding: "2rem" }}>
+        <main className="p-8">
           <p>Seul un administrateur peut gérer les comptes.</p>
         </main>
       </>
@@ -109,42 +108,46 @@ export default function AdminPage() {
   return (
     <>
       <NavBar />
-      <main style={{ maxWidth: "820px", margin: "0 auto", padding: "1rem", display: "grid", gap: "1rem" }}>
-        <h1 style={{ margin: 0, fontSize: "1.05rem" }}>Comptes utilisateurs</h1>
-        {error && <p role="alert" style={{ color: "var(--error-text)", background: "var(--error-bg)", padding: "0.5rem 0.8rem", borderRadius: "6px", margin: 0 }}>{error}</p>}
-        {notice && <p style={{ color: "var(--ok-text)", background: "var(--ok-bg)", padding: "0.5rem 0.8rem", borderRadius: "6px", margin: 0 }}>{notice}</p>}
+      <main className="mx-auto grid max-w-[820px] grid-cols-1 gap-4 p-4">
+        <h1 className="text-lg font-semibold tracking-tight">Comptes utilisateurs</h1>
+        {error && <p role="alert" className="m-0 rounded-md bg-error-bg px-3 py-2 text-sm text-error break-words">{error}</p>}
+        {notice && <p className="m-0 rounded-md bg-ok-bg px-3 py-2 text-sm text-ok break-words">{notice}</p>}
         {tempPassword && (
-          <div style={{ background: "var(--warn-bg)", border: "1px solid var(--warn-text)", borderRadius: "8px", padding: "0.8rem" }}>
-            <p style={{ margin: "0 0 0.4rem", fontWeight: 600 }}>Mot de passe temporaire pour {tempPassword.email} :</p>
-            <p style={{ margin: 0 }}><code style={{ fontSize: "1.1rem" }}>{tempPassword.password}</code></p>
-            <p style={{ margin: "0.4rem 0 0", fontSize: "0.85rem", color: "var(--text-muted)" }}>Communiquez-le de façon sécurisée — il ne sera plus affiché. Toutes les sessions de ce compte ont été révoquées.</p>
-            <button onClick={() => setTempPassword(null)} style={{ marginTop: "0.5rem" }}>Fermer</button>
+          <div className="rounded-md border border-warn bg-warn-bg p-3">
+            <p className="m-0 mb-1.5 font-semibold break-words">Mot de passe temporaire pour {tempPassword.email} :</p>
+            <p className="m-0"><code className="text-lg">{tempPassword.password}</code></p>
+            <p className="m-0 mt-1.5 text-sm text-muted-foreground break-words">Communiquez-le de façon sécurisée — il ne sera plus affiché. Toutes les sessions de ce compte ont été révoquées.</p>
+            <Button variant="outline" size="sm" onClick={() => setTempPassword(null)} className="mt-2">Fermer</Button>
           </div>
         )}
 
-        <section style={{ background: "var(--surface)", borderRadius: "10px", padding: "1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "grid", gap: "0.6rem" }}>
-          <h2 style={{ margin: 0, fontSize: "1.05rem" }}>Créer un compte</h2>
-          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-            <input type="text" placeholder="Prénom" value={newFirstName} onChange={(e) => setNewFirstName(e.target.value)} style={{ ...input, flex: "1 1 7rem" }} aria-label="Prénom" />
-            <input type="text" placeholder="Nom" value={newLastName} onChange={(e) => setNewLastName(e.target.value)} style={{ ...input, flex: "1 1 7rem" }} aria-label="Nom" />
-            <input type="email" placeholder="email@entreprise.fr" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} style={{ ...input, flex: "2 1 10rem" }} />
-            <input type="password" placeholder="Mot de passe (8+ car.)" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} style={{ ...input, flex: "1 1 8rem" }} />
-            <select value={newRole} onChange={(e) => setNewRole(e.target.value as AdminUser["role"])} style={{ ...input, flex: "1 1 6rem" }}>
-              <option value="reader">Lecteur</option>
-              <option value="author">Auteur</option>
-              <option value="admin">Admin</option>
-            </select>
-            <button onClick={createUser} disabled={!newEmail.trim() || newPassword.length < 8} style={primaryBtn}>Créer</button>
-          </div>
-        </section>
+        <Card>
+          <CardHeader className="gap-2 px-4 py-3 sm:px-4 sm:py-3">
+            <CardTitle>Créer un compte</CardTitle>
+            <div className="flex flex-wrap gap-2">
+              <Input type="text" placeholder="Prénom" value={newFirstName} onChange={(e) => setNewFirstName(e.target.value)} className="min-w-0 flex-[1_1_7rem]" aria-label="Prénom" />
+              <Input type="text" placeholder="Nom" value={newLastName} onChange={(e) => setNewLastName(e.target.value)} className="min-w-0 flex-[1_1_7rem]" aria-label="Nom" />
+              <Input type="email" placeholder="email@entreprise.fr" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className="min-w-0 flex-[2_1_10rem]" />
+              <Input type="password" placeholder="Mot de passe (8+ car.)" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="min-w-0 flex-[1_1_8rem]" />
+              <Select value={newRole} onChange={(e) => setNewRole(e.target.value as AdminUser["role"])} className="min-w-0 flex-[1_1_6rem]">
+                <option value="reader">Lecteur</option>
+                <option value="author">Auteur</option>
+                <option value="admin">Admin</option>
+              </Select>
+              <Button onClick={createUser} disabled={!newEmail.trim() || newPassword.length < 8}>Créer</Button>
+            </div>
+          </CardHeader>
+        </Card>
 
-        <section style={{ display: "grid", gap: "0.5rem" }}>
+        <section className="grid gap-2">
           {users.map((u) => (
-            <div key={u.id} style={{ background: "var(--surface)", borderRadius: "10px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", opacity: u.active === 0 ? 0.55 : 1 }}>
-              <span style={{ fontWeight: 600, flex: "1 1 10rem", overflowWrap: "anywhere", display: "flex", gap: "0.4rem", alignItems: "baseline", minWidth: 0 }}>
-                <span style={{ overflowWrap: "anywhere" }}>{[u.first_name, u.last_name].filter(Boolean).join(" ") || <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(sans nom)</span>}</span>
-                <span style={{ color: "var(--text-muted)", fontWeight: 400, fontSize: "0.8rem" }}>({u.email})</span>
-                <button
+            <Card key={u.id} className={cn("flex flex-wrap items-center gap-2 px-4 py-3", u.active === 0 && "opacity-55")}>
+              <span className="flex min-w-0 flex-1 basis-40 items-baseline gap-1.5 font-semibold break-words">
+                <span className="min-w-0 break-words">{[u.first_name, u.last_name].filter(Boolean).join(" ") || <span className="font-normal text-muted-foreground">(sans nom)</span>}</span>
+                <span className="min-w-0 text-xs font-normal text-muted-foreground break-words">({u.email})</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => {
                     setEditUser(u);
                     setEditFirstName(u.first_name ?? "");
@@ -154,88 +157,79 @@ export default function AdminPage() {
                   }}
                   aria-label={`Modifier le compte ${u.email}`}
                   title="Modifier le compte (Prénom, Nom, rôle, activation)"
-                  style={{ border: "none", background: "none", color: "var(--accent)", cursor: "pointer", padding: "0 0.2rem", fontSize: "0.9rem", flexShrink: 0 }}
-                >✎</button>
+                  className="h-7 w-7 shrink-0 text-base"
+                >✎</Button>
               </span>
-              <select
+              <Select
                 value={u.role}
                 onChange={(e) => updateUser(u, { role: e.target.value as AdminUser["role"] })}
                 disabled={u.id === user?.id}
-                style={{ ...input, flex: "1 1 6rem" }}
+                className="min-w-0 flex-[1_1_6rem]"
                 aria-label={`Rôle de ${u.email}`}
               >
                 <option value="reader">Lecteur</option>
                 <option value="author">Auteur</option>
                 <option value="admin">Admin</option>
-              </select>
-              {u.auth_provider === "oidc" && <span style={{ fontSize: "0.8rem", color: "#7b16c9" }}>SSO</span>}
-              <span style={{ marginLeft: "auto", display: "flex", gap: "0.4rem", alignItems: "center" }}>
-                {u.active === 0 && <span style={{ fontSize: "0.8rem", color: "var(--error-text)" }}>désactivé</span>}
+              </Select>
+              {u.auth_provider === "oidc" && <span className="shrink-0 text-xs" style={{ color: "#7b16c9" }}>SSO</span>}
+              <span className="ml-auto flex items-center gap-1.5">
+                {u.active === 0 && <Badge variant="error">désactivé</Badge>}
                 {u.auth_provider !== "oidc" && (
-                  <button onClick={() => resetPassword(u)} style={secondaryBtn}>Réinitialiser le mot de passe</button>
+                  <Button variant="outline" size="sm" onClick={() => resetPassword(u)}>Réinitialiser le mot de passe</Button>
                 )}
                 {u.id !== user?.id && (
                   u.active === 1
-                    ? <button onClick={() => updateUser(u, { active: 0 })} style={secondaryBtn}>Désactiver</button>
-                    : <button onClick={() => updateUser(u, { active: 1 })} style={secondaryBtn}>Réactiver</button>
+                    ? <Button variant="destructive" size="sm" onClick={() => updateUser(u, { active: 0 })}>Désactiver</Button>
+                    : <Button variant="outline" size="sm" onClick={() => updateUser(u, { active: 1 })}>Réactiver</Button>
                 )}
               </span>
-            </div>
+            </Card>
           ))}
         </section>
 
-        {/* C-48 : fenêtre d'édition complète du compte */}
+        {/* C-48 : fenêtre d'édition complète du compte — fermeture Échap +
+            clic fond gérées par le composant Modal */}
         {editUser && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Modifier le compte ${editUser.email}`}
-            onClick={() => setEditUser(null)}
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
+          <Modal
+            open
+            onClose={() => setEditUser(null)}
+            title="Modifier le compte"
+            footer={
+              <>
+                <Button variant="outline" onClick={() => setEditUser(null)}>Annuler</Button>
+                <Button onClick={() => void saveEdit()}>Enregistrer</Button>
+              </>
+            }
           >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              style={{ background: "var(--surface)", borderRadius: "12px", boxShadow: "0 10px 40px rgba(0,0,0,0.3)", padding: "1.2rem", width: "100%", maxWidth: "26rem", display: "grid", gap: "0.7rem" }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <h2 style={{ margin: 0, fontSize: "1.05rem", flex: 1 }}>Modifier le compte</h2>
-                <span style={{ color: "var(--text-muted)", fontSize: "0.85rem", overflowWrap: "anywhere" }}>{editUser.email}</span>
+            <div className="grid gap-3">
+              <p className="m-0 text-sm text-muted-foreground break-words">{editUser.email}</p>
+              <div className="grid gap-1.5">
+                <Label htmlFor="edit-first-name">Prénom</Label>
+                <Input id="edit-first-name" value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} placeholder="Prénom" />
               </div>
-              <label style={{ display: "grid", gap: "0.25rem", fontSize: "0.85rem" }}>
-                Prénom
-                <input value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} style={input} placeholder="Prénom" />
-              </label>
-              <label style={{ display: "grid", gap: "0.25rem", fontSize: "0.85rem" }}>
-                Nom
-                <input value={editLastName} onChange={(e) => setEditLastName(e.target.value)} style={input} placeholder="Nom" />
-              </label>
-              <label style={{ display: "grid", gap: "0.25rem", fontSize: "0.85rem" }}>
-                Rôle
-                <select value={editRole} onChange={(e) => setEditRole(e.target.value as AdminUser["role"])} style={input} disabled={editUser.id === user?.id}>
+              <div className="grid gap-1.5">
+                <Label htmlFor="edit-last-name">Nom</Label>
+                <Input id="edit-last-name" value={editLastName} onChange={(e) => setEditLastName(e.target.value)} placeholder="Nom" />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="edit-role">Rôle</Label>
+                <Select id="edit-role" value={editRole} onChange={(e) => setEditRole(e.target.value as AdminUser["role"])} disabled={editUser.id === user?.id}>
                   <option value="reader">Lecteur</option>
                   <option value="author">Auteur</option>
                   <option value="admin">Admin</option>
-                </select>
-              </label>
+                </Select>
+              </div>
               {editUser.id !== user?.id && (
-                <label style={{ display: "flex", gap: "0.4rem", alignItems: "center", fontSize: "0.85rem" }}>
-                  <input type="checkbox" checked={editActive === 1} onChange={(e) => setEditActive(e.target.checked ? 1 : 0)} />
+                <label htmlFor="edit-active" className="flex items-center gap-2 text-sm">
+                  <input id="edit-active" type="checkbox" checked={editActive === 1} onChange={(e) => setEditActive(e.target.checked ? 1 : 0)} />
                   Compte actif
                 </label>
               )}
-              {error && <p role="alert" style={{ margin: 0, color: "var(--error-text)", background: "var(--error-bg)", padding: "0.4rem 0.6rem", borderRadius: "6px", fontSize: "0.85rem" }}>{error}</p>}
-              <div style={{ display: "flex", gap: "0.5rem", justifyContent: "end" }}>
-                <button onClick={() => setEditUser(null)} style={secondaryBtn}>Annuler</button>
-                <button onClick={() => void saveEdit()} style={primaryBtn}>Enregistrer</button>
-              </div>
+              {error && <p role="alert" className="m-0 rounded-md bg-error-bg px-2.5 py-2 text-sm text-error break-words">{error}</p>}
             </div>
-          </div>
+          </Modal>
         )}
       </main>
     </>
   );
 }
-
-const input: React.CSSProperties = { padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border)", fontSize: "0.95rem" };
-const primaryBtn: React.CSSProperties = { padding: "0.5rem 1rem", borderRadius: "6px", border: "none", background: "var(--accent)", color: "white" };
-const secondaryBtn: React.CSSProperties = { padding: "0.4rem 0.7rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.85rem" };

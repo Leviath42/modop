@@ -3,6 +3,11 @@ import { Navigate } from "react-router-dom";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth-context";
 import { getStoredTheme, toggleTheme, watchTheme, type Theme } from "../theme";
+import { Button, buttonVariants } from "../components/ui/button";
+import { Card, CardContent, CardHeader } from "../components/ui/card";
+import { Input, Label } from "../components/ui/input";
+import { Alert } from "../components/ui/dialog";
+import { cn } from "../lib/utils";
 
 const SunIcon = () => (
   <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -50,84 +55,61 @@ export default function LoginPage() {
   }
 
   return (
-    <main style={{ maxWidth: "360px", width: "100%", margin: "10vh auto", padding: "1rem", boxSizing: "border-box" }}>
-      <button
+    <main className="mx-auto mt-[10vh] w-full max-w-sm px-4">
+      <Button
         onClick={() => setTheme(toggleTheme())}
         aria-label={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
         title={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
-        style={{
-          position: "fixed",
-          top: "1rem",
-          right: "1rem",
-          padding: "0.3rem 0.6rem",
-          borderRadius: "6px",
-          border: "1px solid var(--border)",
-          background: "var(--surface)",
-          color: "var(--text)",
-          fontSize: "1rem",
-          lineHeight: 1,
-        }}
+        variant="outline"
+        size="icon"
+        className="fixed top-4 right-4"
       >
         {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-      </button>
-      <h1 style={{ fontSize: "1.3rem", margin: "0 0 0.2rem" }}>Modop</h1>
-      <p style={{ color: "var(--text-muted)" }}>Modes opératoires</p>
-      <form onSubmit={submit} style={{ display: "grid", gap: "0.75rem" }}>
-        <label style={{ display: "grid", gap: "0.25rem" }}>
-          Email
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={inputStyle}
-            autoComplete="username"
-          />
-        </label>
-        <label style={{ display: "grid", gap: "0.25rem" }}>
-          Mot de passe
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={inputStyle}
-            autoComplete="current-password"
-          />
-        </label>
-        {error && (
-          <p role="alert" style={{ color: "var(--error-text)", margin: 0 }}>
-            {error}
-          </p>
-        )}
-        <button type="submit" disabled={busy} style={buttonStyle}>
-          {busy ? "Connexion…" : "Se connecter"}
-        </button>
-        {ssoEnabled && (
-          <>
-            <p style={{ margin: 0, textAlign: "center", color: "var(--text-muted)", fontSize: "0.85rem" }}>ou</p>
-            <a href="/api/auth/oidc/login" style={{ ...buttonStyle, display: "block", textAlign: "center", textDecoration: "none", boxSizing: "border-box" }}>
-              Se connecter avec le SSO
-            </a>
-          </>
-        )}
-      </form>
+      </Button>
+      <Card>
+        <CardHeader>
+          <h1 className="text-xl font-bold">Modop</h1>
+          <p className="text-sm text-muted-foreground">Modes opératoires</p>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={submit} className="grid gap-3">
+            <div className="grid min-w-0 gap-1.5">
+              <Label htmlFor="login-email">Email</Label>
+              <Input
+                id="login-email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="username"
+              />
+            </div>
+            <div className="grid min-w-0 gap-1.5">
+              <Label htmlFor="login-password">Mot de passe</Label>
+              <Input
+                id="login-password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+              />
+            </div>
+            {error && <Alert variant="error">{error}</Alert>}
+            <Button type="submit" disabled={busy}>
+              {busy ? "Connexion…" : "Se connecter"}
+            </Button>
+            {ssoEnabled && (
+              <>
+                <p className="m-0 text-center text-sm text-muted-foreground">ou</p>
+                <a href="/api/auth/oidc/login" className={cn(buttonVariants({ variant: "outline" }))}>
+                  Se connecter avec le SSO
+                </a>
+              </>
+            )}
+          </form>
+        </CardContent>
+      </Card>
     </main>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  padding: "0.5rem",
-  borderRadius: "6px",
-  border: "1px solid var(--border)",
-  fontSize: "1rem",
-};
-
-const buttonStyle: React.CSSProperties = {
-  padding: "0.6rem",
-  borderRadius: "6px",
-  border: "none",
-  background: "var(--accent)",
-  color: "white",
-  fontSize: "1rem",
-};

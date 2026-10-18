@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, ApiError, type WorkflowDetail } from "../api";
 import NavBar from "../nav";
 import StepCanvasView from "../step-canvas-view";
+import { Button } from "../components/ui/button";
 
 // RF-72 — lecture guidée : une étape par écran, boutons en zone pouce,
 // indicateur de progression. Entrée : /workflow/:id/read?guided=1.
@@ -19,9 +20,9 @@ export default function GuidedReaderPage() {
       .catch((e) => setError(e instanceof ApiError ? e.message : "Erreur de chargement"));
   }, [id]);
 
-  if (error) return (<><NavBar /><main style={{ padding: "2rem" }}><p role="alert" style={{ color: "var(--error-text)" }}>{error}</p><Link to="/">Retour</Link></main></>);
-  if (!wf) return (<><NavBar /><main style={{ padding: "2rem" }}>Chargement…</main></>);
-  if (wf.steps.length === 0) return (<><NavBar /><main style={{ padding: "2rem" }}><p>Aucune étape.</p><Link to={`/workflow/${id}/read`}>Retour</Link></main></>);
+  if (error) return (<><NavBar /><main className="p-8"><p role="alert" className="text-error">{error}</p><Link to="/">Retour</Link></main></>);
+  if (!wf) return (<><NavBar /><main className="p-8">Chargement…</main></>);
+  if (wf.steps.length === 0) return (<><NavBar /><main className="p-8"><p>Aucune étape.</p><Link to={`/workflow/${id}/read`}>Retour</Link></main></>);
 
   const step = wf.steps[idx];
   const last = idx >= wf.steps.length - 1;
@@ -29,24 +30,27 @@ export default function GuidedReaderPage() {
   return (
     <>
       <NavBar />
-      <main style={{ maxWidth: "100%", margin: "0 auto", padding: "0.6rem", paddingBottom: "calc(4.6rem + env(safe-area-inset-bottom))", display: "grid", gap: "0.6rem", alignContent: "start", minHeight: "100dvh", gridTemplateRows: "auto 1fr", boxSizing: "border-box" }}>
-        <header style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-          <Link to={`/workflow/${id}/read`} aria-label="Lecture classique" style={{ fontSize: "1.2rem", textDecoration: "none" }}>✕</Link>
-          <h1 style={{ fontSize: "1rem", margin: 0, flex: 1, minWidth: "6rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {wf.title} <code style={{ fontSize: "0.75em", background: "var(--surface-2)", padding: "0.1rem 0.4rem", borderRadius: "4px" }}>{wf.reference}</code>
+      <main
+        className="mx-auto grid min-h-dvh w-full content-start gap-2.5 p-2.5 grid-rows-[auto_1fr]"
+        style={{ paddingBottom: "calc(4.6rem + env(safe-area-inset-bottom))" }}
+      >
+        <header className="flex flex-wrap items-center gap-2">
+          <Link to={`/workflow/${id}/read`} aria-label="Lecture classique" className="text-xl no-underline">✕</Link>
+          <h1 className="m-0 min-w-[6rem] flex-1 truncate text-base">
+            {wf.title} <code className="rounded bg-surface-2 px-1.5 py-0.5 text-[0.75em]">{wf.reference}</code>
           </h1>
-          <span aria-live="polite" style={{ fontSize: "0.85rem", background: "var(--accent-bg)", color: "var(--accent)", padding: "0.15rem 0.5rem", borderRadius: "99px", fontWeight: 600 }}>
+          <span aria-live="polite" className="rounded-full bg-accent px-2 py-0.5 text-sm font-semibold text-primary">
             {idx + 1}/{wf.steps.length}
           </span>
         </header>
 
-        <article style={{ background: "var(--surface)", borderRadius: "10px", padding: "1.1rem", boxShadow: "0 1px 4px rgba(0,0,0,0.1)" }}>
-          <h2 style={{ marginTop: 0, fontSize: "1.1rem" }}>{idx + 1}. {step.title}</h2>
-          {step.body && <p style={{ whiteSpace: "pre-wrap", fontSize: "1rem" }}>{step.body}</p>}
+        <article className="rounded-lg bg-surface p-4 shadow-sm">
+          <h2 className="mt-0 text-lg">{idx + 1}. {step.title}</h2>
+          {step.body && <p className="whitespace-pre-wrap break-words text-base">{step.body}</p>}
           {step.pictos.length > 0 && (
-            <p style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap" }}>
+            <p className="flex flex-wrap gap-1">
               {step.pictos.map((p, i) => (
-                <span key={i} style={{ background: `${p.color}22`, borderLeft: `4px solid ${p.color}`, padding: "0.15rem 0.5rem", borderRadius: "4px", fontSize: "0.85rem", fontWeight: 600 }}>
+                <span key={i} className="rounded px-2 py-0.5 text-sm font-semibold" style={{ background: `${p.color}22`, borderLeft: `4px solid ${p.color}` }}>
                   ⚠ {p.label}
                 </span>
               ))}
@@ -55,22 +59,27 @@ export default function GuidedReaderPage() {
           {step.photos.length > 0 && <StepCanvasView photos={step.photos ?? []} shapes={step.canvas ?? []} />}
         </article>
 
-        <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200, display: "flex", gap: "0.6rem", padding: "0.6rem max(0.6rem, env(safe-area-inset-left)) max(0.6rem, env(safe-area-inset-bottom)) max(0.6rem, env(safe-area-inset-right))", background: "var(--bg)", borderTop: "1px solid var(--border-soft)", boxShadow: "0 -2px 10px rgba(0,0,0,0.08)" }} aria-label="Navigation entre étapes">
-          <button
+        <nav
+          className="fixed bottom-0 inset-x-0 z-[200] flex gap-2.5 border-t border-border-soft bg-background shadow-lg"
+          style={{ padding: "0.6rem max(0.6rem, env(safe-area-inset-left)) max(0.6rem, env(safe-area-inset-bottom)) max(0.6rem, env(safe-area-inset-right))" }}
+          aria-label="Navigation entre étapes"
+        >
+          <Button
+            variant="outline"
             onClick={() => setIdx((v) => Math.max(0, v - 1))}
             disabled={idx === 0}
-            style={{ flex: 1, padding: "0.9rem", borderRadius: "10px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "1rem", opacity: idx === 0 ? 0.4 : 1 }}
-          >← Précédent</button>
+            className="h-auto min-w-0 flex-1 py-3.5 text-base"
+          >← Précédent</Button>
           {last ? (
-            <button
+            <Button
               onClick={() => navigate(`/workflow/${id}/read`)}
-              style={{ flex: 1.4, padding: "0.9rem", borderRadius: "10px", border: "none", background: "var(--accent)", color: "white", fontSize: "1rem", fontWeight: 600 }}
-            >Terminé ✓</button>
+              className="h-auto min-w-0 flex-[1.4] py-3.5 text-base font-semibold"
+            >Terminé ✓</Button>
           ) : (
-            <button
+            <Button
               onClick={() => { setIdx((v) => v + 1); window.scrollTo({ top: 0 }); }}
-              style={{ flex: 1.4, padding: "0.9rem", borderRadius: "10px", border: "none", background: "var(--accent)", color: "white", fontSize: "1rem", fontWeight: 600 }}
-            >Suivant →</button>
+              className="h-auto min-w-0 flex-[1.4] py-3.5 text-base font-semibold"
+            >Suivant →</Button>
           )}
         </nav>
       </main>

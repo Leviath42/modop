@@ -36,6 +36,25 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-64 — Refonte UI : Tailwind v4 + design tokens de la palette + composants type shadcn (réalisé)
+
+**Contexte** : l'interface était entièrement en styles inline React sur une palette ad-hoc (bleu `#1f4e9c`), sans système de design. Le propriétaire a fourni un guide UI/UX de référence ([Guide interface utilisateur.md](Guide%20interface%20utilisateur.md) : Tailwind + shadcn/ui, responsive, WCAG) et la palette de marque ([palette-couleurs.md](palette-couleurs.md) : bleu-gris `#517485` primaire, orange `#e84e0f` accent, anthracite `#2c3a43`).
+
+**Correctif** :
+1. **Fondation** : Tailwind v4 (plugin `@tailwindcss/vite`, compatible Vite 8) ; `styles.css` remappé sur la palette **en conservant les noms de variables** (`--accent`, `--surface`…) — le code non migré change de peau automatiquement ; exposition `@theme inline` (utilitaires `bg-primary`, `text-muted-foreground`, `border-border`…) ; variante `dark:` sur `data-theme` (compatible `theme.ts`, pas de classe `dark`).
+2. **Composants type shadcn faits maison** (sans Radix, patterns aria existants conservés) : `Button` (variantes default/secondary/outline/ghost/destructive/brand/link via cva), `Card`, `Input`/`Textarea`/`Select`/`Label`, `Badge`, `Modal`, `Skeleton`, `Alert` ; `cn()` (clsx + tailwind-merge).
+3. **Accessibilité de la palette** : boutons primaires en bleu-gris (contraste 5:1 avec blanc) ; l'orange est décoratif (`--brand`) et ne porte du texte que via `--brand-strong` `#c7410b` (5:1) — blanc sur `#e84e0f` = 3,8:1, insuffisant en texte courant (règle 60-30-10 du guide respectée : 1 primaire + 1 accent).
+4. **Migration complète** : bandeau + toutes les pages, styles inline → classes Tailwind + composants ; comportements, aria, handlers et textes inchangés ; invariants conservés (bandeau/barre d'outils sticky, `tool-icon-btn` tactile C-37, `qr-sheet` impression RF-71, safe-area barre guidée, publication `--nav-h`). Le **canevas** reste en positionnement dynamique inline (pratique Tailwind correcte) — reskinné par les tokens ; seule la couleur de sélection en dur est passée sur `var(--accent)`.
+5. **Tests adaptés** (invariants identiques, forme changée : classe au lieu de style compilé) : `editor-sticky`, `header-tools`, `mobile-overflow`, `guided-finish`, `theme-persistence` (nouvelles valeurs meta `#517485`/`#15191d`).
+
+**Tests** : build web (tsc + vite) et lint server+web verts ; tous les tests front passent ; 117/117 tests serveur. ⚠ Constat préexistant non lié : « S2 : photos accessibles uniquement authentifié » échoue de façon intermittente sous charge (observé avant et après, plusieurs sessions) — à investiguer en mission dédiée.
+
+**Fichiers** : `web/src/styles.css`, `web/vite.config.ts`, `web/src/lib/utils.ts`, `web/src/components/ui/*` (nouveaux), `web/src/nav.tsx`, toutes les pages `web/src/pages/*`, `web/src/step-canvas.tsx`, `web/src/theme.ts`, `web/index.html`, 5 fichiers de tests front ; dépendances `tailwindcss`, `@tailwindcss/vite`, `clsx`, `tailwind-merge`, `class-variance-authority`.
+
+**État** : livré sur beta.
+
+---
+
 ## C-63 — Vague 10 en standby, priorité au fonctionnel et au mode édition (décision)
 
 **Décision propriétaire (2026-10-18)** : la vague 10 (palier sécurité entreprise, issue #9) passe **en standby** — pas de besoin pour le moment. La priorité va au **fonctionnel et au mode édition** : vagues 7 et 8, avec en tête de vague 8 l'item édition d'images (drag & drop / presse-papiers) et le statut éditorial.

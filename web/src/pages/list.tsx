@@ -3,6 +3,11 @@ import { Link } from "react-router-dom";
 import { api, ApiError, type Workflow } from "../api";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
+import { Input, Label, Select } from "../components/ui/input";
+import { cn } from "../lib/utils";
 
 export default function ListPage() {
   const { user } = useAuth();
@@ -62,76 +67,82 @@ export default function ListPage() {
   return (
     <>
       <NavBar />
-      <main style={{ maxWidth: "800px", width: "100%", margin: "0 auto", padding: "1rem", boxSizing: "border-box" }}>
-        <h1>Modes opératoires</h1>
-        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.6rem" }}>
-          <input
-            type="search"
-            placeholder="Rechercher (titre, référence)…"
-            value={searchInput}
-            onChange={(e) => onSearchChange(e.target.value)}
-            style={{ flex: 1, minWidth: 0, padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border)" }}
-            aria-label="Rechercher un mode opératoire"
-          />
-          <button
+      <main className="mx-auto w-full max-w-[800px] p-4">
+        <h1 className="text-xl font-bold tracking-tight">Modes opératoires</h1>
+        <div className="mb-2.5 flex gap-2">
+          <div className="min-w-0 flex-1">
+            <Label htmlFor="mo-search" className="sr-only">Rechercher un mode opératoire</Label>
+            <Input
+              id="mo-search"
+              type="search"
+              placeholder="Rechercher (titre, référence)…"
+              value={searchInput}
+              onChange={(e) => onSearchChange(e.target.value)}
+              aria-label="Rechercher un mode opératoire"
+            />
+          </div>
+          <Button
+            variant="outline"
             onClick={() => setShowFilters((v) => !v)}
             aria-expanded={showFilters}
             aria-haspopup="true"
             title="Filtres et tri"
-            style={{ padding: "0.5rem 0.8rem", borderRadius: "6px", border: showFilters ? "1px solid var(--accent)" : "1px solid var(--border)", background: showFilters ? "var(--accent-bg)" : "var(--surface)", color: "var(--text)", fontSize: "0.9rem", flexShrink: 0, cursor: "pointer" }}
-          >Filtres{activeFilters > 0 ? ` (${activeFilters})` : ""}</button>
+            className={cn(showFilters && "bg-accent")}
+          >Filtres{activeFilters > 0 ? ` (${activeFilters})` : ""}</Button>
           {user && user.role !== "reader" && (
-            <Link to="/workflow/new/edit" aria-label="Créer un mode opératoire" style={{ padding: "0.5rem 0.8rem", background: "var(--accent)", color: "white", borderRadius: "6px", textDecoration: "none", flexShrink: 0 }}>
+            <Link to="/workflow/new/edit" aria-label="Créer un mode opératoire" className="inline-flex h-10 shrink-0 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground no-underline">
               +
             </Link>
           )}
         </div>
         {showFilters && (
-          <section aria-label="Filtres et tri" style={{ background: "var(--surface)", borderRadius: "8px", padding: "0.7rem 0.9rem", marginBottom: "0.8rem", display: "grid", gap: "0.5rem", border: "1px solid var(--border)" }}>
-            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
-              <label style={{ display: "inline-flex", gap: "0.35rem", alignItems: "center", fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                État
-                <select value={state} onChange={(e) => setState(e.target.value)} style={{ padding: "0.35rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)" }} aria-label="Filtrer par état">
+          <section aria-label="Filtres et tri" className="mb-3 grid gap-3 rounded-lg border border-border bg-surface p-3">
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="mo-filter-state" className="text-muted-foreground">État</Label>
+                <Select id="mo-filter-state" value={state} onChange={(e) => setState(e.target.value)} aria-label="Filtrer par état" className="w-auto">
                   <option value="">Tous</option>
                   <option value="published">Publiés</option>
                   <option value="draft">Brouillons</option>
-                </select>
-              </label>
-              <label style={{ display: "inline-flex", gap: "0.35rem", alignItems: "center", fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                Famille
-                <select value={family} onChange={(e) => setFamily(e.target.value)} style={{ padding: "0.35rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", maxWidth: "40vw" }} aria-label="Filtrer par famille">
+                </Select>
+              </div>
+              <div className="grid min-w-0 gap-1.5">
+                <Label htmlFor="mo-filter-family" className="text-muted-foreground">Famille</Label>
+                <Select id="mo-filter-family" value={family} onChange={(e) => setFamily(e.target.value)} aria-label="Filtrer par famille" className="w-auto max-w-[40vw]">
                   <option value="">Toutes</option>
                   {families.map((f) => <option key={f} value={f}>{f}</option>)}
-                </select>
-              </label>
-              <label style={{ display: "inline-flex", gap: "0.35rem", alignItems: "center", fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                Trier par
-                <select value={sort} onChange={(e) => setSort(e.target.value)} style={{ padding: "0.35rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)" }} aria-label="Trier">
+                </Select>
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="mo-sort" className="text-muted-foreground">Trier par</Label>
+                <Select id="mo-sort" value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Trier" className="w-auto">
                   <option value="">Modifié récemment</option>
                   <option value="title">Titre A→Z</option>
                   <option value="reference">Référence</option>
                   <option value="family">Famille</option>
                   <option value="updated_at">Date de mise à jour</option>
-                </select>
-              </label>
-              <label style={{ display: "inline-flex", gap: "0.35rem", alignItems: "center", fontSize: "0.85rem", color: overdueOnly ? "var(--warn-text)" : "var(--text-muted)", fontWeight: overdueOnly ? 600 : 400, cursor: "pointer" }}>
+                </Select>
+              </div>
+              <label className={cn("flex cursor-pointer items-center gap-2 pb-2.5 text-sm text-muted-foreground", overdueOnly && "font-semibold text-warn")}>
                 <input type="checkbox" checked={overdueOnly} onChange={(e) => setOverdueOnly(e.target.checked)} />
                 À revoir
               </label>
               {activeFilters > 0 && (
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-auto"
                   onClick={() => { setState(""); setFamily(""); setOverdueOnly(false); setSort(""); }}
-                  style={{ marginLeft: "auto", fontSize: "0.8rem", padding: "0.3rem 0.7rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", cursor: "pointer" }}
-                >Effacer</button>
+                >Effacer</Button>
               )}
             </div>
           </section>
         )}
-        {error && <p role="alert" style={{ color: "var(--error-text)" }}>{error}</p>}
+        {error && <p role="alert" className="text-error">{error}</p>}
         {loading ? (
-          <p>Chargement…</p>
+          <p className="text-muted-foreground">Chargement…</p>
         ) : workflows.length === 0 ? (
-          <p>Aucun mode opératoire.</p>
+          <p className="text-muted-foreground">Aucun mode opératoire.</p>
         ) : (
           (() => {
             // C-43 : regroupement — état (publiés d'abord) puis famille
@@ -142,16 +153,18 @@ export default function ListPage() {
               }
             }
             const card = (wf: (typeof workflows)[number]) => (
-              <li key={wf.id} style={{ background: "var(--surface)", borderRadius: "8px", padding: "0.45rem 0.7rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <Link to={`/workflow/${wf.id}/read`} title={wf.title} style={{ fontWeight: 600, color: "var(--accent)", textDecoration: "none", fontSize: "0.95rem", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", flex: 1, minWidth: 0 }}>
-                    {wf.title}
-                  </Link>
-                  <code style={{ background: "var(--surface-2)", padding: "0.05rem 0.35rem", borderRadius: "4px", fontSize: "0.75rem", flexShrink: 0 }}>{wf.reference}</code>
-                  {user && user.role !== "reader" && (
-                    <Link to={`/workflow/${wf.id}/edit`} aria-label={`Modifier ${wf.title}`} title="Modifier" style={{ fontSize: "0.85rem", color: "var(--text-muted)", textDecoration: "none", flexShrink: 0 }}>✎</Link>
-                  )}
-                </div>
+              <li key={wf.id}>
+                <Card className="p-2.5">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Link to={`/workflow/${wf.id}/read`} title={wf.title} className="min-w-0 flex-1 text-sm font-semibold text-primary no-underline line-clamp-2 break-words">
+                      {wf.title}
+                    </Link>
+                    <code className="shrink-0 rounded bg-surface-2 px-1 py-0.5 text-xs">{wf.reference}</code>
+                    {user && user.role !== "reader" && (
+                      <Link to={`/workflow/${wf.id}/edit`} aria-label={`Modifier ${wf.title}`} title="Modifier" className="shrink-0 text-sm text-muted-foreground no-underline">✎</Link>
+                    )}
+                  </div>
+                </Card>
               </li>
             );
             let lastState = "";
@@ -169,11 +182,11 @@ export default function ListPage() {
                       onClick={() => toggleGroup(`state:${st}`)}
                       aria-expanded={!stateCollapsed}
                       aria-label={`${stateLabel} — ${stateCollapsed ? "déplier" : "replier"}`}
-                      style={{ display: "flex", alignItems: "center", gap: "0.4rem", margin: "0.9rem 0 0.2rem", fontSize: "0.9rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", background: "none", border: "none", cursor: "pointer", padding: 0, width: "100%", textAlign: "left" }}
+                      className="mt-4 mb-1 flex w-full cursor-pointer items-center gap-1.5 border-none bg-transparent p-0 text-left text-sm uppercase tracking-wide text-muted-foreground"
                     >
-                      <span aria-hidden="true" style={{ fontSize: "0.8rem", transform: stateCollapsed ? "none" : "rotate(90deg)" }}>▸</span>
+                      <span aria-hidden="true" className={cn("text-xs transition-transform", stateCollapsed ? "" : "rotate-90")}>▸</span>
                       {stateLabel}
-                      <span style={{ background: st === "published" ? "var(--ok-bg)" : "var(--warn-bg)", color: st === "published" ? "var(--ok-text)" : "var(--warn-text)", borderRadius: "99px", padding: "0 0.5rem", fontSize: "0.75rem", textTransform: "none", letterSpacing: 0 }}>{stateCount}</span>
+                      <Badge variant={st === "published" ? "ok" : "warn"}>{stateCount}</Badge>
                     </button>
                   ) : null;
                   if (st !== lastState) lastState = st;
@@ -186,14 +199,14 @@ export default function ListPage() {
                             onClick={() => toggleGroup(`fam:${key}`)}
                             aria-expanded={!famCollapsed}
                             aria-label={`${fam} — ${famCollapsed ? "déplier" : "replier"}`}
-                            style={{ display: "flex", alignItems: "center", gap: "0.35rem", margin: "0.2rem 0 0.35rem", fontSize: "0.85rem", fontWeight: 600, color: "var(--text)", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}
+                            className="mt-1 mb-1.5 flex w-full cursor-pointer items-center gap-1.5 border-none bg-transparent p-0 text-left text-sm font-semibold text-foreground"
                           >
-                            <span aria-hidden="true" style={{ fontSize: "0.75rem", transform: famCollapsed ? "none" : "rotate(90deg)" }}>▸</span>
+                            <span aria-hidden="true" className={cn("text-xs transition-transform", famCollapsed ? "" : "rotate-90")}>▸</span>
                             {fam}
-                            <span style={{ color: "var(--text-muted)", fontWeight: 400, fontSize: "0.75rem" }}>({items.length})</span>
+                            <span className="text-xs font-normal text-muted-foreground">({items.length})</span>
                           </button>
                           {!famCollapsed && (
-                            <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: "0.4rem" }}>
+                            <ul className="grid gap-1.5 md:grid-cols-2">
                               {items.map(card)}
                             </ul>
                           )}
@@ -212,4 +225,4 @@ export default function ListPage() {
 }
 
 // Modale de confirmation de suppression — focus piégé, Échap pour fermer,
-// focus rendu au bouton Supprimer à l'ouverture (accessibilité clavier, I4).\n
+// focus rendu au bouton Supprimer à l'ouverture (accessibilité clavier, I4).

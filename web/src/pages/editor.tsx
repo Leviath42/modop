@@ -6,6 +6,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError, type Step, type WorkflowDetail } from "../api";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Alert, Modal } from "../components/ui/dialog";
+import { Input, Label, Select, Textarea } from "../components/ui/input";
+import { cn } from "../lib/utils";
 
 import type { Picto } from "../api";
 
@@ -35,6 +40,11 @@ export async function compressImage(file: File, maxSize = 1280, quality = 0.82):
   if (!blob) return file;
   return new File([blob], file.name.replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" });
 }
+
+// Bouton de la palette d'outils : la classe tool-icon-btn est OBLIGATOIRE
+// (règle tactile @media pointer:coarse de styles.css — cibles 44px fixes).
+const toolIconBtn =
+  "tool-icon-btn inline-flex min-w-0 shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-xs leading-tight text-foreground";
 
 export default function EditorPage() {
   const { id } = useParams<{ id: string }>();
@@ -210,7 +220,7 @@ export default function EditorPage() {
     setError(null);
     try {
       const updated = await api.updateStep(step.id, data as object);
-      // L’API renvoie pictos en tableau ; code défensif au cas où une
+      // L’API renvoie pictos en tableau ; code défensif au cas où une
       // réponse au format brut (chaîne JSON) arriverait malgré tout.
       const rawPictos = Array.isArray(updated.pictos) ? updated.pictos : JSON.parse(String(updated.pictos));
       const pictos: Picto[] = rawPictos.map((x: Picto | string) =>
@@ -298,58 +308,58 @@ export default function EditorPage() {
   return (
     <>
       <NavBar />
-      <main style={{ maxWidth: "820px", width: "100%", margin: "0 auto", padding: "1rem", display: "grid", gap: "1rem", boxSizing: "border-box", minWidth: 0 }}>
-        {error && <p role="alert" style={{ color: "var(--error-text)", background: "var(--error-bg)", padding: "0.5rem 0.8rem", borderRadius: "6px" }}>{error}</p>}
-        {notice && <p style={{ color: "var(--ok-text)", background: "var(--ok-bg)", padding: "0.5rem 0.8rem", borderRadius: "6px" }}>{notice}</p>}
+      <main className="mx-auto grid w-full min-w-0 max-w-[820px] gap-4 p-4">
+        {error && <Alert variant="error">{error}</Alert>}
+        {notice && <Alert variant="ok">{notice}</Alert>}
 
-        <section ref={bandeauRef} style={{ position: "sticky", top: "var(--nav-h, 2.9rem)", zIndex: 30, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px", padding: "0.6rem 0.8rem", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", display: "grid", gap: "0.5rem", minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-            <h1 style={{ margin: 0, fontSize: "1rem", flex: "1 1 8rem", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
+        <section ref={bandeauRef} className="sticky top-[var(--nav-h,2.9rem)] z-30 grid min-w-0 gap-2 rounded-lg border border-border bg-surface px-3 py-2.5 shadow-md">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="m-0 min-w-0 max-w-full flex-1 basis-32 truncate text-base">
               {isNew ? "Nouveau mode opératoire" : (title || "Sans titre")}{" "}
-              <code style={{ fontSize: "0.8em", background: "var(--surface-2)", padding: "0.1rem 0.4rem", borderRadius: "4px" }}>{reference || wf?.reference}</code>
+              <code className="rounded bg-surface-2 px-1.5 py-0.5 text-[0.8em]">{reference || wf?.reference}</code>
             </h1>
             {!isNew && !metaSaved && (
-              <span style={{ fontSize: "0.75rem", color: "var(--warn-text)", background: "var(--warn-bg)", padding: "0.15rem 0.5rem", borderRadius: "99px", fontWeight: 600 }} role="status">Enregistrement…</span>
+              <Badge variant="warn" role="status" className="font-semibold">Enregistrement…</Badge>
             )}
             {!isNew && (
-              <button onClick={() => setShowMeta((v) => !v)} aria-expanded={showMeta} style={secondaryBtn}>
+              <Button onClick={() => setShowMeta((v) => !v)} aria-expanded={showMeta} variant="outline" size="sm">
                 {showMeta ? "Masquer les détails" : "Détails"}
-              </button>
+              </Button>
             )}
             {!isNew && steps.length > 0 && (
-              <button onClick={() => setConfirmPublish(true)} style={{ ...primaryBtn, marginLeft: "auto" }} title="Publier une nouvelle version" aria-label="Publier">
+              <Button onClick={() => setConfirmPublish(true)} variant="brand" size="sm" className="ml-auto" title="Publier une nouvelle version" aria-label="Publier">
                 Publier
-              </button>
+              </Button>
             )}
           </div>
           {(isNew || showMeta) && (
-          <div style={{ display: "grid", gap: "0.5rem" }}>
-            <label style={label}>Titre
-              <input value={title} onChange={(e) => { setTitle(e.target.value); setMetaSaved(false); }} style={input} placeholder="Remplacement courroie" />
-            </label>
+          <div className="grid gap-2">
+            <Label className="grid min-w-0 gap-1 text-muted-foreground">Titre
+              <Input value={title} onChange={(e) => { setTitle(e.target.value); setMetaSaved(false); }} placeholder="Remplacement courroie" />
+            </Label>
             {isNew ? (
-              <label style={label}>Référence
-                <input value={reference} onChange={(e) => setReference(e.target.value)} style={input} placeholder="MO-001" />
-              </label>
+              <Label className="grid min-w-0 gap-1 text-muted-foreground">Référence
+                <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="MO-001" />
+              </Label>
             ) : (
-              <p style={{ margin: 0, color: "var(--text-muted)" }}><code>{wf?.reference}</code> — {wf?.state === "published" ? `publié (V${wf.current_version})` : "brouillon"}</p>
+              <p className="m-0 text-muted-foreground"><code>{wf?.reference}</code> — {wf?.state === "published" ? `publié (V${wf.current_version})` : "brouillon"}</p>
             )}
-            <label style={label}>Famille
-              <input value={family} onChange={(e) => { setFamily(e.target.value); setMetaSaved(false); }} style={input} placeholder="Mécanique / Électrique / Qualité…" />
-            </label>
-            <label style={label}>Type
-              <input value={category} onChange={(e) => { setCategory(e.target.value); setMetaSaved(false); }} style={input} placeholder="Maintenance, Contrôle…" />
-            </label>
-            <label style={label}>Description
-              <textarea value={description} onChange={(e) => { setDescription(e.target.value); setMetaSaved(false); }} rows={2} style={input} />
-            </label>
-            <div style={{ display: "grid", gap: "0.5rem", gridTemplateColumns: "1fr 1fr" }}>
-              <label style={label}>À revoir le
-                <input type="date" value={reviewDue} onChange={(e) => { setReviewDue(e.target.value); setMetaSaved(false); }} style={input} />
-              </label>
-              <label style={label}>Responsable
+            <Label className="grid min-w-0 gap-1 text-muted-foreground">Famille
+              <Input value={family} onChange={(e) => { setFamily(e.target.value); setMetaSaved(false); }} placeholder="Mécanique / Électrique / Qualité…" />
+            </Label>
+            <Label className="grid min-w-0 gap-1 text-muted-foreground">Type
+              <Input value={category} onChange={(e) => { setCategory(e.target.value); setMetaSaved(false); }} placeholder="Maintenance, Contrôle…" />
+            </Label>
+            <Label className="grid min-w-0 gap-1 text-muted-foreground">Description
+              <Textarea value={description} onChange={(e) => { setDescription(e.target.value); setMetaSaved(false); }} rows={2} className="min-h-0" />
+            </Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Label className="grid min-w-0 gap-1 text-muted-foreground">À revoir le
+                <Input type="date" value={reviewDue} onChange={(e) => { setReviewDue(e.target.value); setMetaSaved(false); }} />
+              </Label>
+              <Label className="grid min-w-0 gap-1 text-muted-foreground">Responsable
                 <>
-                  <input type="email" list="owner-accounts" value={ownerEmail} onChange={(e) => { setOwnerEmail(e.target.value); setMetaSaved(false); }} style={input} placeholder="Rechercher un responsable…" aria-label="Responsable — rechercher parmi les comptes" />
+                  <Input type="email" list="owner-accounts" value={ownerEmail} onChange={(e) => { setOwnerEmail(e.target.value); setMetaSaved(false); }} placeholder="Rechercher un responsable…" aria-label="Responsable — rechercher parmi les comptes" />
                   <datalist id="owner-accounts">
                     {accounts.map((u) => {
                       const name = [u.first_name, u.last_name].filter(Boolean).join(" ");
@@ -357,18 +367,18 @@ export default function EditorPage() {
                     })}
                   </datalist>
                 </>
-              </label>
+              </Label>
             </div>
           </div>
           )}
           {isNew && (
-            <button onClick={createWorkflow} disabled={!title.trim() || !reference.trim()} style={primaryBtn}>
+            <Button onClick={createWorkflow} disabled={!title.trim() || !reference.trim()}>
               Créer
-            </button>
+            </Button>
           )}
           {!isNew && (
-            <div style={{ position: "relative", display: "flex", alignItems: "center", gap: "0.3rem", flexWrap: "nowrap", overflow: "visible", minWidth: 0, paddingTop: "0.4rem", borderTop: "1px solid var(--border-soft)" }}>
-              <select
+            <div className="relative flex min-w-0 flex-nowrap items-center gap-1.5 overflow-visible border-t border-border-soft pt-2">
+              <Select
                 value={activeStepId ?? steps[0]?.id ?? ""}
                 onChange={(e) => {
                   const stepId = Number(e.target.value);
@@ -379,23 +389,24 @@ export default function EditorPage() {
                 }}
                 aria-label="Étape affichée — choisir pour y aller"
                 title="Étape active — choisir pour y aller"
-                style={{ margin: 0, fontSize: "0.85rem", fontWeight: 600, flex: "1 1 6rem", maxWidth: "100%", minWidth: 0, padding: "0.25rem 0.35rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)" }}
+                className="m-0 h-auto min-w-0 max-w-full flex-1 basis-24 py-1 text-sm font-semibold"
               >
                 {steps.map((st, si) => {
                   const isActive = st.id === (activeStepId ?? steps[0]?.id);
                   return <option key={st.id} value={st.id}>{isActive ? "▶ " : ""}{si + 1}. {st.title}</option>;
                 })}
-              </select>
-              <button
+              </Select>
+              <Button
                 onClick={() => {
                   if (steps.length === 0) return;
                   if (openSteps.size === steps.length) setOpenSteps(new Set());
                   else setOpenSteps(new Set(steps.map((st) => st.id)));
                 }}
-                style={iconBtn}
+                variant="outline"
+                size="icon"
                 title={openSteps.size === steps.length && steps.length > 0 ? "Tout replier" : "Tout ouvrir"}
                 aria-label="Tout replier ou ouvrir"
-              >{openSteps.size === steps.length && steps.length > 0 ? <CollapseIcon /> : <ExpandIcon />}</button>
+              >{openSteps.size === steps.length && steps.length > 0 ? <CollapseIcon /> : <ExpandIcon />}</Button>
             </div>
             )}
         </section>
@@ -403,20 +414,20 @@ export default function EditorPage() {
         {/* C-50 : barre d'outils en rangée INDÉPENDANTE sous le bandeau (C-49 :
             inspiration Figma/Docs) — groupes : Étape | Insertion | Indications | Actions */}
         {!isNew && (
-        <div ref={toolsRef} style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap", alignItems: "center", paddingTop: "0.4rem", borderTop: "1px solid var(--border-soft)", overflow: "visible", minWidth: 0, position: "sticky", top: "calc(var(--nav-h, 2.9rem) + var(--bandeau-h, 3.6rem) + 0.55rem)", zIndex: 25, background: "var(--bg)", borderRadius: "10px", padding: "0.4rem 0.6rem", border: "1px solid var(--border)", boxShadow: "0 2px 6px rgba(0,0,0,0.12)" }}>
+        <div ref={toolsRef} className="sticky top-[calc(var(--nav-h,2.9rem)+var(--bandeau-h,3.6rem)+0.55rem)] z-[25] flex min-w-0 flex-wrap items-center gap-1.5 overflow-visible rounded-lg border border-border bg-background px-2.5 pt-1.5 pb-2 shadow-md">
           {/* — groupe Étape — */}
-          <button onClick={addStep} style={{ ...toolLabelBtn }} title="Ajouter une étape" aria-label="Ajouter une étape">
+          <Button onClick={addStep} variant="outline" size="sm" className="gap-1 text-xs" title="Ajouter une étape" aria-label="Ajouter une étape">
             <PlusIcon /><span>Étape</span>
-          </button>
+          </Button>
 
-          <span style={toolSep} aria-hidden="true" />
+          <span className="h-5 w-px shrink-0 bg-border" aria-hidden="true" />
 
           {/* — groupe Insertion — */}
-          <span ref={photoMenuRef} style={{ position: "relative", display: "inline-flex" }}>
+          <span ref={photoMenuRef} className="relative inline-flex">
             <button
               onClick={() => setShowPhotoMenu((v) => !v)}
-              className="tool-icon-btn" style={{ ...iconBtn }} title="Photos : galerie ou appareil photo" aria-label="Photos" aria-expanded={showPhotoMenu} aria-haspopup="menu"
-            ><PhotoIcon /><span style={{ fontSize: "0.75rem" }}>Photos</span></button>
+              className={cn(toolIconBtn, "bg-surface border-border")} title="Photos : galerie ou appareil photo" aria-label="Photos" aria-expanded={showPhotoMenu} aria-haspopup="menu"
+            ><PhotoIcon /><span className="text-xs">Photos</span></button>
             {showPhotoMenu && (() => {
               const target = activeStepId ?? steps[0]?.id;
               const openIt = (which: "gallery" | "camera") => {
@@ -426,11 +437,11 @@ export default function EditorPage() {
                 setShowPhotoMenu(false);
               };
               return (
-                <div role="menu" aria-label="Source de la photo" style={{ position: "absolute", left: 0, top: "calc(100% + 0.35rem)", zIndex: 135, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", boxShadow: "0 6px 24px rgba(0,0,0,0.2)", padding: "0.3rem", display: "grid", gap: "0.15rem", minWidth: "11rem" }}>
-                  <button role="menuitem" onClick={() => openIt("gallery")} style={{ padding: "0.4rem 0.55rem", borderRadius: "6px", border: "1px solid transparent", background: "transparent", color: "var(--text)", fontSize: "0.85rem", textAlign: "left", cursor: "pointer", display: "flex", gap: "0.45rem", alignItems: "center" }}>
+                <div role="menu" aria-label="Source de la photo" className="absolute left-0 top-[calc(100%+0.35rem)] z-[135] grid min-w-44 gap-1 rounded-lg border border-border bg-surface p-1.5 shadow-xl">
+                  <button role="menuitem" onClick={() => openIt("gallery")} className="flex items-center gap-2 rounded-md border border-transparent bg-transparent px-2 py-1.5 text-left text-sm text-foreground hover:bg-muted">
                     <span aria-hidden="true">🖼</span> Depuis la galerie
                   </button>
-                  <button role="menuitem" onClick={() => openIt("camera")} style={{ padding: "0.4rem 0.55rem", borderRadius: "6px", border: "1px solid transparent", background: "transparent", color: "var(--text)", fontSize: "0.85rem", textAlign: "left", cursor: "pointer", display: "flex", gap: "0.45rem", alignItems: "center" }}>
+                  <button role="menuitem" onClick={() => openIt("camera")} className="flex items-center gap-2 rounded-md border border-transparent bg-transparent px-2 py-1.5 text-left text-sm text-foreground hover:bg-muted">
                     <span aria-hidden="true">📷</span> Prendre une photo
                   </button>
                 </div>
@@ -441,39 +452,38 @@ export default function EditorPage() {
             <button
               key={t.kind}
               onClick={() => { setInsertTool(insertTool === t.kind ? null : t.kind); const target = activeStepId ?? steps[0]?.id; if (target != null && !openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); } }}
-              className="tool-icon-btn" style={{ ...iconBtn, background: insertTool === t.kind ? "var(--accent-bg)" : "var(--surface)", borderColor: insertTool === t.kind ? "var(--accent)" : "var(--border)" }}
+              className={cn(toolIconBtn, insertTool === t.kind ? "border-primary bg-accent" : "border-border bg-surface")}
               aria-pressed={insertTool === t.kind}
               title={t.label}
-            >{t.kind === "arrow" ? <ArrowIcon /> : t.kind === "rect" ? <RectIcon /> : <TextIcon />}<span style={{ fontSize: "0.75rem" }}>{t.label}</span></button>
+            >{t.kind === "arrow" ? <ArrowIcon /> : t.kind === "rect" ? <RectIcon /> : <TextIcon />}<span className="text-xs">{t.label}</span></button>
           ))}
           {/* sélecteur de couleur compact : pastille de la couleur courante -> popover */}
-          <span data-color-pop style={{ position: "relative", display: "inline-flex" }}>
+          <span data-color-pop className="relative inline-flex">
             <button
               onClick={() => setShowColors((v) => !v)}
-              className="tool-icon-btn"
+              className="tool-icon-btn inline-flex size-[2.2rem] items-center justify-center p-0"
               aria-label={`Couleur : ${insertColor} — choisir`}
               aria-expanded={showColors}
               aria-haspopup="menu"
               title="Couleur des formes"
-              style={{ ...iconBtn, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0, width: "2.2rem", height: "2.2rem" }}
             >
-              <span style={{ width: "14px", height: "14px", borderRadius: "50%", background: insertColor, border: "2px solid var(--surface)", boxShadow: "0 0 0 1px var(--border)" }} aria-hidden="true" />
-              <span aria-hidden="true" style={{ fontSize: "0.6rem", color: "var(--text-muted)", lineHeight: 1 }}>▾</span>
+              <span className="size-3.5 rounded-full border-2 border-surface ring-1 ring-border" style={{ background: insertColor }} aria-hidden="true" />
+              <span aria-hidden="true" className="text-[0.6rem] leading-none text-muted-foreground">▾</span>
             </button>
             {showColors && (
-              <div role="menu" aria-label="Couleurs" style={{ position: "absolute", left: 0, top: "calc(100% + 0.35rem)", zIndex: 135, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", boxShadow: "0 6px 24px rgba(0,0,0,0.2)", padding: "0.4rem", display: "flex", gap: "0.35rem" }}>
+              <div role="menu" aria-label="Couleurs" className="absolute left-0 top-[calc(100%+0.35rem)] z-[135] flex gap-1.5 rounded-lg border border-border bg-surface p-2 shadow-xl">
                 {COLORS.map((c) => (
                   <button key={c} onClick={() => { setInsertColor(c); setShowColors(false); }} aria-label={`Couleur ${c}`} aria-pressed={insertColor === c}
-                    style={{ width: "22px", height: "22px", borderRadius: "50%", background: c, border: insertColor === c ? "2px solid var(--text)" : "1px solid var(--border)", padding: 0, cursor: "pointer", boxSizing: "border-box" }} />
+                    className={cn("size-[22px] cursor-pointer rounded-full", insertColor === c ? "border-2 border-foreground" : "border border-border")} style={{ background: c }} />
                 ))}
               </div>
             )}
           </span>
 
-          <span style={toolSep} aria-hidden="true" />
+          <span className="h-5 w-px shrink-0 bg-border" aria-hidden="true" />
 
           {/* — groupe Indications — */}
-          <span ref={pictosMenuRef} style={{ position: "relative", display: "inline-flex" }}>
+          <span ref={pictosMenuRef} className="relative inline-flex">
             {(() => {
               const st = steps.find((x) => x.id === (activeStepId ?? steps[0]?.id));
               const activeCount = st ? st.pictos.length : 0;
@@ -481,14 +491,13 @@ export default function EditorPage() {
                 <>
                   <button
                     onClick={() => setShowPictos((v) => !v)}
-                    className="tool-icon-btn"
+                    className={cn(toolIconBtn, showPictos || activeCount > 0 ? "border-primary bg-accent" : "border-border bg-surface")}
                     aria-expanded={showPictos}
                     aria-haspopup="menu"
                     title="Indications de l'étape (attention, danger, EPI…)"
-                    style={{ ...iconBtn, background: showPictos || activeCount > 0 ? "var(--accent-bg)" : "var(--surface)", borderColor: showPictos || activeCount > 0 ? "var(--accent)" : "var(--border)" }}
-                  >⚠<span style={{ fontSize: "0.75rem" }}> Indications{activeCount > 0 ? ` (${activeCount})` : ""}</span></button>
+                  >⚠<span className="text-xs"> Indications{activeCount > 0 ? ` (${activeCount})` : ""}</span></button>
                   {showPictos && (
-                    <div role="menu" aria-label="Indications" style={{ position: "absolute", left: 0, top: "calc(100% + 0.35rem)", zIndex: 120, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", boxShadow: "0 6px 24px rgba(0,0,0,0.2)", padding: "0.3rem", display: "grid", gap: "0.15rem", minWidth: "10rem" }}>
+                    <div role="menu" aria-label="Indications" className="absolute left-0 top-[calc(100%+0.35rem)] z-[120] grid min-w-40 gap-1 rounded-lg border border-border bg-surface p-1.5 shadow-xl">
                       {PICTO_PRESETS.map((preset) => {
                         const on = st ? st.pictos.some((x) => x.kind === preset.kind) : false;
                         return (
@@ -505,11 +514,12 @@ export default function EditorPage() {
                               const idx = stp.pictos.findIndex((x) => x.kind === preset.kind);
                               void patchStep(stp, { pictos: idx >= 0 ? stp.pictos.filter((_, k) => k !== idx) : [...stp.pictos, { kind: preset.kind, label: preset.label, color: preset.color }] });
                             }}
-                            style={{ display: "flex", alignItems: "center", gap: "0.45rem", width: "100%", padding: "0.35rem 0.55rem", borderRadius: "6px", border: "1px solid transparent", background: on ? `${preset.color}22` : "transparent", color: "var(--text)", fontSize: "0.8rem", textAlign: "left", cursor: "pointer" }}
+                            className="flex w-full items-center gap-2 rounded-md border border-transparent bg-transparent px-2 py-1.5 text-left text-xs text-foreground"
+                            style={on ? { background: `${preset.color}22` } : undefined}
                           >
-                            <span aria-hidden="true" style={{ width: "0.7rem", height: "0.7rem", borderRadius: "50%", background: preset.color, flexShrink: 0 }} />
+                            <span aria-hidden="true" className="size-[0.7rem] shrink-0 rounded-full" style={{ background: preset.color }} />
                             {preset.label}
-                            {on && <span aria-hidden="true" style={{ marginLeft: "auto", color: "var(--ok-text)" }}>✓</span>}
+                            {on && <span aria-hidden="true" className="ml-auto text-ok">✓</span>}
                           </button>
                         );
                       })}
@@ -520,46 +530,50 @@ export default function EditorPage() {
             })()}
           </span>
 
-          <span style={toolSep} aria-hidden="true" />
+          <span className="h-5 w-px shrink-0 bg-border" aria-hidden="true" />
 
           {/* — groupe Actions — */}
           {steps.length > 1 && (
-            <button
+            <Button
               onClick={() => {
                 const target = activeStepId ?? steps[0]?.id;
                 if (target == null) return;
                 const stp = steps.find((x) => x.id === target);
                 if (stp) setConfirmDeleteStep(stp);
               }}
-              style={{ ...iconBtn, borderColor: "var(--danger-border)", background: "var(--danger-bg)", color: "var(--error-text)" }}
+              variant="outline"
+              size="sm"
+              className="border-danger-border bg-danger-bg text-error hover:bg-danger-bg"
               title={steps.length <= 1 ? "Impossible de supprimer la dernière étape" : "Supprimer l'étape affichée (confirmation demandée)"}
               aria-label="Supprimer l'étape affichée"
               disabled={steps.length <= 1}
-            >Supprimer l'étape</button>
+            >Supprimer l'étape</Button>
           )}
           {canvasSelection > 0 && (
-            <button
+            <Button
               onClick={() => canvasDeleteRef.current?.()}
               data-keep-canvas-selection="1"
-              style={{ ...iconBtn, borderColor: "var(--danger-border)", background: "var(--danger-bg)", color: "var(--error-text)" }}
+              variant="outline"
+              size="sm"
+              className="border-danger-border bg-danger-bg text-error hover:bg-danger-bg"
               title="Supprimer les objets sélectionnés du canevas de l'étape affichée"
               aria-label="Supprimer les objets sélectionnés"
-            >🗑 Objets ({canvasSelection})</button>
+            >🗑 Objets ({canvasSelection})</Button>
           )}
         </div>
         )}
 
         {!isNew && (
         <>
-          {steps.length === 0 && <p style={{ color: "var(--text-muted)" }}>Aucune étape. Ajoutez la première.</p>}
-            <ol style={{ listStyle: "none", padding: 0, display: "grid", gap: "0.6rem" }}>
+          {steps.length === 0 && <p className="text-muted-foreground">Aucune étape. Ajoutez la première.</p>}
+            <ol className="grid gap-2.5">
               {steps.map((step, i) => (
                 <li
                   key={step.id}
                   id={`edit-step-${step.id}`}
-                  style={{ background: "var(--surface)", borderRadius: "10px", padding: "0.8rem 1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", display: "grid", gap: "0.5rem", outline: dragIndex === i ? "2px dashed var(--accent)" : "none", scrollMarginTop: "8rem" }}
+                  className={cn("grid min-w-0 gap-2 scroll-mt-32 rounded-lg bg-surface p-3 px-4 shadow-sm", dragIndex === i ? "outline-2 outline-dashed outline-primary" : "outline-none")}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                  <div className="flex flex-wrap items-center gap-2">
                     <span
                       onPointerDown={(e) => {
                         if (e.button !== 0 && e.pointerType === "mouse") return;
@@ -602,54 +616,57 @@ export default function EditorPage() {
                       title="Glisser pour réordonner"
                       role="button"
                       aria-label={`Réordonner l'étape ${i + 1} (glisser)`}
-                      style={{ cursor: "grab", color: "var(--text-muted)", padding: "0.3rem 0.4rem", touchAction: "none", userSelect: "none" }}
+                      className="cursor-grab select-none px-1.5 py-1 text-muted-foreground"
+                      style={{ touchAction: "none" }}
                     >
                       ⠿
                     </span>
                     
-                    <span aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "1.5rem", height: "1.5rem", borderRadius: "50%", background: "var(--accent-bg)", color: "var(--accent)", fontSize: "0.8rem", fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
-                    <input
+                    <span aria-hidden="true" className="inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-bold text-primary">{i + 1}</span>
+                    <Input
                       value={step.title}
                       onChange={(e) => { setActiveStepId(step.id); setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, title: e.target.value } : s))); }}
                       onBlur={() => patchStep(step, { title: step.title })}
-                      style={{ ...input, fontWeight: 600, flex: "1 1 8rem" }}
+                      className="min-w-0 flex-1 basis-32 font-semibold"
                       aria-label={`Titre étape ${i + 1}`}
                       onClick={() => { if (!openSteps.has(step.id)) setOpenSteps((prev) => new Set([...prev, step.id])); setActiveStepId(step.id); }}
                     />
-                    <button
+                    <Button
                       onClick={() => setOpenSteps((prev) => { const n = new Set(prev); if (n.has(step.id)) n.delete(step.id); else { n.add(step.id); setActiveStepId(step.id); } return n; })}
                       aria-expanded={openSteps.has(step.id)}
                       aria-label={openSteps.has(step.id) ? `Replier l'étape ${i + 1}` : `Ouvrir l'étape ${i + 1}`}
-                      style={{ border: "1px solid var(--border)", background: openSteps.has(step.id) ? "var(--accent-bg)" : "var(--surface-2)", color: "var(--text)", borderRadius: "6px", padding: "0.35rem 0.8rem", fontSize: "0.95rem", minWidth: "2.2rem" }}
+                      variant="outline"
+                      size="sm"
+                      className={cn("min-w-9 px-2.5", openSteps.has(step.id) && "bg-accent")}
                     >
                       {openSteps.has(step.id) ? "▾" : "▸"}
-                    </button>
+                    </Button>
                     
                   </div>
                   {openSteps.has(step.id) && (
                   <>
-                  <textarea
+                  <Textarea
                     value={step.body}
                     rows={2}
                     placeholder="Description de l'opération…"
                     onChange={(e) => { setActiveStepId(step.id); setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, body: e.target.value } : s))); }}
                     onBlur={() => patchStep(step, { body: step.body })}
-                    style={input}
+                    className="min-h-0"
                     aria-label={`Description étape ${i + 1}`}
                   />
                   {uploadProgress?.stepId === step.id && (
-                    <p role="status" style={{ margin: 0, fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                    <p role="status" className="m-0 text-sm text-muted-foreground">
                       Envoi des photos… {uploadProgress.done}/{uploadProgress.total}
                     </p>
                   )}
                   {(step.photos ?? []).length === 0 && (
-                      <div role="note" style={{ margin: 0, fontSize: "0.75rem", color: "var(--warn-text)", background: "var(--warn-bg)", padding: "0.25rem 0.45rem", borderRadius: "4px", display: "flex", gap: "0.4rem", alignItems: "center", flexWrap: "wrap" }}>
+                      <div role="note" className="flex flex-wrap items-center gap-1.5 rounded bg-warn-bg px-2 py-1 text-xs text-warn">
                         <span>Cette étape n'a pas de photo — une photo bien cadrée remplace un paragraphe de texte.</span>
-                        <button onClick={() => fileRefs.current[step.id]?.click()} style={{ fontSize: "0.75rem", padding: "0.2rem 0.55rem", borderRadius: "5px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", cursor: "pointer" }}>🖼 Galerie</button>
-                        <button onClick={() => cameraRefs.current[step.id]?.click()} style={{ fontSize: "0.75rem", padding: "0.2rem 0.55rem", borderRadius: "5px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", cursor: "pointer" }}>📷 Prendre une photo</button>
+                        <button onClick={() => fileRefs.current[step.id]?.click()} className="rounded-md border border-border bg-surface px-2 py-1 text-xs text-foreground">🖼 Galerie</button>
+                        <button onClick={() => cameraRefs.current[step.id]?.click()} className="rounded-md border border-border bg-surface px-2 py-1 text-xs text-foreground">📷 Prendre une photo</button>
                       </div>
                     )}
-           <div style={{ display: "grid", gap: "0.4rem" }}>
+           <div className="grid gap-1.5">
                     <StepCanvas
                       stepId={step.id}
                       tool={activeStepId === step.id ? insertTool : null}
@@ -676,7 +693,7 @@ export default function EditorPage() {
                         accept="image/jpeg,image/png,image/webp"
                         multiple
                         ref={(el) => { fileRefs.current[step.id] = el; }}
-                        style={{ display: "none" }}
+                        className="hidden"
                         onChange={async (e) => {
                           const files = e.target.files;
                           if (files && files.length > 0) await uploadPhotos(step, files);
@@ -688,7 +705,7 @@ export default function EditorPage() {
                         accept="image/jpeg,image/png,image/webp"
                         capture="environment"
                         ref={(el) => { cameraRefs.current[step.id] = el; }}
-                        style={{ display: "none" }}
+                        className="hidden"
                         onChange={async (e) => {
                           const files = e.target.files;
                           if (files && files.length > 0) await uploadPhotos(step, files);
@@ -703,37 +720,37 @@ export default function EditorPage() {
               ))}
             </ol>
           {!isNew && user?.role === "admin" && (
-            <section style={{ marginTop: "1.2rem", padding: "0.9rem 1rem", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "10px", display: "grid", gap: "0.5rem" }} aria-label="Suppression du mode opératoire">
+            <section className="mt-5 grid gap-2 rounded-lg border border-danger-border bg-danger-bg px-4 py-3.5" aria-label="Suppression du mode opératoire">
               {!confirmDeleteDoc ? (
-                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: "0.85rem", color: "var(--text-muted)", flex: 1, minWidth: "10rem" }}>Supprimer ce mode opératoire (étapes, photos, versions)</span>
-                  <button onClick={() => { setConfirmDeleteDoc(true); setConfirmDeleteDoc2(false); }} style={{ fontSize: "0.85rem", padding: "0.35rem 0.8rem", borderRadius: "6px", border: "1px solid var(--danger-border)", background: "var(--surface)", color: "var(--error-text)", cursor: "pointer" }}>Supprimer le mode opératoire…</button>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <span className="min-w-40 flex-1 text-sm text-muted-foreground">Supprimer ce mode opératoire (étapes, photos, versions)</span>
+                  <Button onClick={() => { setConfirmDeleteDoc(true); setConfirmDeleteDoc2(false); }} variant="outline" size="sm" className="border-danger-border bg-surface text-error hover:bg-danger-bg">Supprimer le mode opératoire…</Button>
                 </div>
               ) : !confirmDeleteDoc2 ? (
-                <div style={{ display: "grid", gap: "0.5rem" }}>
-                  <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 600 }}>
+                <div className="grid gap-2">
+                  <p className="m-0 text-sm font-semibold">
                     ⚠ Supprimer « {title || wf?.title} » ({reference || wf?.reference}) ?
                   </p>
-                  <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                  <p className="m-0 text-sm text-muted-foreground">
                     Toutes les étapes, photos, versions et exports seront définitivement supprimés. Cette action est irréversible.
                   </p>
-                  <div style={{ display: "flex", gap: "0.5rem", justifyContent: "end" }}>
-                    <button onClick={() => setConfirmDeleteDoc(false)} style={{ padding: "0.35rem 0.8rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.85rem" }}>Annuler</button>
-                    <button onClick={() => { setConfirmDeleteDoc2(true); setDeleteAck(false); }} style={{ padding: "0.35rem 0.8rem", borderRadius: "6px", border: "1px solid var(--danger-border)", background: "var(--surface)", color: "var(--error-text)", fontSize: "0.85rem", fontWeight: 600 }}>Continuer…</button>
+                  <div className="flex justify-end gap-2">
+                    <Button onClick={() => setConfirmDeleteDoc(false)} variant="outline" size="sm">Annuler</Button>
+                    <Button onClick={() => { setConfirmDeleteDoc2(true); setDeleteAck(false); }} variant="outline" size="sm" className="border-danger-border bg-surface font-semibold text-error hover:bg-danger-bg">Continuer…</Button>
                   </div>
                 </div>
               ) : (
-                <div style={{ display: "grid", gap: "0.5rem" }}>
-                  <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 600, color: "var(--error-text)" }}>
+                <div className="grid gap-2">
+                  <p className="m-0 text-sm font-semibold text-error">
                     Dernière confirmation — cochez pour valider la suppression définitive :
                   </p>
-                  <label style={{ display: "flex", gap: "0.4rem", alignItems: "center", fontSize: "0.85rem" }}>
+                  <label className="flex items-center gap-1.5 text-sm">
                     <input type="checkbox" checked={deleteAck} onChange={(e) => setDeleteAck(e.target.checked)} />
                     Je comprends que « {title || wf?.title} » et tout son historique seront supprimés sans possibilité de retour
                   </label>
-                  <div style={{ display: "flex", gap: "0.5rem", justifyContent: "end" }}>
-                    <button onClick={() => { setConfirmDeleteDoc(false); setConfirmDeleteDoc2(false); setDeleteAck(false); }} style={{ padding: "0.35rem 0.8rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.85rem" }}>Annuler</button>
-                    <button onClick={() => void deleteWorkflow()} disabled={!deleteAck} style={{ padding: "0.35rem 0.8rem", borderRadius: "6px", border: "none", background: "var(--error-text)", color: "white", fontSize: "0.85rem", fontWeight: 600 }}>Supprimer définitivement</button>
+                  <div className="flex justify-end gap-2">
+                    <Button onClick={() => { setConfirmDeleteDoc(false); setConfirmDeleteDoc2(false); setDeleteAck(false); }} variant="outline" size="sm">Annuler</Button>
+                    <Button onClick={() => void deleteWorkflow()} disabled={!deleteAck} variant="destructive" size="sm">Supprimer définitivement</Button>
                   </div>
                 </div>
               )}
@@ -743,55 +760,45 @@ export default function EditorPage() {
         )}
       </main>
       {dragIndex !== null && dragCursor && (
-        <div ref={dragGhostRef} aria-hidden="true" style={{ position: "fixed", left: dragCursor.x, top: dragCursor.y, transform: "translate(-50%, -120%)", pointerEvents: "none", zIndex: 200, background: "var(--accent)", color: "white", padding: "0.25rem 0.6rem", borderRadius: "6px", fontSize: "0.85rem", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
+        <div ref={dragGhostRef} aria-hidden="true" className="pointer-events-none fixed z-[200] -translate-x-1/2 -translate-y-[120%] rounded-md bg-primary px-2.5 py-1 text-sm text-primary-foreground shadow-lg" style={{ left: dragCursor.x, top: dragCursor.y }}>
           Déplacer « {steps[dragIndex]?.title ?? ""} »
         </div>
       )}
       {confirmDeleteStep && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", zIndex: 100 }} role="dialog" aria-modal="true" aria-label="Confirmer la suppression de l'étape">
-          <div style={{ background: "var(--surface)", color: "var(--text)", borderRadius: "10px", padding: "1.2rem", maxWidth: "400px", display: "grid", gap: "0.8rem" }}>
-            <h2 style={{ margin: 0, fontSize: "1.05rem" }}>Supprimer l'étape « {confirmDeleteStep.title} » ?</h2>
-            <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.9rem" }}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label="Confirmer la suppression de l'étape">
+          <div className="grid max-w-[400px] gap-3 rounded-lg border border-border bg-surface p-5 text-foreground">
+            <h2 className="m-0 text-lg">Supprimer l'étape « {confirmDeleteStep.title} » ?</h2>
+            <p className="m-0 text-sm text-muted-foreground">
               Ses photos et annotations seront supprimées. Cette action est irréversible sans version publiée.
             </p>
-            <div style={{ display: "flex", gap: "0.5rem", justifyContent: "end" }}>
-              <button onClick={() => setConfirmDeleteStep(null)} style={secondaryBtn}>Annuler</button>
-              <button onClick={() => void removeStep(confirmDeleteStep)} style={{ ...primaryBtn, background: "var(--error-text)" }}>Supprimer</button>
+            <div className="flex justify-end gap-2">
+              <Button onClick={() => setConfirmDeleteStep(null)} variant="outline" size="sm">Annuler</Button>
+              <Button onClick={() => void removeStep(confirmDeleteStep)} variant="destructive" size="sm">Supprimer</Button>
             </div>
           </div>
         </div>
       )}
-      {confirmPublish && wf && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", zIndex: 100 }} role="dialog" aria-modal="true" aria-label="Confirmer la publication">
-          <div style={{ background: "var(--surface)", color: "var(--text)", borderRadius: "10px", padding: "1.2rem", maxWidth: "400px", display: "grid", gap: "0.8rem" }}>
-            <h2 style={{ margin: 0, fontSize: "1.05rem" }}>
-              {wf.state === "published" ? `Publier V${(wf.current_version ?? 0) + 1} ?` : "Publier en V1 ?"}
-            </h2>
-            <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.9rem" }}>
-              Un snapshot immuable de cette version sera créé ({steps.length} étape{steps.length > 1 ? "s" : ""}). La version restera consultable et exportable même après vos modifications suivantes.
-            </p>
-            <label style={label}>
-              Modifications apportées (visible dans l'historique)
-              <textarea value={changelog} onChange={(e) => setChangelog(e.target.value)} rows={2} style={input} placeholder="Ex. : ajout de l'étape de contrôle final, photo arrière remplacée" />
-            </label>
-            <div style={{ display: "flex", gap: "0.5rem", justifyContent: "end" }}>
-              <button onClick={() => setConfirmPublish(false)} style={secondaryBtn}>Annuler</button>
-              <button onClick={() => { setConfirmPublish(false); void publish(); }} style={primaryBtn}>Confirmer la publication</button>
-            </div>
-          </div>
-        </div>
+      {wf && (
+        <Modal
+          open={confirmPublish}
+          onClose={() => setConfirmPublish(false)}
+          title={wf.state === "published" ? `Publier V${(wf.current_version ?? 0) + 1} ?` : "Publier en V1 ?"}
+          footer={
+            <>
+              <Button onClick={() => setConfirmPublish(false)} variant="outline">Annuler</Button>
+              <Button onClick={() => { setConfirmPublish(false); void publish(); }} variant="brand">Confirmer la publication</Button>
+            </>
+          }
+        >
+          <p className="m-0 text-sm text-muted-foreground">
+            Un snapshot immuable de cette version sera créé ({steps.length} étape{steps.length > 1 ? "s" : ""}). La version restera consultable et exportable même après vos modifications suivantes.
+          </p>
+          <Label className="mt-3 grid gap-1 text-muted-foreground">
+            Modifications apportées (visible dans l'historique)
+            <Textarea value={changelog} onChange={(e) => setChangelog(e.target.value)} rows={2} className="min-h-0" placeholder="Ex. : ajout de l'étape de contrôle final, photo arrière remplacée" />
+          </Label>
+        </Modal>
       )}
     </>
   );
 }
-
-// Base mobile-first : tout champ occupe 100% de la largeur disponible et
-// ne peut jamais élargir son conteneur (min-width: 0 est la clé anti-
-// débordement des flex/grid).
-const label: React.CSSProperties = { display: "grid", gap: "0.25rem", fontSize: "0.9rem", color: "var(--text-muted)", minWidth: 0 };
-const input: React.CSSProperties = { padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border)", fontSize: "1rem", fontFamily: "inherit", width: "100%", minWidth: 0, boxSizing: "border-box", maxWidth: "100%" };
-const primaryBtn: React.CSSProperties = { padding: "0.35rem 0.7rem", borderRadius: "6px", border: "none", background: "var(--accent)", color: "white", fontSize: "0.85rem" };
-const secondaryBtn: React.CSSProperties = { padding: "0.35rem 0.7rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.85rem" };
-const toolLabelBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.3rem 0.5rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.8rem", lineHeight: 1.2, minWidth: 0, cursor: "pointer" };
-const toolSep: React.CSSProperties = { width: "1px", height: "20px", background: "var(--border)", flexShrink: 0 };
-const iconBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.3rem 0.5rem", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "0.8rem", lineHeight: 1.2, minWidth: 0, cursor: "pointer" };
