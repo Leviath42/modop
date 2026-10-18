@@ -73,6 +73,7 @@ Architecture livrée (C-67) : **registre de commandes modulaire** (`web/src/edit
 | P2 | Titre de section, séparateur, note/astuce (encart info), tableau, masquage/floutage, variables dynamiques | selon besoin métier |
 | **P2 — demandés (C-70)** | **Personnalisation des indications métiers** (presets éditables : migration + API paramétrage) · **Commentaires auteurs par étape** (schema + API + panneau édition) | nouveaux chantiers, contrat à faire évoluer proprement |
 | P2 — demandés (C-72) | **Vidéo liée au MO** (upload/streaming serveur + lecteur dans l'étape, poster ; impact export docx et stockage CT) | média riche pour gestes complexes — gros chantier stockage |
+| **P1 — demandés (C-79)** | **Templates de documents** : plusieurs types de documents au-delà des modes opératoires — **mode de réaction, tableau, enregistrements, FIT, fiches d'aspect, autres**. Chaque type a son gabarit (blocs/sections/pictos préremplis) : type de document en base, gabarit par type à la création, filtrage/regroupement de l'accueil par type, export par gabarit | gros chantier transverse : contrat figé `shared/` + éditeur + exports docx + accueil — à spécifier avant implémentation |
 | À challenger | TipTap/ProseMirror comme socle document (spec § 6) | changerait le contrat figé `shared/` + export docx + rendu serveur — à décider AVANT toute adoption |
 
 ### Vague 10 — Palier sécurité entreprise (issue #9) — ⏸️ **en standby**

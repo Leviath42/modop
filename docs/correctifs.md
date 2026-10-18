@@ -36,6 +36,22 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-79 — Champ texte : largeur mesurée au pixel près + templates en roadmap (correctif C-77)
+
+**Problème** : le champ texte s'élargissait à l'excès — la largeur `len × 1ch` sur-estime avec une police proportionnelle (le « ch » est la largeur du « 0 », plus large que la moyenne des caractères).
+
+**Correctif** : **mesure réelle** — un `<span>` invisible, rendu à la même position avec le style EXACT du texte posé (fond, padding, taille, graisse, `whiteSpace: pre`), sert d'étalon ; la largeur du champ est fixée à `offsetWidth` du span après chaque frappe. Fidélité au pixel près avec le texte posé, vide = pastille au caret. Route mesurée par un effet sur `textDraft` (l'étalon porte la même valeur, espace si vide).
+
+**Roadmap** : ajout de **templates de documents** (mode de réaction, tableau, enregistrements, FIT, fiches d'aspect, autres) — type en base, gabarit par type, filtrage accueil, export par gabarit ; marqué P1, gros chantier transverse à spécifier.
+
+**Tests** : suite front verte, tsc + lint + build OK.
+
+**Fichiers** : `web/src/step-canvas.tsx`, `docs/roadmap.md`.
+
+**État** : livré sur beta.
+
+---
+
 ## C-78 — Pull-to-refresh rétabli (correctif C-73)
 
 **Problème** (constat propriétaire, Android/Chrome) : plus moyen de rafraîchir en tirant vers le bas — le `overscroll-behavior-y: contain` posé globalement en C-73 avait supprimé le pull-to-refresh sur TOUTES les pages.

@@ -74,6 +74,15 @@ export default function StepCanvas({
   const [pendingStart, setPendingStart] = useState<{ x: number; y: number } | null>(null);
   const [preview, setPreview] = useState<{ x: number; y: number } | null>(null);
   const [textDraft, setTextDraft] = useState<{ x: number; y: number; value: string; editIndex?: number } | null>(null);
+  // C-79 : mesure FIDÈLE de la largeur du champ — un span invisible au style
+  // exact du texte posé sert d'étalon (la largeur suit au pixel près, plus
+  // d'approximation « ch » qui sur-estime avec une police proportionnelle).
+  const draftMeasureRef = useRef<HTMLSpanElement | null>(null);
+  const [draftWidth, setDraftWidth] = useState(0);
+  useEffect(() => {
+    const w = draftMeasureRef.current?.offsetWidth ?? 0;
+    if (w) setDraftWidth(w);
+  }, [textDraft]);
   // C-72 (#10) : anti-rouverture — un clic qui valide la saisie ne doit pas
   // rouvrir un NOUVEAU champ au meme endroit (blur puis pointerup).
   const lastTextCommitRef = useRef(0);
@@ -741,6 +750,13 @@ export default function StepCanvas({
           }}>{s.text}</span>
         ) : null)}
         {textDraft && (
+          <span
+            ref={draftMeasureRef}
+            aria-hidden="true"
+            style={{ position: "absolute", left: `${textDraft.x * 100}%`, top: `${textDraft.y * REF_H}px`, transform: "translate(-50%, -50%)", visibility: "hidden", whiteSpace: "pre", background: color, color: "white", padding: "0.15rem 0.4rem", borderRadius: "4px", fontSize: "0.8rem", fontWeight: 600 }}
+          >{textDraft.value || " "}</span>
+        )}
+        {textDraft && (
           <input autoFocus value={textDraft.value}
             onChange={(e) => setTextDraft({ ...textDraft, value: e.target.value })}
             className="canvas-text-draft"
@@ -752,7 +768,7 @@ export default function StepCanvas({
               // pastille au caret clignotant, aucun cadre supplémentaire).
               background: color, color: "white", padding: "0.15rem 0.4rem", borderRadius: "4px",
               fontSize: "0.8rem", fontWeight: 600, border: "none", outline: "none",
-              caretColor: "white", width: `calc(${Math.max(1, textDraft.value.length)}ch + 0.8rem)`, maxWidth: "60%",
+              caretColor: "white", width: draftWidth ? `${draftWidth}px` : "1.4rem", maxWidth: "60%",
             }}
             onKeyDown={(e) => {
               e.stopPropagation(); // C-72 (#10) : aucune autre action ne doit suivre la validation
