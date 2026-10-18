@@ -6,9 +6,10 @@ import { useAuth } from "../auth-context";
 import NavBar from "../nav";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
+import { Alert } from "../components/ui/dialog";
 import { Select, Textarea } from "../components/ui/input";
 import { cn } from "../lib/utils";
-import { BookOpen, Download, Flag, TriangleAlert } from "lucide-react";
+import { ArrowUp, BookOpen, Download, Flag, TriangleAlert } from "lucide-react";
 
 export default function ReaderPage() {
   const { id } = useParams<{ id: string }>();
@@ -48,55 +49,81 @@ export default function ReaderPage() {
     <>
       <NavBar />
       <main className="mx-auto p-4" style={{ maxWidth: isMobile ? "100%" : "800px" }}>
-        <header className="sticky z-20 mb-2.5 flex flex-wrap items-center gap-2 bg-background py-2" style={{ top: "var(--nav-h, 2.9rem)" }}>
-          <Link to="/" aria-label="Retour à la liste" className="text-lg no-underline">←</Link>
-          <h1 className="m-0 min-w-[7.5rem] flex-1 truncate text-base">
-            {wf.title} <code className="rounded bg-surface-2 px-1.5 py-0.5 text-[0.8em]">{wf.reference}</code>
-          </h1>
-          <Select
-            value={String(activeStep)}
-            onChange={(e) => {
-              const i = Number(e.target.value);
-              if (Number.isNaN(i)) return;
-              setActiveStep(i);
-              setTimeout(() => { document.getElementById(`etape-${i}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 80);
-            }}
-            aria-label="Étape affichée — choisir pour y aller"
-            title="Étape active — choisir pour y aller"
-            className="m-0 w-auto min-w-0 max-w-[40vw] flex-[0_1_8rem] px-1.5 py-1 text-sm font-semibold"
-          >
-            {wf.steps.map((s, i) => (
-              <option key={s.id} value={i}>{i === activeStep ? "▶ " : ""}{i + 1}. {s.title}</option>
-            ))}
-          </Select>
-          {versions.length > 0 && (
+        {/* C-70 : entête en deux rangées propres — titre + retour ligne 1,
+            sélecteurs et liens ligne 2 ; plus de débordement sur mobile. */}
+        <header className="sticky z-20 mb-2.5 grid gap-2 bg-background py-2" style={{ top: "var(--nav-h, 2.9rem)" }}>
+          <div className="flex min-w-0 items-center gap-2">
+            <Link to="/" aria-label="Retour à la liste" className="shrink-0 text-lg no-underline">←</Link>
+            <h1 className="m-0 min-w-0 flex-1 truncate text-base">
+              {wf.title} <code className="rounded bg-surface-2 px-1.5 py-0.5 text-[0.8em]">{wf.reference}</code>
+            </h1>
+            {versionParam && (
+              <span className="shrink-0 rounded bg-accent px-2 py-0.5 text-sm font-semibold text-foreground">
+                V{versionParam} (publiée)
+              </span>
+            )}
+          </div>
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <Select
-              value={versionParam ?? ""}
+              value={String(activeStep)}
               onChange={(e) => {
-                const v = e.target.value;
-                setSearchParams(v ? { version: v } : {});
-                window.scrollTo({ top: 0 });
+                const i = Number(e.target.value);
+                if (Number.isNaN(i)) return;
+                setActiveStep(i);
+                setTimeout(() => { document.getElementById(`etape-${i}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 80);
               }}
-              aria-label="Consulter une version publiée"
-              className="m-0 w-auto min-w-0 max-w-[40vw] px-1.5 py-1 text-sm font-semibold"
+              aria-label="Étape affichée — choisir pour y aller"
+              title="Étape active — choisir pour y aller"
+              className="m-0 w-auto min-w-0 max-w-[45%] flex-[0_1_9rem] px-1.5 py-1 text-sm font-semibold"
             >
-              <option value="">Dernier état</option>
-              {versions.map((v) => (
-                <option key={v.number} value={v.number}>V{v.number}{v.changelog ? ` — ${v.changelog.slice(0, 40)}${v.changelog.length > 40 ? "…" : ""}` : ""}</option>
+              {wf.steps.map((s, i) => (
+                <option key={s.id} value={i}>{i === activeStep ? "▶ " : ""}{i + 1}. {s.title}</option>
               ))}
             </Select>
-          )}
-          {versionParam && (
-            <span className="rounded bg-accent px-2 py-0.5 text-sm font-semibold text-foreground">
-              V{versionParam} (publiée)
+            {versions.length > 0 && (
+              <Select
+                value={versionParam ?? ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setSearchParams(v ? { version: v } : {});
+                  window.scrollTo({ top: 0 });
+                }}
+                aria-label="Consulter une version publiée"
+                className="m-0 w-auto min-w-0 max-w-[45%] px-1.5 py-1 text-sm font-semibold"
+              >
+                <option value="">{wf.state === "draft" ? "Brouillon (non publié)" : "Dernier état"}</option>
+                {versions.map((v) => (
+                  <option key={v.number} value={v.number}>V{v.number}{v.changelog ? ` — ${v.changelog.slice(0, 40)}${v.changelog.length > 40 ? "…" : ""}` : ""}</option>
+                ))}
+              </Select>
+            )}
+            <span className="ml-auto flex shrink-0 flex-wrap items-center gap-2">
+              <Link to={`/workflow/${wf.id}/guided`} aria-label="Mode lecture guidée" title="Lecture guidée : une étape par écran" className="inline-flex items-center gap-1 text-xs text-link no-underline"><BookOpen size={12} aria-hidden="true" /> Guidé</Link>
+              <Link to={`/workflow/${wf.id}/qr`} aria-label="Vignette QR imprimable" title="Vignette QR imprimable" className="text-xs text-link no-underline">QR</Link>
+              {user && user.role !== "reader" && (
+                <Link to={`/workflow/${wf.id}/feedbacks`} aria-label="Remontées terrain de ce mode opératoire" title="Remontées terrain : à traiter et historique" className="inline-flex items-center gap-1 text-xs text-link no-underline"><Flag size={12} aria-hidden="true" /> Terrain</Link>
+              )}
             </span>
-          )}
-          <Link to={`/workflow/${wf.id}/guided`} aria-label="Mode lecture guidée" title="Lecture guidée : une étape par écran" className="inline-flex items-center gap-1 text-xs text-link no-underline"><BookOpen size={12} aria-hidden="true" /> Guidé</Link>
-          <Link to={`/workflow/${wf.id}/qr`} aria-label="Vignette QR imprimable" title="Vignette QR imprimable" className="text-xs text-link no-underline">QR</Link>
-          {user && user.role !== "reader" && (
-            <Link to={`/workflow/${wf.id}/feedbacks`} aria-label="Remontées terrain de ce mode opératoire" title="Remontées terrain : à traiter et historique" className="inline-flex items-center gap-1 text-xs text-link no-underline"><Flag size={12} aria-hidden="true" /> Terrain</Link>
-          )}
+          </div>
         </header>
+        {/* C-70 : un brouillon ne doit plus passer pour « le dernier état » —
+            bandeau explicite + action vers la dernière version publiée. */}
+        {wf.state === "draft" && !versionParam && (
+          <Alert variant="warn" title="Brouillon de travail — ce mode opératoire n'est pas publié">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-muted-foreground">
+                {wf.current_version && wf.current_version > 0
+                  ? `Vous consultez la version de travail. Dernière version publiée : V${wf.current_version}.`
+                  : "Vous consultez la version de travail — aucune version n'a encore été publiée."}
+              </span>
+              {wf.current_version && wf.current_version > 0 && (
+                <Button size="sm" variant="outline" onClick={() => setSearchParams({ version: String(wf.current_version) })}>
+                  Voir V{wf.current_version}
+                </Button>
+              )}
+            </div>
+          </Alert>
+        )}
         {wf.state === "published" && (
           <p className="mb-2 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
             <span>Version V{wf.current_version}{wf.category ? ` — ${wf.family || ""} ${wf.category}` : ""}</span>
@@ -157,9 +184,18 @@ export default function ReaderPage() {
             )}
           </article>
         ))}
-        <p className="my-5 text-center">
-          <Button variant="outline" size="lg" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>↑ Retour au début</Button>
-        </p>
+        {/* C-70 : retour au début FIXE — toujours atteignable, même en bas
+            d'un long document. */}
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label="Retour au début du document"
+          title="Retour au début"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed bottom-4 right-4 z-40 size-11 rounded-full bg-surface shadow-lg"
+        >
+          <ArrowUp size={20} aria-hidden="true" />
+        </Button>
         {user && user.role !== "reader" && wf.state === "published" && (
           <p className="mt-4 text-center">
             <a href={api.exportUrl(wf.id)} className="inline-flex items-center gap-1 text-link"><Download size={14} aria-hidden="true" /> Exporter en .docx</a>

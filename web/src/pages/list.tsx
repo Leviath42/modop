@@ -4,6 +4,7 @@ import { api, ApiError, type Workflow } from "../api";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
 import { Badge } from "../components/ui/badge";
+import { Alert } from "../components/ui/dialog";
 import { ChevronRight, Pencil } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
@@ -64,6 +65,10 @@ export default function ListPage() {
   }, []);
 
   const activeFilters = [state, family, overdueOnly ? "1" : "", sort].filter(Boolean).length;
+  // Alerte « à revoir » pour les auteurs/admins : documents dont la date de
+  // revue est dépassée (bandeau une fois, action directe vers le filtre).
+  const today = new Date().toISOString().slice(0, 10);
+  const overdueCount = workflows.filter((w) => w.review_due && w.review_due < today).length;
 
   return (
     <>
@@ -140,6 +145,14 @@ export default function ListPage() {
           </section>
         )}
         {error && <p role="alert" className="text-error">{error}</p>}
+        {!loading && user && user.role !== "reader" && overdueCount > 0 && (
+          <Alert variant="warn" title={`${overdueCount} mode${overdueCount > 1 ? "s" : ""} opératoire${overdueCount > 1 ? "s" : ""} à revoir`}>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-muted-foreground">Des documents ont dépassé leur date de revue.</span>
+              <Button size="sm" variant="outline" onClick={() => { setOverdueOnly(true); setSearch(""); }}>Voir à revoir</Button>
+            </div>
+          </Alert>
+        )}
         {loading ? (
           <p className="text-muted-foreground">Chargement…</p>
         ) : workflows.length === 0 ? (
@@ -207,7 +220,7 @@ export default function ListPage() {
                             <span className="text-xs font-normal text-muted-foreground">({items.length})</span>
                           </button>
                           {!famCollapsed && (
-                            <ul className="grid gap-1.5 md:grid-cols-2">
+                            <ul className="grid gap-1.5">
                               {items.map(card)}
                             </ul>
                           )}

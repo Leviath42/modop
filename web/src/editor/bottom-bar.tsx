@@ -90,6 +90,14 @@ export function EditorBottomBar({ ctx }: { ctx: ToolContext }) {
   const left = VISIBLE_COMMANDS.filter((c) => c.zone === "left").map(render);
   const right = VISIBLE_COMMANDS.filter((c) => c.zone === "right").map(render);
 
+  // Aide à la pose contextuelle (déplacée du canevas vers la barre, C-70) :
+  // un seul endroit, visible sans chercher l'outil dans l'étape.
+  const hint = ctx.insertTool === "arrow" || ctx.insertTool === "rect"
+    ? "Touchez le départ puis l'arrivée sur le canevas"
+    : ctx.insertTool === "text"
+      ? "Touchez le canevas pour poser le texte"
+      : null;
+
   return (
     <div
       role="toolbar"
@@ -97,6 +105,11 @@ export function EditorBottomBar({ ctx }: { ctx: ToolContext }) {
       className="fixed inset-x-0 bottom-0 z-[120] overflow-visible border-t border-border-soft bg-surface shadow-[0_-2px_12px_rgba(0,0,0,0.10)]"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
+      {hint && (
+        <p className="mx-auto mb-0 w-full max-w-[820px] px-2 pt-1.5 text-[0.7rem] text-muted-foreground" aria-live="polite">
+          {hint}
+        </p>
+      )}
       <div className="mx-auto flex max-w-[820px] min-w-0 flex-wrap items-center gap-1.5 overflow-visible px-2 py-1.5">
         {left}
         {(right.some(Boolean)) && <span className="ml-auto" aria-hidden="true" />}

@@ -27,7 +27,9 @@ export const TOOLS: { kind: Shape["type"]; label: string }[] = [
   { kind: "rect", label: "Zone" },
   { kind: "text", label: "Texte" },
 ];
-export const COLORS = ["#d0021b", "#f5a623", "#1f4e9c", "#108c5e"];
+// Palette d'annotation élargie (C-70) : rouge danger, orange, ambre,
+// vert, turquoise, bleu, violet, anthracite — lisible sur fond clair et sombre.
+export const COLORS = ["#d0021b", "#e84e0f", "#f5a623", "#108c5e", "#38b6ab", "#1f4e9c", "#7b16c9", "#2c3a43"];
 // Référentiel vertical FIXE : les y sont stockés en fraction de REF_H pixels
 // (et non de la hauteur visible, qui varie) — sans cela, chaque cycle
 // sauvegarde/chargement décale les objets vers le haut.
@@ -40,6 +42,7 @@ export default function StepCanvas({
   onPhotosChanged,
   tool: toolProp,
   color: colorProp,
+  onToolDone,
   onSelectionChange,
   deleteActionRef,
   onInteract,
@@ -449,6 +452,9 @@ export default function StepCanvas({
             ? { type: "arrow", x1: a.x, y1: a.y, x2: b.x, y2: b.y, color }
             : { type: "rect", x1: Math.min(a.x, b.x), y1: Math.min(a.y, b.y), w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y), color };
           void saveShapes([...shapes, shape]);
+          // Auto-désactivation après la pose (retour utilisateur) : l'outil
+          // ne reste pas armé — l'éditeur est prévenu via onToolDone.
+          onToolDone?.();
         }
         setPendingStart(null); setPreview(null);
       }
@@ -476,16 +482,15 @@ export default function StepCanvas({
   const sw = (i: number) => (selShapes.has(i) ? 3 : 2);
 
   return (
-    <div style={{ display: "grid", gap: "0.4rem" }}>
-      <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", alignItems: "center" }}>
-        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
-          {tool ? (tool === "text" ? "Touchez pour poser le texte" : pendingStart ? "Touchez l'arrivée" : "Touchez le départ")
-            : "Glissez le fond : sélection · relâchez à droite pour supprimer"}
-        </span>
-        {busy && <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>…</span>}
-      </div>
-
-      {error && <p role="alert" style={{ margin: 0, padding: "0.3rem 0.5rem", borderRadius: "6px", background: "var(--error-bg)", color: "var(--error-text)", fontSize: "0.82rem" }}>{error}</p>}
+    <div className="grid gap-1.5">
+      {/* Aide à la pose : déplacée dans la barre d'outils fixe (C-70) —
+          le texte d'aide ne vit plus DANS l'étape. */}
+      {(busy || error) && (
+        <p role={error ? "alert" : "status"} className="m-0 rounded-md px-2 py-1 text-xs text-muted-foreground">
+          {error && <span className="mr-1 rounded bg-error-bg px-1.5 py-0.5 text-error">{error}</span>}
+          {busy && "…"}
+        </p>
+      )}
 
       {/* zone canevas : images + formes + interactions */}
       <div
@@ -574,13 +579,14 @@ export default function StepCanvas({
             onKeyDown={(e) => {
               if (e.key === "Enter" && textDraft.value.trim()) {
                 void saveShapes([...shapes, { type: "text", x1: textDraft.x, y1: textDraft.y, text: textDraft.value.trim(), color }]);
-                setTextDraft(null); setTool(null);
+                setTextDraft(null); setTool(null); onToolDone?.();
               }
               if (e.key === "Escape") { setTextDraft(null); setTool(null); }
             }}
             onBlur={() => {
               if (textDraft.value.trim()) {
                 void saveShapes([...shapes, { type: "text", x1: textDraft.x, y1: textDraft.y, text: textDraft.value.trim(), color }]);
+                onToolDone?.();
               }
               setTextDraft(null); setTool(null);
             }} />

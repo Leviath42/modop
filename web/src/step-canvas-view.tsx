@@ -63,7 +63,7 @@ export default function StepCanvasView({ photos, shapes }: { photos: Photo[]; sh
       const width = el.getBoundingClientRect().width || el.clientWidth || 800;
       let max = 240;
       for (const ph of photos) {
-        const w = typeof ph.display_w === "number" ? ph.display_w : 0.6;
+        const w = typeof ph.display_w === "number" ? ph.display_w : 1;
         const y = typeof ph.display_y === "number" ? ph.display_y : 0.05;
         const hpx = y * 240 + (w * width * (ratios[ph.id] ?? 0.75)) + 12;
         if (hpx > max) max = hpx;
@@ -80,7 +80,7 @@ export default function StepCanvasView({ photos, shapes }: { photos: Photo[]; sh
   return (
     <div ref={ref} style={{ position: "relative", width: "100%", height: `${H}px`, background: "var(--surface-2, transparent)", borderRadius: "8px", overflow: "hidden" }}>
       {photos.map((ph) => {
-        const w = typeof ph.display_w === "number" ? ph.display_w : ph.display_size === "full" ? 1 : ph.display_size === "large" ? 0.85 : ph.display_size === "small" ? 0.35 : 0.6;
+        const w = typeof ph.display_w === "number" ? ph.display_w : ph.display_size === "full" ? 1 : ph.display_size === "large" ? 0.85 : ph.display_size === "small" ? 0.35 : 1;
         const x = typeof ph.display_x === "number" ? ph.display_x : 0;
         const y = typeof ph.display_y === "number" ? ph.display_y : 0.05;
         return (

@@ -74,15 +74,24 @@ if ([...toolbar.querySelectorAll("button")].some((b) => b.textContent?.includes(
 const shapesBtn = toolbar.querySelector('button[aria-label="Formes"]') as HTMLElement;
 shapesBtn.click();
 await new Promise((r) => setTimeout(r, 150));
-const flyout = doc.querySelector('div[role="menu"][aria-label="Formes"]');
+let flyout = doc.querySelector('div[role="menu"][aria-label="Formes"]');
 if (!flyout) throw new Error("flyout Formes non ouvert au clic");
 const arrowItem = Array.from(flyout.querySelectorAll("button")).find((b) => b.textContent?.includes("Flèche")) as HTMLElement;
 if (!arrowItem) throw new Error("outil flèche absent du flyout");
 arrowItem.click();
 await new Promise((r) => setTimeout(r, 150));
-// la sélection d'un outil coche l'item et marque le bouton parent actif
-if (arrowItem.getAttribute("aria-checked") !== "true") throw new Error("flèche non cochée après sélection");
+// Règle 4 de la spec (C-70) : la sélection d'un outil REFERME le flyout
+// (auto-repli) et marque le bouton parent actif — l'outil actif y est
+// affiché (règle 3), ré-affichable par re-clic.
+if (doc.querySelector('div[role="menu"][aria-label="Formes"]')) throw new Error("le flyout Formes doit se refermer après sélection d'un outil");
 if (!shapesBtn.className.includes("border-primary")) throw new Error("bouton Formes non marqué actif après sélection");
+// re-clic : le flyout réapparaît avec la flèche cochée (outil actif)
+shapesBtn.click();
+await new Promise((r) => setTimeout(r, 150));
+flyout = doc.querySelector('div[role="menu"][aria-label="Formes"]');
+if (!flyout) throw new Error("re-clic sur Formes doit rouvrir le flyout");
+const arrowItem2 = Array.from(flyout.querySelectorAll("button")).find((b) => b.textContent?.includes("Flèche")) as HTMLElement;
+if (arrowItem2.getAttribute("aria-checked") !== "true") throw new Error("flèche non cochée après sélection");
 
 // 4. Échap referme le flyout (règle 4 de la spec)
 doc.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));

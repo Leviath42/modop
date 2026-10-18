@@ -89,9 +89,8 @@ const shapes: CommandDefinition = {
   isVisible: () => true,
   isActive: (ctx) => ctx.insertTool !== null,
   run: (_ctx, ui) => ui.setOpen(!ui.open),
-  flyout: (ctx, _ui) => (
-    <div role="menu" aria-label="Formes" className="grid min-w-44 gap-1">
-      {([
+  flyout: (ctx, ui) => (
+    <div role="menu" aria-label="Formes" className="grid min-w-44 gap-1">      {([
         { kind: "arrow", label: "Flèche", shortcut: "A", Icon: ArrowUpRight },
         { kind: "rect", label: "Zone", shortcut: "R", Icon: Square },
         { kind: "text", label: "Texte", shortcut: "T", Icon: Type },
@@ -100,7 +99,7 @@ const shapes: CommandDefinition = {
           key={kind}
           role="menuitemradio"
           aria-checked={ctx.insertTool === kind}
-          onClick={() => ctx.actions.setInsertTool(kind)}
+          onClick={() => { ctx.actions.setInsertTool(kind); ui.setOpen(false); }}
           title={`${label} (${shortcut})`}
           className={cn(menuItem, ctx.insertTool === kind && "border-primary bg-accent font-medium")}
         >
@@ -113,10 +112,10 @@ const shapes: CommandDefinition = {
         {COLORS.map((c) => (
           <button
             key={c}
-            onClick={() => ctx.actions.setInsertColor(c)}
+            onClick={() => { ctx.actions.setInsertColor(c); ui.setOpen(false); }}
             aria-label={`Couleur ${c}`}
             aria-pressed={ctx.insertColor === c}
-            className={cn("size-[22px] cursor-pointer rounded-full", ctx.insertColor === c ? "border-2 border-foreground" : "border border-border")}
+            className={cn("size-4 cursor-pointer rounded-full sm:size-[22px]", ctx.insertColor === c ? "border-2 border-foreground" : "border border-border")}
             style={{ background: c }}
           />
         ))}

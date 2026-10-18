@@ -279,7 +279,7 @@ export default function EditorPage() {
         {notice && <Alert variant="ok">{notice}</Alert>}
 
         <section className="sticky top-[var(--nav-h,2.9rem)] z-30 grid min-w-0 gap-2 rounded-lg border border-border bg-surface px-3 py-2.5 shadow-md">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <h1 className="m-0 min-w-0 max-w-full flex-1 basis-32 truncate text-base">
               {isNew ? "Nouveau mode opératoire" : (title || "Sans titre")}{" "}
               <code className="rounded bg-surface-2 px-1.5 py-0.5 text-[0.8em]">{reference || wf?.reference}</code>
@@ -388,7 +388,7 @@ export default function EditorPage() {
                   id={`edit-step-${step.id}`}
                   className={cn("grid min-w-0 gap-2 scroll-mt-32 rounded-lg bg-surface p-3 px-4 shadow-sm", dragIndex === i ? "outline-2 outline-dashed outline-primary" : "outline-none")}
                 >
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <span
                       onPointerDown={(e) => {
                         if (e.button !== 0 && e.pointerType === "mouse") return;
@@ -490,7 +490,7 @@ export default function EditorPage() {
                       onSelectionChange={activeStepId === step.id ? (n) => setCanvasSelection(n) : undefined}
                       deleteActionRef={activeStepId === step.id ? (fn) => { canvasDeleteRef.current = fn; } : undefined}
                       photos={(step.photos ?? []).map((ph) => {
-                        const w = typeof ph.display_w === "number" ? ph.display_w : ph.display_size === "full" ? 1 : ph.display_size === "large" ? 0.85 : ph.display_size === "small" ? 0.35 : 0.6;
+                        const w = typeof ph.display_w === "number" ? ph.display_w : ph.display_size === "full" ? 1 : ph.display_size === "large" ? 0.85 : ph.display_size === "small" ? 0.35 : 1;
                         return {
                           photo: ph,
                           x: typeof ph.display_x === "number" ? ph.display_x : 0,
