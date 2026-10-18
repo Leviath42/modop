@@ -97,12 +97,19 @@ if [ "${1:-}" = "rollback" ]; then
   pm2 stop "$PM2_NAME" 2>/dev/null || true
   rm -f "$DB_FILE-wal" "$DB_FILE-shm"
   cp "$LATEST" "$DB_FILE"
-  node "$BACKUP_TOOL" check "$APP_DIR/$DB_FILE" \
-    || die "base restaurée incohérente (integrity_check) : $LATEST"
+  STAMP2=$(basename "$LATEST" .db)
+  if [ -f "$BACKUP_DIR/$STAMP2.db-wal" ]; then cp "$BACKUP_DIR/$STAMP2.db-wal" "$DB_FILE-wal"; fi
+  if [ -f "$BACKUP_DIR/$STAMP2.db-shm" ]; then cp "$BACKUP_DIR/$STAMP2.db-shm" "$DB_FILE-shm"; fi
+  if node -e "require.resolve('better-sqlite3')" >/dev/null 2>&1; then
+    node "$BACKUP_TOOL" check "$APP_DIR/$DB_FILE" \
+      || die "base restaurée incohérente (integrity_check) : $LATEST"
+    log "base restaurée et vérifiée : $LATEST"
+  else
+    log "AVERTISSEMENT : better-sqlite3 indisponible — base restaurée NON VÉRIFIÉE (integrity_check impossible) : $LATEST"
+  fi
   pm2 restart "$PM2_NAME" --update-env 2>/dev/null \
     || pm2 start "$APP_DIR/server/ecosystem.config.cjs"
   pm2 save >/dev/null 2>&1 || true
-  log "base restaurée et vérifiée : $LATEST"
   exit 0
 fi
 
@@ -120,10 +127,22 @@ STAMP=$(date +%Y%m%d-%H%M%S)
 BACKUP_FILE=""
 if [ -f "$DB_FILE" ]; then
   BACKUP_FILE="$BACKUP_DIR/db-$STAMP.db"
-  node "$BACKUP_TOOL" backup "$APP_DIR/$DB_FILE" "$BACKUP_FILE" \
-    || die "la sauvegarde de la base a échoué"
-  chmod 600 "$BACKUP_FILE" 2>/dev/null || true
-  log "sauvegarde vérifiée : $BACKUP_FILE"
+  if node -e "require.resolve('better-sqlite3')" >/dev/null 2>&1; then
+    node "$BACKUP_TOOL" backup "$APP_DIR/$DB_FILE" "$BACKUP_FILE" \
+      || die "la sauvegarde de la base a échoué"
+    log "sauvegarde vérifiée : $BACKUP_FILE"
+  else
+    # node_modules cassé (npm ci interrompu, échec node-gyp…) : better-sqlite3
+    # est indisponible pour VACUUM INTO. Ne pas bloquer la réparation : l'app
+    # est arrêtée, une copie brute .db/-wal/-shm est cohérente à l'arrêt (non
+    # vérifiée par integrity_check). Le npm ci plus bas répare l'installation ;
+    # la prochaine mise à jour refera un snapshot vérifié.
+    log "AVERTISSEMENT : better-sqlite3 indisponible (node_modules cassé) — sauvegarde brute, non vérifiée"
+    cp "$DB_FILE" "$BACKUP_FILE"
+    if [ -f "$DB_FILE-wal" ]; then cp "$DB_FILE-wal" "$BACKUP_FILE-wal"; fi
+    if [ -f "$DB_FILE-shm" ]; then cp "$DB_FILE-shm" "$BACKUP_FILE-shm"; fi
+  fi
+  chmod 600 "$BACKUP_DIR/db-$STAMP.db"* 2>/dev/null || true
 else
   log "aucune base à sauvegarder ($DB_FILE absent)"
 fi
@@ -140,6 +159,8 @@ log "restauration de la base de production"
 rm -f "$DB_FILE-wal" "$DB_FILE-shm"
 if [ -n "$BACKUP_FILE" ]; then
   cp "$BACKUP_FILE" "$DB_FILE"
+  if [ -f "$BACKUP_FILE-wal" ]; then cp "$BACKUP_FILE-wal" "$DB_FILE-wal"; fi
+  if [ -f "$BACKUP_FILE-shm" ]; then cp "$BACKUP_FILE-shm" "$DB_FILE-shm"; fi
 fi
 
 # npm ci racine (monorepo npm workspaces : un seul lockfile à la racine) si le

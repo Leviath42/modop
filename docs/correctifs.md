@@ -36,6 +36,23 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-61 — update.sh bloqué par la sauvegarde quand node_modules est cassé (réalisé)
+
+**Problème** : constaté sur le CT — après un `npm ci` raté (C-60 : `make` absent), `better-sqlite3` n'est résoluble **nulle part** (l'ancien `cd server && npm ci` pré-C-57 avait vidé `server/node_modules` avant d'échouer, le `npm ci` racine a échoué avant de peupler `node_modules`). `update.sh` mourait alors à sa première étape utile — la sauvegarde VACUUM INTO — sans jamais atteindre le `npm ci` qui répare l'installation : **œuf et poule**, la mise à jour était bloquée à vie. Ce log confirme au passage la cause de l'incident initial (C-58) : app en crash-loop faute de modules, pm2 à ↺ 9.
+
+**Correctif** (`update.sh`) — dégradation propre au lieu d'échec fatal :
+1. **Sauvegarde** : si `better-sqlite3` n'est pas résoluble, bascule sur une **copie brute `.db` + `-wal` + `-shm`** (cohérente à l'arrêt, pm2 est déjà stoppé) avec avertissement explicite « non vérifiée » — la mise à jour continue, le `npm ci` répare, la prochaine mise à jour refera un snapshot vérifié.
+2. **Restauration** (update et rollback) : les `-wal`/`-shm` de la sauvegarde sont restaurés s'ils existent (cas des sauvegardes brutes ; les VACUUM INTO n'en ont pas).
+3. **Rollback dégradé** : `integrity_check` sauté avec avertissement « NON VÉRIFIÉE » si `better-sqlite3` est indisponible.
+
+**Tests** : `scripts/test-update.sh` — scénarios **F** (meilleur-sqlite3 indisponible → « sauvegarde brute, non vérifiée », mise à jour menée à terme, sauvegarde de secours présente) et **F2** (rollback dégradé, restauration « NON VÉRIFIÉE » assumée) — 13 assertions au total, toutes vertes.
+
+**Fichiers** : `update.sh`, `scripts/test-update.sh`, `docs/{correctifs,guide-test-proxmox}.md`
+
+**État** : livré sur beta.
+
+---
+
 ## C-60 — CT Proxmox : npm ci échoue faute d'outils de compilation (node-gyp) (réalisé)
 
 **Problème** : sur le CT, `npm ci` (racine, workspaces) échoue sur `better-sqlite3` — `gyp ERR! not found: make`. Pourtant `better-sqlite3@13` n'a **aucun script d'installation** et embarque ses binaires précompilés (`prebuilds/linux-x64.node`) : c'est la passe de rebuild de npm (node-gyp 11, pour les paquets à `binding.gyp`) qui exige `make`/`g++` — absents du CT créé par le guide (le runner GitHub CI les a préinstallés, d'où une CI verte). L'installation d'origine (pre-workspaces) n'y était jamais passée, le problème n'apparaît qu'au premier `npm ci` racine sur le CT.

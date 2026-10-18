@@ -8,7 +8,9 @@
 #   C. git fetch en échec -> die() propre + relance de l'application ;
 #   D. échec non gardé (abort brutal sous set -e, après le pm2 stop) ->
 #      trap EXIT -> relance de l'application ;
-#   E. rollback -> la dernière sauvegarde est restaurée, vérifiée, app relancée.
+#   E. rollback -> la dernière sauvegarde est restaurée, vérifiée, app relancée ;
+#   F. better-sqlite3 indisponible (node_modules cassé) -> sauvegarde brute de
+#      secours, mise à jour menée à terme ; rollback dégradé assumé « non vérifié ».
 #
 # Sortie : exit 0 si tout passe, exit 1 sinon. Lancé par la CI (job serveur)
 # et en local via `npm run test:update`.
@@ -27,7 +29,7 @@ ko() { printf '  ÉCHEC : %s\n' "$1"; fail=1; }
 # ------------------------------------------------------------------ stubs ---
 mkdir -p "$T/bin"
 printf '#!/bin/bash\necho "pm2 $*" >> "$PM2LOG"\nexit 0\n' > "$T/bin/pm2"
-printf '#!/bin/bash\nif [ "${2:-}" = "backup" ]; then : > "${@: -1}"; fi\nexit 0\n' > "$T/bin/node"
+printf '#!/bin/bash\nif [ "${2:-}" = "backup" ]; then : > "${@: -1}"; fi\nif [[ "$*" == *"require.resolve"* ]] && [ "${NODE_RESOLVE_RC:-0}" -ne 0 ]; then exit 1; fi\nexit 0\n' > "$T/bin/node"
 printf '#!/bin/bash\necho 200\n' > "$T/bin/curl"
 printf '#!/bin/bash\nexit 0\n' > "$T/bin/npm"
 chmod +x "$T/bin/"*
@@ -82,13 +84,30 @@ out=$(run_update 2>&1); rc=$?
 grep -q restart "$PM2LOG" && ok "application relancée après l'abort" || ko "application laissée à l'arrêt"
 git checkout -q -- update.sh
 
-# ---------------------------------------------------------------- E : rollback ---
+# ------------------------------------------------ E : rollback (fin nominal) ---
 echo "E : rollback -> sauvegarde restaurée, vérifiée, app relancée"
 : > "$PM2LOG"
 out=$(run_update rollback 2>&1); rc=$?
 [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "base restaurée et vérifiée" \
   && ok "rollback complet (rc=$rc)" || ko "rollback a échoué (rc=$rc)"
 grep -q restart "$PM2LOG" && ok "application relancée après rollback" || ko "application laissée à l'arrêt"
+
+# ------------- F : better-sqlite3 indisponible (node_modules cassé) ---
+echo "F : better-sqlite3 indisponible -> sauvegarde brute de secours, update qui va au bout"
+cd "$T/bump" || exit 1
+sed -i '6i# decalage F' update.sh
+git commit -qam "change update.sh (F)" && git push -q origin beta
+cd "$T/repo" || exit 1
+: > "$PM2LOG"
+out=$(NODE_RESOLVE_RC=1 run_update 2>&1); rc=$?
+[ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "sauvegarde brute, non vérifiée" \
+  && ok "dégradation propre : copie brute, update menée à terme (rc=$rc)" || ko "node_modules cassé bloque la mise à jour (rc=$rc)"
+ls server/data/backups/db-*.db >/dev/null 2>&1 && ok "sauvegarde de secours présente" || ko "aucune sauvegarde de secours"
+
+echo "F2 : rollback avec better-sqlite3 indisponible -> restauration non vérifiée assumée"
+out=$(NODE_RESOLVE_RC=1 run_update rollback 2>&1); rc=$?
+[ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "NON VÉRIFIÉE" \
+  && ok "rollback dégradé complet (rc=$rc)" || ko "rollback dégradé a échoué (rc=$rc)"
 
 echo
 if [ "$fail" -eq 0 ]; then echo "TOUS LES SCÉNARIOS UPDATE PASSENT"; else echo "DES SCÉNARIOS UPDATE ÉCHOUENT"; fi

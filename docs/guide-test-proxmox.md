@@ -104,7 +104,7 @@ En cas d'alerte : `pm2 logs modop` sur le CT, puis si besoin `bash /opt/modop/up
 | Symptôme | Solution |
 |---|---|
 | `npm ci` : `gyp ERR! not found: make` | npm rebuild les addons natifs (better-sqlite3) : `apt install -y make g++ python3` puis relancer `npm ci` à la racine. Prérequis installé d'office par `scripts/proxmox-install.sh`. |
-| Mise à jour : serveur resté à l'arrêt | `tail -40 /opt/modop/server/data/deploy.log` puis `pm2 restart modop`. Si l'app crash en boucle (node_modules endommagé) : `cd /opt/modop && npm ci` puis `(cd server && npm run build) && pm2 restart modop`. Depuis C-58, update.sh relance seul l'application en cas d'échec. |
+| Mise à jour : serveur resté à l'arrêt | `tail -40 /opt/modop/server/data/deploy.log` puis `pm2 restart modop`. Si l'app crash en boucle (node_modules endommagé) : `cd /opt/modop && npm ci` puis `(cd server && npm run build) && pm2 restart modop`. Depuis C-58, update.sh relance seul l'application en cas d'échec ; depuis C-61, il continue même si node_modules est cassé (sauvegarde brute de secours pendant que npm ci répare). |
 | Port 3000 occupé | `PORT=3001 bash scripts/proxmox-install.sh` |
 | « Identifiants invalides » | le seed ne s'exécute que si aucune base n'existe ; `cd /opt/modop/server && npm run seed -- modop.db email pass1234 admin` |
 | Page blanche | `cd /opt/modop/web && npm run build` puis `pm2 restart modop` |
