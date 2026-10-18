@@ -147,7 +147,7 @@ fi
 # « le lock n'a pas changé » ne doit pas empêcher l'installation).
 if ! git diff --quiet "$BEFORE" "$AFTER" -- package-lock.json || [ ! -d node_modules ]; then
   log "npm ci racine (lock changé ou node_modules absent)"
-  npm ci || die "npm ci a échoué"
+  npm ci || die "npm ci a échoué (outils de compilation présents ? make/g++ — voir docs/guide-test-proxmox.md, Dépannage)"
 fi
 
 # Garde-fou : dépendances critiques résolues avant de relancer (un npm ci

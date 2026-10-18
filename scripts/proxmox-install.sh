@@ -25,6 +25,11 @@ die() { printf '[install] ERREUR : %s\n' "$*" >&2; exit 1; }
 
 [ "$(id -u)" = "0" ] || die "à exécuter en root dans le conteneur"
 
+log "outils de compilation (node-gyp : npm ci rebuild les addons natifs)"
+apt update -qq >/dev/null 2>&1 || true
+apt install -y python3 make g++ >/dev/null 2>&1 \
+  || die "installation de python3/make/g++ impossible (requis par node-gyp à l'install)"
+
 log "Node.js 22"
 if ! command -v node >/dev/null || ! node -v | grep -q "v2[02]"; then
   curl -fsSL https://deb.nodesource.com/setup_22.x | bash - >/dev/null

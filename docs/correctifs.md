@@ -36,6 +36,23 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-60 — CT Proxmox : npm ci échoue faute d'outils de compilation (node-gyp) (réalisé)
+
+**Problème** : sur le CT, `npm ci` (racine, workspaces) échoue sur `better-sqlite3` — `gyp ERR! not found: make`. Pourtant `better-sqlite3@13` n'a **aucun script d'installation** et embarque ses binaires précompilés (`prebuilds/linux-x64.node`) : c'est la passe de rebuild de npm (node-gyp 11, pour les paquets à `binding.gyp`) qui exige `make`/`g++` — absents du CT créé par le guide (le runner GitHub CI les a préinstallés, d'où une CI verte). L'installation d'origine (pre-workspaces) n'y était jamais passée, le problème n'apparaît qu'au premier `npm ci` racine sur le CT.
+
+**Correctif** :
+1. `scripts/proxmox-install.sh` : installe `python3 make g++` en tête de script (prérequis node-gyp) — un CT frais devient autonome.
+2. `update.sh` : le message d'échec de `npm ci` pointe vers le prérequis (make/g++ — Dépannage du guide).
+3. Guide : nouvelle ligne Dépannage (`gyp ERR! not found: make`).
+
+**Test** : non reproductible en local (outils présents / scripts d'install bloqués par npm 11) ; validé sur le CT par le propriétaire après `apt install -y make g++` (voir état).
+
+**Fichiers** : `scripts/proxmox-install.sh`, `update.sh`, `docs/{correctifs,guide-test-proxmox}.md`
+
+**État** : livré sur beta.
+
+---
+
 ## C-59 — CI : tests front instables sous charge du runner (réalisé)
 
 **Problème** : la CI échoue sur « Tests front » pour les runs C-57 et C-58 — 8 puis 6 fichiers en échec, **des ensembles différents à code identique** : non-déterminisme, pas un bug fonctionnel. Reproduction locale par famine CPU (24 processus consommateurs + suite `-P 8`) : mêmes erreurs que la CI (« boutons… trouvés 0 », « titre absent », « introuvable ») — toujours un **DOM non rendu après un délai fixe** (`setTimeout(120-400 ms)`).
