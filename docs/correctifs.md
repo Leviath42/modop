@@ -36,6 +36,20 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-76 — Rognage : panneau borné entre les deux barres, image ajustée (correctif C-75)
+
+**Problème** : l'overlay de rognage couvrait tout le canevas (solidaire de sa hauteur, potentiellement bien plus grand que l'écran) → cadrage demandait du scroll.
+
+**Correctif** : le panneau est **`fixed`, borné entre la barre du haut (`--nav-h`) et la barre d'outils** (marge basse 9 rem réservée aux boutons fixes de C-75). L'image est **ajustée à la zone libre** au moment de l'ouverture (`openCrop` calcule la taille affichée en fonction du ratio et du viewport) ; cadrage et application mis à l'échelle par rapport aux pixels naturels, inchangés (`applyCrop` divise par `cropBox`).
+
+**Tests** : suite front verte, tsc + lint + build OK.
+
+**Fichiers** : `web/src/step-canvas.tsx`.
+
+**État** : livré sur beta.
+
+---
+
 ## C-75 — Rognage : boutons Annuler/Recadrer fixes au-dessus de la barre (correctif C-73)
 
 **Problème** : les boutons de validation du rognage vivaient en `absolute` dans l'overlay du canevas — inatteignables quand le canevas défilait sous la barre d'outils fixe.

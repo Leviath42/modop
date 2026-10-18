@@ -587,8 +587,17 @@ export default function StepCanvas({
     if (idx == null) return;
     const o = objs[idx];
     if (!o) return;
-    const bw = o.w * (canvasW || 800);
-    const bh = o.w * (canvasW || 800) * ratioOf(o);
+    // C-76 : l'image est AJUSTÉE à la zone libre de l'écran (entre la barre
+    // du haut et la barre d'outils) — le panneau de rognage ne scrolle plus.
+    // cropBox = taille AFFICHÉE (le cadrage et l'application sont mis à
+    // l'échelle par rapport aux pixels naturels dans applyCrop).
+    const ratio = ratioOf(o);
+    const navH = Number(getComputedStyle(document.documentElement).getPropertyValue("--nav-h")) || 56;
+    const availW = Math.max(160, window.innerWidth - 32);
+    const availH = Math.max(160, window.innerHeight - navH - 160);
+    let bw = availW;
+    let bh = bw * ratio;
+    if (bh > availH) { bh = availH; bw = bh / ratio; }
     setCropBox({ w: bw, h: bh });
     setCropRect({ x: bw * 0.08, y: bh * 0.08, w: bw * 0.84, h: bh * 0.84 });
     setCropFor(o);
@@ -748,8 +757,8 @@ export default function StepCanvas({
 
         {cropFor && (
           <div
-            className="absolute inset-0 z-40 flex items-center justify-center bg-black/40"
-            style={{ touchAction: "none" }}
+            className="fixed inset-x-0 z-40 flex items-center justify-center bg-black/60"
+            style={{ top: "var(--nav-h, 3.5rem)", bottom: "9rem", touchAction: "none" }}
             onPointerDown={(e) => e.stopPropagation()}
           >
             <div
