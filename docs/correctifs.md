@@ -36,6 +36,27 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-59 — CI : tests front instables sous charge du runner (réalisé)
+
+**Problème** : la CI échoue sur « Tests front » pour les runs C-57 et C-58 — 8 puis 6 fichiers en échec, **des ensembles différents à code identique** : non-déterminisme, pas un bug fonctionnel. Reproduction locale par famine CPU (24 processus consommateurs + suite `-P 8`) : mêmes erreurs que la CI (« boutons… trouvés 0 », « titre absent », « introuvable ») — toujours un **DOM non rendu après un délai fixe** (`setTimeout(120-400 ms)`).
+
+**Cause** : les tests jsdom attendent des délais fixes après montage React ; le harnais lançait 22 process tsx lourds avec `xargs -P 8` sur un runner GitHub à 4 vCPU — chaque process étant privé de CPU par moments, un délai de 150 ms pouvait expirer avant le commit du rendu React. De plus, la sortie des tests était **jetée** (`>/dev/null 2>&1`) : aucun diagnostic possible depuis la CI ; et `test:seq` (syntaxe bash) était exécuté par cmd.exe sous Windows — cassé.
+
+**Correctif** (`web/scripts/run-tests.sh` réécrit) :
+1. **Parallélisme adaptatif** : la moitié des cœurs, borné à [2, 8] — sur le runner dédié du job web, 2 process au lieu de 8 sur 4 vCPU (contention divisée par 4).
+2. **Retry** : chaque fichier est réessayé une fois en cas d'échec (un vrai bug échoue deux fois ; une famine CPU transitoire est résorbée).
+3. **Diagnostics** : la sortie d'un test échoué deux fois est affichée (15 dernières lignes) — plus de « ÉCHEC: fichier » muet en CI.
+4. `--seq` : mode séquentiel du harnais, `test:seq` réparé sous Windows (plus de boucle bash dans package.json).
+   Fragilité résiduelle documentée : les délais fixes des tests restent sensibles à une famine CPU extrême (reproduit en local avec 24 hogs même avec retry) ; la conversion en attentes conditionnelles (helper `waitFor`) des 22 fichiers est une vague à part si la CI flake encore.
+
+**Tests** : suite complète verte en local en parallèle (8,7 s) et en séquentiel (`test:seq`, réparé) ; stress famine CPU documenté (7 échecs résiduels sous 24 hogs — hors conditions réelles du runner).
+
+**Fichiers** : `web/scripts/run-tests.sh`, `web/package.json`, `docs/{correctifs,guide-test-proxmox}.md`
+
+**État** : livré sur beta.
+
+---
+
 ## C-58 — update.sh ne peut plus laisser l'application à l'arrêt (relance garantie) (réalisé)
 
 **Problème** : mise à jour déclenchée depuis **/deploy sur le CT — le serveur est resté injoignable**. Analyse (sans les logs du CT, à confirmer via `server/data/deploy.log`) : `set -euo pipefail` interrompt le script au premier échec, mais seules les étapes prévues passaient par `die()` — qui relance pm2. Un échec sur une commande **non gardée** (`git fetch`, `git reset`, `chmod`, purge des sauvegardes, `pm2 save`) tuait le script **après le `pm2 stop`**, avant toute relance : pm2 restait arrêté, serveur muet, jusqu'à une intervention manuelle. S'y ajoutait le risque structurel d'un script qui se réécrit lui-même (`git reset` remplace update.sh pendant son exécution ; bash bufférise les petits scripts mais relit le fichier au-delà de son tampon), et le cas « app qui crash en boucle faute de `node_modules` cohérent » (l'ancien `cd server && npm ci` pré-C-57, sans lockfile, pouvait vider `server/node_modules` avant d'échouer).

@@ -8,7 +8,7 @@
     "dev": "vite",
     "preview": "vite preview",
     "test": "bash scripts/run-tests.sh",
-    "test:seq": "for f in src/lib/*.test.*; do npx tsx \"$f\" || exit 1; done",
+    "test:seq": "bash scripts/run-tests.sh --seq",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "format": "prettier --write ."
