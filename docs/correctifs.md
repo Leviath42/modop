@@ -5,6 +5,8 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 *Les correctifs listés ici sont retirés de la roadmap (vague 6 livrée) : ce journal trace la série en cours.*
 
+> **Agents IA** : ce journal dépasse 800 lignes — **ne pas le lire en entier**. Chercher la zone visée par mot-clé (`grep -n "<mot-clé>" docs/correctifs.md`) et lire seulement l'entrée correspondante. Routage complet : [AGENTS.md](../AGENTS.md).
+
 ---
 
 ## C-38 — Canevas : un clic sur une flèche la déplaçait (réalisé)
@@ -34,6 +36,21 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-55 — Doc optimisée pour sessions IA : AGENTS.md, routage documentaire, journal consulté par mot-clé (réalisé)
+
+**Problème** : une nouvelle session IA devait enchaîner README (section agents verbeuse), cahier des charges, roadmap et journal des correctifs (~800 lignes) pour se situer — orientation lente et coût en tokens élevé. Le projet meal_plan démontre l'approche inverse : un point d'entrée unique dense (stack, arborescence annotée, conventions) et des pointeurs vers les docs détaillées.
+
+**Correctif** :
+1. **`AGENTS.md` à la racine** (nouveau) : contexte complet compressé — pitch, stack, commandes, arborescence annotée (routes, auth, pages, tests), conventions, env de durcissement, **routage documentaire par zone** (« pour toucher X → lire Y »), travaux en cours. Lu automatiquement par la plupart des agents IA.
+2. **README allégé** : la section « Pour les agents IA » devient un pointeur vers `AGENTS.md` (une seule source de vérité).
+3. **Note en tête de ce journal** : consultation par `grep` sur mot-clé, jamais une lecture intégrale.
+
+**Fichiers** : `AGENTS.md` (nouveau), `README.md`, `docs/correctifs.md`
+
+**État** : livré sur beta. La livraison du code MFA/CI en cours prendra le numéro **C-56**.
+
+---
+
 ## C-54 — Plan d'action issues #8/#9 intégré : vagues 9-10, RF-79, MODOP_TOTP_SECRET documenté (réalisé)
 
 **Problème** : les revues externes du 2026-10-17 (issues #8 et #9 — durcissement industriel, palier sécurité entreprise) n'étaient tracées dans aucune documentation ; la MFA TOTP partiellement implémentée n'était documentée ni dans le guide de durcissement ni dans la spécification (aucun RF), et rien n'indiquait que l'UI de login ne sait pas encore saisir de code TOTP (activation du secret = admins bloqués hors de l'interface).
@@ -42,7 +59,7 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 **Fichiers** : `docs/roadmap.md`, `docs/cahier-des-charges.md`, `docs/durcissement-securite.md`, `docs/correctifs.md`, `README.md`
 
-**État** : livré sur beta (documentation seule). La livraison du code MFA/CI en cours dans l'arbre de travail prendra le numéro **C-55** (avec son entrée et ses tests, conformément aux conventions).
+**État** : livré sur beta (documentation seule). La livraison du code MFA/CI en cours dans l'arbre de travail prendra le numéro **C-56** (avec son entrée et ses tests, conformément aux conventions).
 
 ---
 

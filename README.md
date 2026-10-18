@@ -51,20 +51,6 @@ cd server && npm test                # tests runtime (~9 s)
 cd web    && npm test                # tests front (~16 s, parallèles)
 ```
 
-## Pour les agents IA (contexte de travail)
+## Pour les agents IA
 
-**Répertoire de travail** : tout se fait sur la branche `beta` (pousser dessus est autorisé). `main` = validation humaine uniquement.
-
-**Stack** : serveur Express + better-sqlite3 (sert aussi le front buildé), front React + Vite (PWA), tests `node:test` (serveur, runtime réel) + scripts jsdom (front, exécutés par `web/scripts/run-tests.sh`).
-
-**Structure** : `server/` (routes `src/routes/`, auth `src/auth/`, schéma `src/db/schema.ts` avec migrations idempotentes) · `web/` (pages `src/pages/`, canevas `src/step-canvas.tsx`) · `shared/` (contrat figé) · `docs/` · `scripts/` · `update.sh` (déploiement).
-
-**Conventions** :
-- Correctifs numérotés **C-xx** : chaque modification non triviale = une entrée dans `docs/correctifs.md` (problème → correctif → tests → fichiers), et les docs associées sont mises à jour dans le même commit (guide utilisateur, roadmap, durcissement selon le cas).
-- Portes qualité avant tout commit : `npm run build` (tsc) + `npm test` des deux côtés. Tout ce qui écrit en base est testé **en runtime** (tsc ne détecte pas, par ex., les transactions async refusées par better-sqlite3).
-- Tests front : chaque fichier est un script jsdom autonome avec `process.exit(0)` ; l'échec = exit non-zéro ; le runner parallélise (xargs).
-- Le formatage des fichiers existants peut être « compacté » (des blocs entiers sur une seule ligne) : **lire le texte réel avant tout remplacement** et vérifier chaque pattern (`assert count==1`).
-
-**Env (durcissement)** : `MODOP_SESSION_TTL_HOURS`, `MODOP_ALLOWED_HOSTS` (allowlist anti-CSRF derrière proxy), `MODOP_SECURE_COOKIES`, `MODOP_DEPLOY=off`, variables `MODOP_OIDC_*` — voir [docs/durcissement-securite.md](docs/durcissement-securite.md).
-
-**Historique** : v0-v6bis archivées dans `docs/archives/roadmap-v1-a-v6bis.md` ; chaque correctif C-xx raconté dans `docs/correctifs.md` — **lire ces deux documents avant de retravailler une zone** (le pourquoi y est tracé).
+Tout le contexte de travail (stack, commandes, arborescence annotée, conventions, env, routage documentaire) est concentré dans [AGENTS.md](AGENTS.md), lu automatiquement par la plupart des agents IA. `docs/correctifs.md` (~800 lignes) se consulte par mot-clé (`grep -n "<mot-clé>" docs/correctifs.md`), jamais en entier.
