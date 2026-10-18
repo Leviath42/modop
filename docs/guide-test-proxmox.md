@@ -103,6 +103,7 @@ En cas d'alerte : `pm2 logs modop` sur le CT, puis si besoin `bash /opt/modop/up
 
 | Symptôme | Solution |
 |---|---|
+| Mise à jour : serveur resté à l'arrêt | `tail -40 /opt/modop/server/data/deploy.log` puis `pm2 restart modop`. Si l'app crash en boucle (node_modules endommagé) : `cd /opt/modop && npm ci` puis `(cd server && npm run build) && pm2 restart modop`. Depuis C-58, update.sh relance seul l'application en cas d'échec. |
 | Port 3000 occupé | `PORT=3001 bash scripts/proxmox-install.sh` |
 | « Identifiants invalides » | le seed ne s'exécute que si aucune base n'existe ; `cd /opt/modop/server && npm run seed -- modop.db email pass1234 admin` |
 | Page blanche | `cd /opt/modop/web && npm run build` puis `pm2 restart modop` |

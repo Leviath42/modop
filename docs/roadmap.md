@@ -1,6 +1,6 @@
 # Modop — Roadmap
 
-*Dernière mise à jour : après C-57 — **vague 9 terminée** (CI fonctionnelle, lint server+web, porte npm audit, sauvegardes VACUUM INTO vérifiées, `MODOP_DEPLOY_BRANCH`) ; reste côté propriétaire : déployer Uptime Kuma sur Proxmox et recevoir les premières PR Dependabot.*
+*Dernière mise à jour : après C-58 — update.sh **ne peut plus laisser l'application à l'arrêt** (relance garantie par trap EXIT + auto-snapshot hors dépôt, tests `scripts/test-update.sh` en CI) ; **vague 9 terminée** (C-57 : CI fonctionnelle, lint server+web, porte npm audit, sauvegardes VACUUM INTO vérifiées, `MODOP_DEPLOY_BRANCH`) ; reste côté propriétaire : déployer Uptime Kuma sur Proxmox et recevoir les premières PR Dependabot.*
 
 L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archives/roadmap-v1-a-v6bis.md](archives/roadmap-v1-a-v6bis.md). La série de correctifs UI/UX (C-01 → C-51) est journalisée dans [correctifs.md](correctifs.md).
 

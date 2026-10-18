@@ -29,6 +29,8 @@ jobs:
         run: npm run build -w server
       - name: Tests runtime
         run: npm test -w server
+      - name: Tests update.sh (déploiement)
+        run: bash scripts/test-update.sh
 
   web:
     name: Web (typecheck + build + tests)

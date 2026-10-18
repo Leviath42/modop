@@ -9,6 +9,7 @@
     "build": "npm run build --workspaces",
     "test": "npm test --workspaces",
     "lint": "npm run lint --workspaces",
+    "test:update": "bash scripts/test-update.sh",
     "audit": "npm audit --omit=dev --audit-level=high"
   }
 }

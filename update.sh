@@ -22,6 +22,28 @@
 
 set -euo pipefail
 
+# ---------------------------------------------------------------------------
+# Auto-snapshot : la mise à jour fait `git reset --hard`, qui REMPLACE
+# update.sh pendant son propre exécution. Bash bufférise les petits scripts
+# (lu d'un seul bloc) mais relit le fichier au fil des commandes dès qu'il
+# dépasse son tampon : un script réécrit en plein vol s'exécute alors de façon
+# corrompue — pm2 déjà arrêté, plus de relance, serveur injoignable. On
+# s'exécute donc depuis une copie hors du dépôt (server/data, non suivi par
+# git), insensible à sa propre réécriture quelle que soit la taille. Le mode
+# rollback ne touche pas au dépôt : pas besoin de snapshot. Une copie
+# invoquée hors du dépôt (ex. /root) est déjà protégée.
+# ---------------------------------------------------------------------------
+if [ "${1:-}" != "rollback" ] && [ "${MODOP_UPDATE_SNAPSHOT:-}" != "1" ]; then
+  SCRIPT_DIR=$(dirname "$0")
+  if [ -f "$SCRIPT_DIR/package.json" ]; then
+    mkdir -p "$SCRIPT_DIR/server/data"
+    SNAPSHOT="$SCRIPT_DIR/server/data/.update-snapshot.sh"
+    cp "$0" "$SNAPSHOT"
+    chmod +x "$SNAPSHOT"
+    exec env MODOP_UPDATE_SNAPSHOT=1 bash "$SNAPSHOT" "$@"
+  fi
+fi
+
 APP_DIR="/opt/modop"
 PM2_NAME="modop"
 BRANCH="${MODOP_DEPLOY_BRANCH:-$(cat "$APP_DIR/.deploy-branch" 2>/dev/null || true)}"
@@ -36,15 +58,34 @@ cd "$APP_DIR"
 mkdir -p "$APP_DIR/server/data"
 
 log() { printf '[update] %s\n' "$*"; }
-die() {
-  printf '[update] ERREUR : %s\n' "$*" >&2
-  printf "[update] tentative de relance de l'application...\n" >&2
+
+# Garantie centrale : quelle que soit la façon dont ce script meurt (échec non
+# prévu sous set -e, commande non gardée), l'application est relancée — pm2 ne
+# doit jamais rester à l'arrêt. die() et le trap EXIT partagent relaunch(),
+# idempotent (une seule relance par exécution).
+APP_RELAUNCHED=0
+relaunch() {
+  if [ "$APP_RELAUNCHED" = "1" ]; then return 0; fi
+  APP_RELAUNCHED=1
   pm2 restart "$PM2_NAME" >/dev/null 2>&1 \
     || pm2 start "$APP_DIR/server/ecosystem.config.cjs" >/dev/null 2>&1 \
     || true
   pm2 save >/dev/null 2>&1 || true
+}
+die() {
+  printf '[update] ERREUR : %s\n' "$*" >&2
+  printf "[update] tentative de relance de l'application...\n" >&2
+  relaunch
   exit 1
 }
+on_unexpected_exit() {
+  rc=$?
+  if [ "$rc" -ne 0 ] && [ "$APP_RELAUNCHED" != "1" ]; then
+    printf "[update] sortie inattendue (code %s) : relance de l'application\n" "$rc" >&2
+    relaunch
+  fi
+}
+trap on_unexpected_exit EXIT
 
 # ---------------------------------------------------------------------------
 # Mode rollback : restaurer la dernière sauvegarde de la base
@@ -60,7 +101,7 @@ if [ "${1:-}" = "rollback" ]; then
     || die "base restaurée incohérente (integrity_check) : $LATEST"
   pm2 restart "$PM2_NAME" --update-env 2>/dev/null \
     || pm2 start "$APP_DIR/server/ecosystem.config.cjs"
-  pm2 save
+  pm2 save >/dev/null 2>&1 || true
   log "base restaurée et vérifiée : $LATEST"
   exit 0
 fi
@@ -81,18 +122,18 @@ if [ -f "$DB_FILE" ]; then
   BACKUP_FILE="$BACKUP_DIR/db-$STAMP.db"
   node "$BACKUP_TOOL" backup "$APP_DIR/$DB_FILE" "$BACKUP_FILE" \
     || die "la sauvegarde de la base a échoué"
-  chmod 600 "$BACKUP_FILE"
+  chmod 600 "$BACKUP_FILE" 2>/dev/null || true
   log "sauvegarde vérifiée : $BACKUP_FILE"
 else
   log "aucune base à sauvegarder ($DB_FILE absent)"
 fi
-ls -1t "$BACKUP_DIR"/db-*.db 2>/dev/null | tail -n +$((KEEP_BACKUPS + 1)) | xargs -r rm --
+ls -1t "$BACKUP_DIR"/db-*.db 2>/dev/null | tail -n +$((KEEP_BACKUPS + 1)) | xargs -r rm -- || true
 # résidus -wal/-shm des anciennes sauvegardes (avant VACUUM INTO)
 rm -f "$BACKUP_DIR"/db-*.db-wal "$BACKUP_DIR"/db-*.db-shm 2>/dev/null || true
 
 log "récupération du code ($BEFORE -> ?, branche $BRANCH)"
-git fetch origin "$BRANCH"
-git reset --hard "origin/$BRANCH"
+git fetch origin "$BRANCH" || die "git fetch a échoué (réseau ?)"
+git reset --hard "origin/$BRANCH" || die "git reset a échoué"
 AFTER=$(git rev-parse --short HEAD)
 
 log "restauration de la base de production"
@@ -124,7 +165,7 @@ log "build du serveur"
 log "relance de l'application"
 pm2 restart "$PM2_NAME" --update-env 2>/dev/null \
   || pm2 start "$APP_DIR/server/ecosystem.config.cjs"
-pm2 save
+pm2 save >/dev/null 2>&1 || true
 
 log "healthcheck"
 CODE=000

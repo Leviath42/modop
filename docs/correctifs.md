@@ -36,6 +36,23 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-58 — update.sh ne peut plus laisser l'application à l'arrêt (relance garantie) (réalisé)
+
+**Problème** : mise à jour déclenchée depuis **/deploy sur le CT — le serveur est resté injoignable**. Analyse (sans les logs du CT, à confirmer via `server/data/deploy.log`) : `set -euo pipefail` interrompt le script au premier échec, mais seules les étapes prévues passaient par `die()` — qui relance pm2. Un échec sur une commande **non gardée** (`git fetch`, `git reset`, `chmod`, purge des sauvegardes, `pm2 save`) tuait le script **après le `pm2 stop`**, avant toute relance : pm2 restait arrêté, serveur muet, jusqu'à une intervention manuelle. S'y ajoutait le risque structurel d'un script qui se réécrit lui-même (`git reset` remplace update.sh pendant son exécution ; bash bufférise les petits scripts mais relit le fichier au-delà de son tampon), et le cas « app qui crash en boucle faute de `node_modules` cohérent » (l'ancien `cd server && npm ci` pré-C-57, sans lockfile, pouvait vider `server/node_modules` avant d'échouer).
+
+**Correctif** :
+1. **`relaunch()` idempotent + `trap EXIT`** : toute sortie non nette du script (échec imprévu, `set -e` sur une commande non gardée) relance l'application avant de sortir — pm2 ne peut plus rester à l'arrêt, quelle que soit la cause de mort. `die()` partage la même relance (jamais de double relance).
+2. **Commandes gardées** : `git fetch`/`git reset` passent par `die()` avec message explicite ; `chmod` de la sauvegarde, purge des anciens backups et `pm2 save` deviennent non fatals.
+3. **Auto-snapshot** : update.sh s'exécute depuis une copie hors dépôt (`server/data/.update-snapshot.sh`, non suivie par git) — immunisé contre sa propre réécriture par `git reset`, quelle que soit la taille du script. Le rollback (qui ne touche pas au dépôt) et une copie invoquée hors du dépôt restent en exécution directe.
+
+**Tests** : `scripts/test-update.sh` (runtime : dépôt git temporaire + stubs pm2/node/curl/npm, `npm run test:update`) — 4 scénarios, 9 assertions : mise à jour où update.sh est lui-même réécrit (mène à terme via le snapshot), `git fetch` en échec (die + relance pm2), abort brutal non gardé après le `pm2 stop` (trap EXIT → relance), rollback (sauvegarde restaurée, `integrity_check` via le stub, app relancée). Branché en CI (job serveur).
+
+**Fichiers** : `update.sh`, `scripts/test-update.sh` (nouveau), `package.json` (script `test:update`), `.github/workflows/ci-cd.yml`, `docs/{correctifs,roadmap,guide-test-proxmox}.md`
+
+**État** : livré sur beta.
+
+---
+
 ## C-57 — Vague 9 (fin) : CI fonctionnelle, lint web, audit, sauvegardes VACUUM INTO, branche de déploiement (réalisé)
 
 **Problème** : la CI livrée en C-56 était un brouillon non fonctionnel (jobs joués à la racine d'un monorepo workspaces, `npm run typecheck` inexistant côté serveur) ; `update.sh` restait cassé par la migration workspaces de C-56 (`npm ci` et lockfile cherchés dans `server/` et `web/`) ; la sauvegarde de la base copiait brutalement `.db` + `-wal` + `-shm` (image possiblement incohérente, résidus à gérer au rollback) ; pas de lint web, pas de porte `npm audit`, branche de déploiement en dur ; `test-ci-cd.sh` (test volontairement cassant poussé sur beta) traîné dans le dépôt.
