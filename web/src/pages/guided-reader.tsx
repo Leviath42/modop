@@ -56,13 +56,13 @@ export default function GuidedReaderPage() {
           <h2 className="mt-0 text-lg">{idx + 1}. {step.title}</h2>
           {step.body && <p className="whitespace-pre-wrap break-words text-base">{step.body}</p>}
           {step.pictos.length > 0 && (
-            <p className="flex flex-wrap gap-1">
-              {step.pictos.map((p, i) => (
-                <span key={i} className="rounded px-2 py-0.5 text-sm font-semibold" style={{ background: `${p.color}22`, borderLeft: `4px solid ${p.color}` }}>
-                  <TriangleAlert size={12} aria-hidden="true" /> {p.label}
-                </span>
+            <div className="mb-1.5 grid gap-1.5">
+              {step.pictos.map((p, k) => (
+                <p key={k} className="m-0 flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-bold uppercase tracking-wide text-foreground" style={{ background: `${p.color}1f`, borderLeft: `5px solid ${p.color}` }}>
+                  <TriangleAlert size={16} aria-hidden="true" style={{ color: p.color }} /> {p.label}
+                </p>
               ))}
-            </p>
+            </div>
           )}
           {step.photos.length > 0 && <StepCanvasView photos={step.photos ?? []} shapes={step.canvas ?? []} />}
         </article>

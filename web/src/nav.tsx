@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Menu, Moon, Sun } from "lucide-react";
+import { Menu, Moon, Search, Sun } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "./auth-context";
 import { getStoredTheme, toggleTheme, watchTheme, type Theme } from "./theme";
@@ -114,11 +114,27 @@ export default function NavBar() {
             >
               Déconnexion
             </button>
+            <Link
+              to="/?rechercher=1"
+              aria-label="Rechercher un mode opératoire"
+              title="Rechercher un mode opératoire"
+              className="shrink-0 rounded p-1.5 text-muted-foreground no-underline transition-colors hover:bg-muted hover:text-link"
+            >
+              <Search size={18} />
+            </Link>
             <ThemeToggle />
           </div>
 
-          {/* Mobile : thème + hamburger */}
+          {/* Mobile : recherche + thème + hamburger */}
           <div className="flex items-center gap-1 md:hidden">
+            <Link
+              to="/?rechercher=1"
+              aria-label="Rechercher un mode opératoire"
+              title="Rechercher un mode opératoire"
+              className="shrink-0 rounded p-1.5 text-muted-foreground no-underline transition-colors hover:bg-muted hover:text-link"
+            >
+              <Search size={18} />
+            </Link>
             <ThemeToggle />
             <button
               onClick={() => setMenuOpen((v) => !v)}

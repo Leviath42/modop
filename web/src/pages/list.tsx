@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { api, ApiError, type Workflow } from "../api";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
@@ -13,6 +13,16 @@ import { cn } from "../lib/utils";
 
 export default function ListPage() {
   const { user } = useAuth();
+  // #10 : le bouton Recherche du bandeau arrive ici avec ?rechercher=1 —
+  // on donne le focus au champ et on l'efface pour ne pas polluer l'URL.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    if (searchParams.get("rechercher") === "1") {
+      setSearchParams({}, { replace: true });
+      searchInputRef.current?.focus();
+    }
+  }, [searchParams, setSearchParams]);
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -80,6 +90,7 @@ export default function ListPage() {
             <Label htmlFor="mo-search" className="sr-only">Rechercher un mode opératoire</Label>
             <Input
               id="mo-search"
+              ref={searchInputRef}
               type="search"
               placeholder="Rechercher (titre, référence)…"
               value={searchInput}

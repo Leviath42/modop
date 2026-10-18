@@ -71,6 +71,7 @@ Architecture livrée (C-67) : **registre de commandes modulaire** (`web/src/edit
 | P1 | Recadrage/pivot d'image post-import | flyout Photos |
 | P1 | Palette de commandes (Ctrl+K) | accès clavier à tous les outils, remplace tout panneau latéral |
 | P2 | Titre de section, séparateur, note/astuce (encart info), tableau, masquage/floutage, variables dynamiques | selon besoin métier |
+| **P2 — demandés (C-70)** | **Personnalisation des indications métiers** (presets éditables : migration + API paramétrage) · **Commentaires auteurs par étape** (schema + API + panneau édition) | nouveaux chantiers, contrat à faire évoluer proprement |
 | À challenger | TipTap/ProseMirror comme socle document (spec § 6) | changerait le contrat figé `shared/` + export docx + rendu serveur — à décider AVANT toute adoption |
 
 ### Vague 10 — Palier sécurité entreprise (issue #9) — ⏸️ **en standby**

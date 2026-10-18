@@ -1,9 +1,9 @@
 import StepCanvas, { COLORS } from "../step-canvas";
 import type { Shape } from "../annotated-photo";
-import { Camera, ChevronDown, ChevronRight, FoldVertical, GripVertical, Image as ImageIcon, TriangleAlert, UnfoldVertical } from "lucide-react";
+import { Camera, ChevronDown, ChevronRight, FoldVertical, GripVertical, Image as ImageIcon, Trash2, TriangleAlert, UnfoldVertical } from "lucide-react";
 import { EditorBottomBar } from "../editor/bottom-bar";
 import type { PictoPreset, ToolContext } from "../editor/tools/registry";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError, type Step, type WorkflowDetail } from "../api";
 import { useAuth } from "../auth-context";
@@ -64,6 +64,9 @@ export default function EditorPage() {
   const [confirmPublish, setConfirmPublish] = useState(false);
   const [reviewDue, setReviewDue] = useState("");
   const [ownerEmail, setOwnerEmail] = useState("");
+  // #5 : suggestions de responsable — recherche par nom ET email (les
+  // datalists natifs ne montraient pas les Prénom/Nom de façon fiable).
+  const [ownerOpen, setOwnerOpen] = useState(false);
   const [changelog, setChangelog] = useState("");
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(false);
   const [confirmDeleteDoc2, setConfirmDeleteDoc2] = useState(false);
@@ -252,6 +255,14 @@ export default function EditorPage() {
   }
   function deleteCanvasSelection() { canvasDeleteRef.current?.(); }
 
+  const ownerSuggestions = useMemo(() => {
+    const q = ownerEmail.trim().toLowerCase();
+    const list = q
+      ? accounts.filter((u) => `${u.first_name ?? ""} ${u.last_name ?? ""} ${u.email}`.toLowerCase().includes(q))
+      : accounts;
+    return list.slice(0, 6);
+  }, [ownerEmail, accounts]);
+
   const toolCtx: ToolContext = {
     isNew, steps, activeStepId, insertTool, insertColor, canvasSelection,
     actions: { addStep, openPhotoSource, setInsertTool: selectInsertTool, setInsertColor, togglePreset, deleteActiveStep, deleteCanvasSelection },
@@ -323,17 +334,32 @@ export default function EditorPage() {
               <Label className="grid min-w-0 gap-1 text-muted-foreground">À revoir le
                 <Input type="date" value={reviewDue} onChange={(e) => { setReviewDue(e.target.value); setMetaSaved(false); }} />
               </Label>
-              <Label className="grid min-w-0 gap-1 text-muted-foreground">Responsable
-                <>
-                  <Input type="email" list="owner-accounts" value={ownerEmail} onChange={(e) => { setOwnerEmail(e.target.value); setMetaSaved(false); }} placeholder="Rechercher un responsable…" aria-label="Responsable — rechercher parmi les comptes" />
-                  <datalist id="owner-accounts">
-                    {accounts.map((u) => {
-                      const name = [u.first_name, u.last_name].filter(Boolean).join(" ");
-                      return <option key={u.id} value={u.email} label={name ? `${name} (${u.role})` : u.role} />;
-                    })}
-                  </datalist>
-                </>
-              </Label>
+              <div className="relative grid min-w-0 gap-1">
+                <Label htmlFor="owner-email" className="text-muted-foreground">Responsable</Label>
+                <Input
+                  id="owner-email"
+                  type="email"
+                  value={ownerEmail}
+                  onChange={(e) => { setOwnerEmail(e.target.value); setMetaSaved(false); setOwnerOpen(true); }}
+                  onFocus={() => setOwnerOpen(true)}
+                  onBlur={() => setTimeout(() => setOwnerOpen(false), 150)}
+                  placeholder="Rechercher un responsable…"
+                  aria-label="Responsable — rechercher parmi les comptes"
+                  autoComplete="off"
+                />
+                {ownerOpen && ownerSuggestions.length > 0 && (
+                  <div role="listbox" aria-label="Comptes responsables" className="absolute top-full z-40 grid max-h-48 w-full min-w-0 gap-0.5 overflow-y-auto rounded-md border border-border bg-surface p-1 shadow-lg">
+                    {ownerSuggestions.map((u) => (
+                      <button key={u.id} type="button" role="option" aria-selected={u.email === ownerEmail}
+                        onMouseDown={(e) => { e.preventDefault(); setOwnerEmail(u.email); setMetaSaved(false); setOwnerOpen(false); }}
+                        className="flex min-w-0 items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-muted">
+                        <span className="truncate font-medium">{[u.first_name, u.last_name].filter(Boolean).join(" ") || "(sans nom)"}</span>
+                        <span className="ml-auto shrink-0 truncate text-xs text-muted-foreground">{u.email}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           )}
@@ -403,6 +429,16 @@ export default function EditorPage() {
                           window.removeEventListener("pointerup", onUp);
                           window.removeEventListener("pointercancel", onCancel);
                           const el = document.elementFromPoint(ev.clientX, ev.clientY);
+                          // #7 : relâcher sur la zone « supprimer » ouvre la
+                          // confirmation (jamais de suppression directe).
+                          if (el?.closest?.("[data-step-delete]")) {
+                            const stp = steps[from];
+                            dragFromRef.current = null;
+                            setDragIndex(null);
+                            setDragCursor(null);
+                            if (stp) setConfirmDeleteStep(stp);
+                            return;
+                          }
                           const li = el?.closest?.("li");
                           let to: number | null = null;
                           if (li) {
@@ -575,6 +611,15 @@ export default function EditorPage() {
         )}
       </main>
       {!isNew && <EditorBottomBar ctx={toolCtx} />}
+      {dragIndex !== null && (
+        <div
+          data-step-delete
+          aria-hidden="true"
+          className="fixed bottom-28 left-1/2 z-[210] -translate-x-1/2 inline-flex items-center gap-2 rounded-lg border-2 border-dashed border-danger-border bg-danger-bg px-4 py-2.5 text-sm font-semibold text-error shadow-xl"
+        >
+          <Trash2 size={16} aria-hidden="true" /> Relâchez ici pour supprimer l'étape
+        </div>
+      )}
       {dragIndex !== null && dragCursor && (
         <div ref={dragGhostRef} aria-hidden="true" className="pointer-events-none fixed z-[200] -translate-x-1/2 -translate-y-[120%] rounded-md bg-primary px-2.5 py-1 text-sm text-primary-foreground shadow-lg" style={{ left: dragCursor.x, top: dragCursor.y }}>
           Déplacer « {steps[dragIndex]?.title ?? ""} »

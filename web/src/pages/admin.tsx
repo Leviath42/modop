@@ -142,10 +142,15 @@ export default function AdminPage() {
 
         <section className="grid gap-2">
           {users.map((u) => (
-            <Card key={u.id} className={cn("flex flex-wrap items-center gap-2 px-4 py-3", u.active === 0 && "opacity-55")}>
-              <span className="flex min-w-0 flex-1 basis-40 items-baseline gap-1.5 font-semibold break-words">
-                <span className="min-w-0 break-words">{[u.first_name, u.last_name].filter(Boolean).join(" ") || <span className="font-normal text-muted-foreground">(sans nom)</span>}</span>
-                <span className="min-w-0 text-xs font-normal text-muted-foreground break-words">({u.email})</span>
+            /* C-70 : rangée en 3 lignes lisibles — nom / email / actions —
+               plus de boutons géants qui étouffent le texte. */
+            <Card key={u.id} className={cn("grid gap-1.5 px-4 py-2.5", u.active === 0 && "opacity-55")}>
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="m-0 min-w-0 flex-1 font-semibold break-words">
+                  {[u.first_name, u.last_name].filter(Boolean).join(" ") || <span className="font-normal text-muted-foreground">(sans nom)</span>}
+                </span>
+                {u.auth_provider === "oidc" && <span className="shrink-0 text-xs text-cat-indigo">SSO</span>}
+                {u.active === 0 && <Badge variant="error">désactivé</Badge>}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -158,32 +163,33 @@ export default function AdminPage() {
                   }}
                   aria-label={`Modifier le compte ${u.email}`}
                   title="Modifier le compte (Prénom, Nom, rôle, activation)"
-                  className="h-7 w-7 shrink-0 text-base"
+                  className="h-7 w-7 shrink-0"
                 ><Pencil size={14} aria-hidden="true" /></Button>
-              </span>
-              <Select
-                value={u.role}
-                onChange={(e) => updateUser(u, { role: e.target.value as AdminUser["role"] })}
-                disabled={u.id === user?.id}
-                className="min-w-0 flex-[1_1_6rem]"
-                aria-label={`Rôle de ${u.email}`}
-              >
-                <option value="reader">Lecteur</option>
-                <option value="author">Auteur</option>
-                <option value="admin">Admin</option>
-              </Select>
-              {u.auth_provider === "oidc" && <span className="shrink-0 text-xs" style={{ color: "#7b16c9" }}>SSO</span>}
-              <span className="ml-auto flex items-center gap-1.5">
-                {u.active === 0 && <Badge variant="error">désactivé</Badge>}
-                {u.auth_provider !== "oidc" && (
-                  <Button variant="outline" size="sm" onClick={() => resetPassword(u)}>Réinitialiser le mot de passe</Button>
-                )}
-                {u.id !== user?.id && (
-                  u.active === 1
-                    ? <Button variant="destructive" size="sm" onClick={() => updateUser(u, { active: 0 })}>Désactiver</Button>
-                    : <Button variant="outline" size="sm" onClick={() => updateUser(u, { active: 1 })}>Réactiver</Button>
-                )}
-              </span>
+              </div>
+              <p className="m-0 min-w-0 text-xs text-muted-foreground break-words">{u.email}</p>
+              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                <Select
+                  value={u.role}
+                  onChange={(e) => updateUser(u, { role: e.target.value as AdminUser["role"] })}
+                  disabled={u.id === user?.id}
+                  className="h-9 w-auto min-w-0 flex-[0_1_7rem]"
+                  aria-label={`Rôle de ${u.email}`}
+                >
+                  <option value="reader">Lecteur</option>
+                  <option value="author">Auteur</option>
+                  <option value="admin">Admin</option>
+                </Select>
+                <span className="ml-auto flex flex-wrap items-center gap-1.5">
+                  {u.auth_provider !== "oidc" && (
+                    <Button variant="outline" size="sm" onClick={() => resetPassword(u)} title="Réinitialiser le mot de passe (un mot de passe temporaire sera affiché)">Réinit. mdp</Button>
+                  )}
+                  {u.id !== user?.id && (
+                    u.active === 1
+                      ? <Button variant="destructive" size="sm" onClick={() => updateUser(u, { active: 0 })}>Désactiver</Button>
+                      : <Button variant="outline" size="sm" onClick={() => updateUser(u, { active: 1 })}>Réactiver</Button>
+                  )}
+                </span>
+              </div>
             </Card>
           ))}
         </section>

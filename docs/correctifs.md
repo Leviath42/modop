@@ -36,6 +36,41 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-70 — Retour utilisateur terrain : 17 correctifs UX en deux lots (réalisé)
+
+**Contexte** : liste de 19 modifications fournie par le propriétaire après test sur le CT. Traitées par effort croissant, en deux commits (lot A = 12 correctifs, lot B = 5).
+
+**Lot A** (commit 9e6ce3e) :
+1. **Brouillon ≠ « dernier état »** : bandeau explicite en lecture (« Brouillon de travail — non publié ») + bouton « Voir Vn » vers la dernière version publiée ; option du sélecteur renommée ; bandeau compact en lecture guidée.
+2. **Outils qui ne se désactivaient jamais** : `onToolDone` (câblé mais jamais appelé) est désormais invoqué après la pose d'une forme/flèche et du texte — l'outil se désarme seul.
+3. **Entête lecture mobile** réorganisée en 2 rangées (titre+retour / sélecteurs+liens).
+4. **Anti-débordement** : `min-w-0`/`truncate`/`shrink-0` durcis (bandeau éditeur, rangées d'étapes, entête lecture).
+6. **Photos pleine largeur au chargement** (défaut 0,6 → 1 : éditeur, vue lecture, calcul de hauteur).
+8. **Accueil : un MO par ligne** (retour au rendu antérieur, plus lisible).
+11. **Alerte « à revoir »** pour auteurs/admins sur l'accueil (bandeau + action vers le filtre).
+12. **Aide à la pose** déplacée du canevas vers la barre d'outils fixe (texte contextuel dans la barre).
+13. **Flyout Formes : auto-repli à la sélection** (règle 4 de la spec, ré-affichage par re-clic).
+14. **Couleurs d'annotation élargies à 8** + pastilles plus petites sur mobile.
+18. **Retour au début fixe** en lecture (bouton flottant bas-droite).
+19. **Lecture guidée** : colonne contrainte `max-w-[560px]` (desktop lisible, calqué sur les autres pages).
+
+**Lot B** :
+15. **Indications sécurité** : bannière forte par indication (fond teinté + bordure 5 px de la couleur, icône colorée, libellé gras majuscule) — remplace les petites pastilles.
+10. **Recherche globale** : bouton loupe dans le bandeau (desktop + mobile) → accueil avec focus automatique sur le champ (`?rechercher=1`).
+7. **Suppression au drag & drop d'étapes** : zone « Relâchez pour supprimer » apparaît pendant le déplacement → ouvre la confirmation (jamais de suppression directe).
+5. **Recherche de responsable** : suggestions déroulantes avec Prénom Nom + email (filtrage nom ET email) — remplace le datalist natif peu lisible.
+9. **Page comptes** : rangées en 3 lignes (nom / email / actions), boutons raccourcis (« Réinit. mdp »), sélecteur de rôle compact.
+
+**Différés (nouveaux chantiers, roadmap)** : #16 personnalisation des indications métiers (paramétrage persisté = migration + API), #17 commentaires auteurs par étape (schema + API + UI).
+
+**Tests** : suite front verte (`header-tools` adapté à l'auto-repli du flyout), lint server+web, 117/117 serveur (flaky S2 connu), build web OK.
+
+**Fichiers** : `web/src/pages/{list,reader,guided-reader,editor,admin}.tsx`, `web/src/{nav,step-canvas,step-canvas-view}.tsx`, `web/src/editor/{bottom-bar.tsx,tools/definitions.tsx}`, `web/src/lib/header-tools.test.ts`.
+
+**État** : livré sur beta.
+
+---
+
 ## C-69 — Barre d'outils tactile : libellés masqués, icônes en priorité (correctif C-67)
 
 **Problème** (constat propriétaire sur mobile) : la barre basse superposait ses textes — la règle `pointer:coarse` de styles.css (C-37) fixe les boutons `tool-icon-btn` à 2,4 rem pour éviter tout reflow pendant le drag ; avec « icône + libellé », le contenu débordait de cette boîte fixe.
