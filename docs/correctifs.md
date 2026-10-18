@@ -36,6 +36,20 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-69 — Barre d'outils tactile : libellés masqués, icônes en priorité (correctif C-67)
+
+**Problème** (constat propriétaire sur mobile) : la barre basse superposait ses textes — la règle `pointer:coarse` de styles.css (C-37) fixe les boutons `tool-icon-btn` à 2,4 rem pour éviter tout reflow pendant le drag ; avec « icône + libellé », le contenu débordait de cette boîte fixe.
+
+**Correctif** : les libellés des outils passent en `pointer-coarse:hidden` (variante Tailwind v4 native) — **icônes seules sur tout pointeur tactile** (boîtes carrées 2,4 rem, conformes C-37), « icône + texte » conservé au pointeur souris (desktop inchangé, validé par le propriétaire). L'accessibilité est préservée : chaque bouton garde son `aria-label` complet, le badge compteur (Indications) reste visible.
+
+**Tests** : suite front verte (aria-labels inchangés), lint server+web, 117/117 serveur ; media query `pointer:coarse` vérifiée dans le CSS buildé.
+
+**Fichiers** : `web/src/editor/bottom-bar.tsx`.
+
+**État** : livré sur beta.
+
+---
+
 ## C-68 — Icônes : jeu unique Lucide, suppression des emojis (réalisé)
 
 **Problème** (constat propriétaire) : de nombreux emojis/glyphes décoratifs (🖼 📷 🗑 ⚠ ✓ ⠿ ✎ ✕ ⚑ ⇥ ⬇ ▸) avaient été posés au fil des correctifs UI, avant qu'un jeu d'icônes n'existe puis pour tout ce qu'il ne couvrait pas — rendu amateur, incohérent et dépendant de la police emoji du système.

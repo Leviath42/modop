@@ -66,7 +66,10 @@ export function EditorBottomBar({ ctx }: { ctx: ToolContext }) {
           data-keep-canvas-selection={cmd.keepCanvasSelection ? "1" : undefined}
         >
           {cmd.icon(ctx)}
-          <span className="text-xs">{cmd.label}</span>
+          {/* Mobile/tactile : icônes seules — la règle pointer:coarse de
+              styles.css (C-37) fixe les boutons à 2,4rem ; les libellés
+              y déborderaient. Icône prioritaire, texte au pointeur souris. */}
+          <span className="text-xs pointer-coarse:hidden">{cmd.label}</span>
           {cmd.badge?.(ctx) && (
             <span className="rounded-full bg-primary px-1.5 text-[0.65rem] font-semibold text-primary-foreground">
               {cmd.badge(ctx)}
