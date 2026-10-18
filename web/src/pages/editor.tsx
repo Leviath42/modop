@@ -59,9 +59,12 @@ export default function EditorPage() {
   const [showMeta, setShowMeta] = useState(false);
   const [insertTool, setInsertTool] = useState<Shape["type"] | null>(null);
   const [insertColor, setInsertColor] = useState(COLORS[0]);
+  const [insertWidth, setInsertWidth] = useState(2); // C-71 (#10) : épaisseur du trait
   const [activeStepId, setActiveStepId] = useState<number | null>(null);
   const [confirmDeleteStep, setConfirmDeleteStep] = useState<Step | null>(null);
   const [confirmPublish, setConfirmPublish] = useState(false);
+  // C-71 (#4) : abandon du brouillon -> restauration de la dernière publiée
+  const [confirmRevert, setConfirmRevert] = useState(false);
   const [reviewDue, setReviewDue] = useState("");
   const [ownerEmail, setOwnerEmail] = useState("");
   // #5 : suggestions de responsable — recherche par nom ET email (les
@@ -264,9 +267,26 @@ export default function EditorPage() {
   }, [ownerEmail, accounts]);
 
   const toolCtx: ToolContext = {
-    isNew, steps, activeStepId, insertTool, insertColor, canvasSelection,
-    actions: { addStep, openPhotoSource, setInsertTool: selectInsertTool, setInsertColor, togglePreset, deleteActiveStep, deleteCanvasSelection },
+    isNew, steps, activeStepId, insertTool, insertColor, insertWidth, canvasSelection,
+    actions: { addStep, openPhotoSource, setInsertTool: selectInsertTool, setInsertColor, setInsertWidth, togglePreset, deleteActiveStep, deleteCanvasSelection },
   };
+
+  async function revertDraft() {
+    if (!wf || !wf.current_version) return;
+    setError(null);
+    try {
+      await api.restoreVersion(wf.id, wf.current_version);
+      const w = await api.getWorkflow(id!);
+      setWf(w); setSteps(w.steps);
+      setTitle(w.title); setReference(w.reference);
+      setCategory(w.category); setFamily(w.family ?? ""); setDescription(w.description);
+      setReviewDue(w.review_due ?? ""); setOwnerEmail(w.owner_email ?? "");
+      setNotice(`Brouillon abandonné — retour à V${w.current_version}`);
+      setTimeout(() => setNotice(null), 2500);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Restauration impossible");
+    }
+  }
 
   async function publish() {
     if (!wf) return;
@@ -301,6 +321,11 @@ export default function EditorPage() {
             {!isNew && (
               <Button onClick={() => setShowMeta((v) => !v)} aria-expanded={showMeta} variant="outline" size="sm">
                 {showMeta ? "Masquer les détails" : "Détails"}
+              </Button>
+            )}
+            {!isNew && wf?.state === "draft" && (wf.current_version ?? 0) > 0 && (
+              <Button onClick={() => setConfirmRevert(true)} variant="outline" size="sm" title="Abandonner le brouillon et revenir à la dernière version publiée" aria-label="Abandonner le brouillon">
+                Abandonner le brouillon
               </Button>
             )}
             {!isNew && steps.length > 0 && (
@@ -533,6 +558,7 @@ export default function EditorPage() {
                       stepId={step.id}
                       tool={activeStepId === step.id ? insertTool : null}
                       color={insertColor}
+                      strokeWidth={insertWidth}
                       onToolDone={() => setInsertTool(null)}
                       onSelectionChange={activeStepId === step.id ? (n) => setCanvasSelection(n) : undefined}
                       deleteActionRef={activeStepId === step.id ? (fn) => { canvasDeleteRef.current = fn; } : undefined}
@@ -669,6 +695,23 @@ export default function EditorPage() {
             Modifications apportées (visible dans l'historique)
             <Textarea value={changelog} onChange={(e) => setChangelog(e.target.value)} rows={2} className="min-h-0" placeholder="Ex. : ajout de l'étape de contrôle final, photo arrière remplacée" />
           </Label>
+        </Modal>
+      )}
+      {wf && wf.current_version != null && wf.current_version > 0 && (
+        <Modal
+          open={confirmRevert}
+          onClose={() => setConfirmRevert(false)}
+          title="Abandonner le brouillon ?"
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setConfirmRevert(false)}>Annuler</Button>
+              <Button variant="destructive" onClick={() => { setConfirmRevert(false); void revertDraft(); }}>Revenir à V{wf.current_version}</Button>
+            </>
+          }
+        >
+          <p className="m-0 text-sm text-muted-foreground">
+            Le brouillon en cours sera remplacé par la dernière version publiée (V{wf.current_version}). Toutes les modifications non publiées seront perdues — cette action ne peut pas être annulée.
+          </p>
         </Modal>
       )}
     </>

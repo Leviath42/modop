@@ -1,6 +1,6 @@
 # Modop — Roadmap
 
-*Dernière mise à jour : après C-68 — **icônes : jeu unique Lucide** (emojis supprimés, `icons.tsx` retiré) ; palette d'outils refondue (C-67 : registre de commandes + barre basse fixe) ; refonte UI C-64→C-66 (Tailwind v4, tokens palette, bandeau meal_plan) ; **priorité : fonctionnel et mode édition**, vague 10 en standby ; vague 9 terminée code + ops (Uptime Kuma déployé, supervisé depuis Home Assistant) ; production maintenue sur `beta` ; reste côté propriétaire : recevoir les premières PR Dependabot.*
+*Dernière mise à jour : après C-71 — **deuxième vague terrain livrée** (13 correctifs, dont cause racine serveur des positions perdues au canevas, flèche/zone en clic-glissé, bouton Style + épaisseur, « dernier état » = dernier publié + Abandonner le brouillon) ; C-70 : première vague (17 correctifs) ; refonte UI C-64→C-69 (Tailwind v4, palette, barre basse d'outils, Lucide) ; **priorité : fonctionnel et mode édition**, vague 10 en standby ; vague 9 terminée code + ops ; production maintenue sur `beta` ; reste côté propriétaire : recevoir les premières PR Dependabot.*
 
 L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archives/roadmap-v1-a-v6bis.md](archives/roadmap-v1-a-v6bis.md). La série de correctifs UI/UX (C-01 → C-51) est journalisée dans [correctifs.md](correctifs.md).
 

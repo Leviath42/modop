@@ -16,9 +16,20 @@ export default function GuidedReaderPage() {
   const [idx, setIdx] = useState(0);
 
   useEffect(() => {
-    api.getWorkflow(id!)
-      .then((w) => setWf(w))
-      .catch((e) => setError(e instanceof ApiError ? e.message : "Erreur de chargement"));
+    let cancelled = false;
+    (async () => {
+      try {
+        // C-71 (#4) : lecture guidée = dernier PUBLIÉ (le terrain ne doit
+        // jamais lire un brouillon) ; brouillon seulement s'il n'existe
+        // aucune version publiée.
+        const vs = await api.versions(Number(id!)).catch(() => []);
+        const w = vs.length > 0 ? await api.getVersion(id!, vs[0].number) : await api.getWorkflow(id!);
+        if (!cancelled) { setWf(w); setError(null); }
+      } catch (e) {
+        if (!cancelled) setError(e instanceof ApiError ? e.message : "Erreur de chargement");
+      }
+    })();
+    return () => { cancelled = true; };
   }, [id]);
 
   if (error) return (<><NavBar /><main className="p-8"><p role="alert" className="text-error">{error}</p><Link to="/">Retour</Link></main></>);

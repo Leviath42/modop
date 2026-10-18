@@ -42,6 +42,7 @@ export default function StepCanvas({
   onPhotosChanged,
   tool: toolProp,
   color: colorProp,
+  strokeWidth = 2,
   onToolDone,
   onSelectionChange,
   deleteActionRef,
@@ -53,6 +54,7 @@ export default function StepCanvas({
   onPhotosChanged?: () => void;
   tool?: Shape["type"] | null;
   color?: string;
+  strokeWidth?: number;
   onToolDone?: () => void;
   onSelectionChange?: (count: number) => void;
   deleteActionRef?: (fn: () => void) => void;
@@ -189,16 +191,32 @@ export default function StepCanvas({
   }
 
 
+  // C-71 (#11) : hit-test fidèle au rendu — la flèche se saisit LE LONG de
+  // son segment (plus seulement près du centre), le rectangle sur SON
+  // CONTOUR comme sur son intérieur, le texte sur une zone élargie.
   function shapeHit(p: { x: number; y: number }): number {
+    const W = canvasRef.current?.clientWidth ?? 800;
+    const tolX = 10 / W;        // ~10 px en fraction de largeur
+    const tolY = 10 / REF_H;   // ~10 px en fraction de hauteur de référence
     for (let i = shapes.length - 1; i >= 0; i--) {
       const s = shapes[i];
       if (s.type === "arrow" && s.x2 !== undefined && s.y2 !== undefined) {
-        const cx = (s.x1 + s.x2) / 2, cy = (s.y1 + s.y2) / 2;
-        if (Math.hypot(p.x - cx, p.y - cy) < Math.max(0.08, Math.hypot(s.x2 - s.x1, s.y2 - s.y1) / 2)) return i;
+        const x1 = s.x1 * W, y1 = s.y1 * REF_H, x2 = s.x2 * W, y2 = s.y2 * REF_H;
+        const px = p.x * W, py = p.y * REF_H;
+        const dx = x2 - x1, dy = y2 - y1;
+        const len2 = dx * dx + dy * dy || 1;
+        const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / len2));
+        const d = Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+        if (d < 10 + (s.width ?? 2)) return i;
       } else if (s.type === "rect" && s.w !== undefined && s.h !== undefined) {
-        if (p.x >= s.x1 && p.x <= s.x1 + s.w && p.y >= s.y1 && p.y <= s.y1 + s.h) return i;
+        const inside = p.x >= s.x1 && p.x <= s.x1 + s.w && p.y >= s.y1 && p.y <= s.y1 + s.h;
+        const nearX = p.x >= s.x1 - tolX && p.x <= s.x1 + s.w + tolX;
+        const nearY = p.y >= s.y1 - tolY && p.y <= s.y1 + s.h + tolY;
+        const onBorder = nearX && nearY &&
+          (p.x <= s.x1 + tolX || p.x >= s.x1 + s.w - tolX || p.y <= s.y1 + tolY || p.y >= s.y1 + s.h - tolY);
+        if (inside || onBorder) return i;
       } else {
-        if (Math.hypot(p.x - s.x1, p.y - s.y1) < 0.06) return i;
+        if (Math.hypot(p.x - s.x1, p.y - s.y1) < Math.max(0.05, tolX * 4)) return i;
       }
     }
     return -1;
@@ -353,7 +371,18 @@ export default function StepCanvas({
   function onPointerDown(e: React.PointerEvent) {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     onInteract?.();               // C-41 : toute interaction rend l'étape active côté éditeur
-    if (tool) return;            // les outils agissent au clic (le click part aussi au tactile)
+    // C-71 (#6) : flèche et zone se dessinent désormais en UN CLIC-GLISSÉ
+    // (départ = pointerdown, arrivée = pointerup) — plus de clic-clic.
+    // Le texte reste posé au clic (champ de saisie à l'endroit touché).
+    if (tool) {
+      if (tool === "text") return;   // placement au relâchement (inchangé)
+      const pStart = pt(e);
+      e.preventDefault();
+      try { canvasRef.current?.setPointerCapture(e.pointerId); } catch { /* pointeur parti */ }
+      setPendingStart(pStart);
+      setPreview(pStart);
+      return;
+    }
     const p = pt(e);
     // C-26 : les formes sont rendues AU-DESSUS des photos (SVG après les <img>)
     // — le hit-test suit le même ordre, sinon une forme posée sur une image
@@ -386,24 +415,23 @@ export default function StepCanvas({
       const now = Date.now();
       const dbl = lastPhotoDownRef.current?.idx === ph && now - (lastPhotoDownRef.current?.at ?? 0) < 400;
       lastPhotoDownRef.current = { idx: ph, at: now };
-      let ids: number[];
-      if (e.shiftKey) {
-        ids = new Set(selPhotos).has(ph) ? [...selPhotos].filter((x) => x !== ph) : [...selPhotos, ph];
-      } else if (dbl || selPhotos.has(ph)) {
-        ids = [ph];
-      } else {
-        // premier clic simple : pas de sélection — juste préparer le drag
-        // éventuel si la photo est déjà sélectionnée ; sinon ne rien faire.
-        ids = [];
-      }
-      if (ids.length === 0 && !selPhotos.has(ph)) {
-        // clic simple hors sélection : rien (pas de drag d'une photo non sélectionnée)
+      if (e.shiftKey || dbl || selPhotos.has(ph)) {
+        let ids: number[];
+        if (e.shiftKey) {
+          ids = new Set(selPhotos).has(ph) ? [...selPhotos].filter((x) => x !== ph) : [...selPhotos, ph];
+        } else {
+          ids = [ph];
+        }
+        setSelPhotos(new Set(ids));
+        setSelShapes(new Set());
+        setDrag({ kind: "photo", ids, grabs: ids.map((i) => ({ x: p.x - objs[i].x, y: p.y - objs[i].y })), from: p });
         return;
       }
-      setSelPhotos(new Set(ids.length ? ids : [...selPhotos]));
-      setSelShapes(new Set());
-      setDrag({ kind: "photo", ids: [...(ids.length ? ids : selPhotos)], grabs: (ids.length ? ids : [...selPhotos]).map((i) => ({ x: p.x - objs[i].x, y: p.y - objs[i].y })), from: p });
-    } else if (sh >= 0) {
+      // C-71 (#3) : clic simple sur une photo NON sélectionnée → le geste
+      // devient un RECTANGLE DE SÉLECTION (avant : rien ne se passait, la
+      // sélection était impossible à démarrer au-dessus d'une photo).
+    }
+    if (sh >= 0) {
       let idx: number[];
       if (e.shiftKey) {
         idx = selShapes.has(sh) ? [...selShapes].filter((x) => x !== sh) : [...selShapes, sh];
@@ -443,21 +471,21 @@ export default function StepCanvas({
       setTextDraft({ x: p.x, y: p.y, value: "" });
       return;
     }
-    if (tool) {
-      if (!pendingStart) { setPendingStart(p); setPreview(p); }
-      else {
-        const a = pendingStart, b = p;
-        if (Math.hypot(b.x - a.x, b.y - a.y) >= 0.02) {
-          const shape: Shape = tool === "arrow"
-            ? { type: "arrow", x1: a.x, y1: a.y, x2: b.x, y2: b.y, color }
-            : { type: "rect", x1: Math.min(a.x, b.x), y1: Math.min(a.y, b.y), w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y), color };
-          void saveShapes([...shapes, shape]);
-          // Auto-désactivation après la pose (retour utilisateur) : l'outil
-          // ne reste pas armé — l'éditeur est prévenu via onToolDone.
-          onToolDone?.();
-        }
-        setPendingStart(null); setPreview(null);
+    // C-71 (#6) : création en UN CLIC-GLISSÉ — le départ est posé au
+    // pointerdown, la forme est créée au relâchement. Un simple clic sans
+    // glisser (distance < seuil) n'insère rien.
+    if (pendingStart) {
+      const a = pendingStart, b = p;
+      if (Math.hypot(b.x - a.x, b.y - a.y) >= 0.02) {
+        const shape: Shape = tool === "arrow"
+          ? { type: "arrow", x1: a.x, y1: a.y, x2: b.x, y2: b.y, color, width: strokeWidth }
+          : { type: "rect", x1: Math.min(a.x, b.x), y1: Math.min(a.y, b.y), w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y), color, width: strokeWidth };
+        void saveShapes([...shapes, shape]);
+        // Auto-désactivation après la pose (retour utilisateur) : l'outil
+        // ne reste pas armé — l'éditeur est prévenu via onToolDone.
+        onToolDone?.();
       }
+      setPendingStart(null); setPreview(null);
     }
   }
 
@@ -479,7 +507,7 @@ export default function StepCanvas({
   };
   useEffect(() => { deleteActionRef?.(deleteSelection); });
 
-  const sw = (i: number) => (selShapes.has(i) ? 3 : 2);
+  const sw = (i: number) => (shapes[i].width ?? 2) + (selShapes.has(i) ? 1 : 0);
 
   return (
     <div className="grid gap-1.5">
@@ -540,13 +568,13 @@ export default function StepCanvas({
           {pendingStart && preview && tool === "arrow" && (() => {
             const W = canvasRef.current?.clientWidth ?? 800;
             return <line x1={pendingStart.x * W} y1={pendingStart.y * REF_H} x2={preview.x * W} y2={preview.y * REF_H}
-              stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinecap="round" markerEnd={`url(#cs-ah-${stepId}-${color.replace("#", "")})`} />;
+              stroke={color} strokeWidth={strokeWidth} vectorEffect="non-scaling-stroke" strokeLinecap="round" markerEnd={`url(#cs-ah-${stepId}-${color.replace("#", "")})`} />;
           })()}
           {pendingStart && preview && tool === "rect" && (() => {
             const W = canvasRef.current?.clientWidth ?? 800;
             return <rect x={Math.min(pendingStart.x, preview.x) * W} y={Math.min(pendingStart.y, preview.y) * REF_H}
               width={Math.abs(pendingStart.x - preview.x) * W} height={Math.abs(pendingStart.y - preview.y) * REF_H}
-              fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" />;
+              fill="none" stroke={color} strokeWidth={strokeWidth} vectorEffect="non-scaling-stroke" />;
           })()}
           {selRect && (() => {
             const W = canvasRef.current?.clientWidth ?? 800;

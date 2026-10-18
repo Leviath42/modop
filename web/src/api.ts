@@ -163,6 +163,11 @@ export const api = {
   async getVersion(id: number | string, number: number): Promise<WorkflowDetail> {
     return handle<WorkflowDetail>(await fetch(`/api/workflows/${id}/versions/${number}`));
   },
+  // C-71 (#4) : remplace le brouillon par le contenu d'une version publiée
+  // (abandonner un brouillon raté sans tout retaper).
+  async restoreVersion(id: number, number: number): Promise<void> {
+    await handle<unknown>(await fetch(`/api/workflows/${id}/versions/${number}/restore`, { method: "POST" }));
+  },
   async addStep(workflowId: number, data: { title: string; body?: string }): Promise<Step> {
     return handle<Step>(
       await fetch(`/api/workflows/${workflowId}/steps`, {

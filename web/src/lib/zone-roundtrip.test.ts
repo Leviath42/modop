@@ -55,8 +55,10 @@ function fire(el: Element | EventTarget, type: string, opts: PointerEventInit = 
 }
 // canevas : hauteur ~ (0.05 + 1*800*0.75/240)*240 + 12 = 612px ; ratio 0.75 par défaut
 // dessiner une zone vers le BAS du canevas : y ≈ 400px (=1.667 en fraction REF_H)
+// C-71 (#6) : la zone se dessine en UN CLIC-GLISSÉ — départ au pointerdown,
+// création au pointerup (plus de clic-clic).
 const cv2 = (Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%") as HTMLElement[]).pop()!;
-fire(cv2, "pointerup", { clientX: 100, clientY: 400 });
+fire(cv2, "pointerdown", { clientX: 100, clientY: 400 });
 await new Promise((r) => setTimeout(r, 30));
 const cv3 = (Array.from(doc.querySelectorAll("div")).filter((d) => d.style.position === "relative" && d.style.width === "100%") as HTMLElement[]).pop()!;
 fire(cv3, "pointerup", { clientX: 300, clientY: 450 });

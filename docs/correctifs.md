@@ -36,6 +36,35 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-71 — Deuxième vague de retour terrain : 13 correctifs en deux lots (réalisé)
+
+**Contexte** : deuxième liste du propriétaire après test sur le CT. Traitées par effort croissant, deux commits (lot 1 = 8, lot 2 = 5).
+
+**Lot 1** (commit 36efb42) :
+1. **QR mode sombre** : la feuille QR reste claire (couleurs forcées, priorité sur le thème) — numéro de document lisible.
+2. **Positions perdues à la publication/brouillon — CAUSE RACINE serveur** : `display_y` était validé sur [0,1] alors que le canevas dépasse 240 px (y = fraction de 240 px). Toute photo posée sous la première recevait un 422 **silencieux** → mise en page perdue au rechargement. Plage étendue à [0,10] + 5 assertions runtime (`photo-layout.test.ts` : y=1.75 accepté/persisté, y négatif et >10 rejetés).
+13. **Mode guidé** : cadres ajustés au contenu (suppression de la rangée `1fr` qui étirait).
+9. **Brouillons masqués aux lecteurs** (filtre front ; paramètre serveur optionnel à venir).
+5. **Bouton « Éditer »** pour les auteurs en lecture classique.
+8. **Responsable** : champ pleine largeur, suggestions « Prénom Nom » seules.
+12. **Indications** rendues à l'identique de la lecture pendant l'édition.
+7. **Champ de saisie texte** : style identique au texte posé (padding, taille, graisse — seul un pointillé discret distingue la saisie).
+
+**Lot 2** :
+6. **Flèche/zone en UN clic-glissé** (départ au pointerdown, création au relâchement ; un clic sans glisser n'insère rien) — `zone-roundtrip` adapté.
+3. **Rectangle de sélection démarre AU-DESSUS d'une photo** (avant : clic simple sur une photo non sélectionnée ne faisait rien).
+11. **Hit-test fidèle au rendu** : flèche saisissable le long de son segment, rectangle sur son contour (plus seulement au centre/intérieur strict).
+10. **Bouton Style** (raccourci S) : icône + pastille de la couleur en cours → flyout grille de 8 couleurs compactes + curseur d'épaisseur (1–6). Épaisseur persistée avec chaque forme (`width`), rendue en lecture, canevas d'édition ET export docx (`canvas-composite`).
+4. **« Dernier état » = dernier PUBLIÉ** : lecture classique et guidée ouvrent par défaut la dernière version publiée ; le brouillon n'est plus la vue par défaut. Option « Brouillon en cours » réservée aux auteurs (sélecteur de versions) + bandeau explicite. **« Abandonner le brouillon »** dans l'éditeur (confirmation) : restaure la dernière version publiée via l'API `restore` existante — plus besoin de tout retaper après un brouillon raté.
+
+**Tests** : suite front verte (`zone-roundtrip` et `step-canvas-adaptive` adaptés — le second exposed une race de timing test-only : pointerup dans le même tick traité par des listeners stale), lint server+web, 117/117 serveur, build web OK.
+
+**Fichiers** : `server/src/routes/photos.ts`, `server/test/photo-layout.test.ts`, `server/src/render/canvas-composite.ts`, `web/src/{api,annotated-photo,step-canvas,step-canvas-view,styles}.ts(x)`, `web/src/pages/{reader,guided-reader,editor}.tsx`, `web/src/editor/tools/{types,definitions}.ts(x)`, 2 fichiers de tests front.
+
+**État** : livré sur beta.
+
+---
+
 ## C-70 — Retour utilisateur terrain : 17 correctifs UX en deux lots (réalisé)
 
 **Contexte** : liste de 19 modifications fournie par le propriétaire après test sur le CT. Traitées par effort croissant, en deux commits (lot A = 12 correctifs, lot B = 5).

@@ -27,12 +27,27 @@ export default function ReaderPage() {
   const [activeStep, setActiveStep] = useState(0);
 
   useEffect(() => {
-    const load = versionParam
-      ? api.getVersion(id!, Number(versionParam))
-      : api.getWorkflow(id!);
-    load
-      .then((w) => { setWf(w); setError(null); })
-      .catch((e) => setError(e instanceof ApiError ? e.message : "Erreur de chargement"));
+    let cancelled = false;
+    (async () => {
+      try {
+        let w: WorkflowDetail;
+        if (versionParam === "draft") {
+          w = await api.getWorkflow(id!);
+        } else if (versionParam) {
+          w = await api.getVersion(id!, Number(versionParam));
+        } else {
+          // C-71 (#4) : « dernier état » = DERNIER PUBLIÉ — le brouillon
+          // n'est plus la vue par défaut ; il reste accessible aux auteurs
+          // via l'option dédiée du sélecteur de versions.
+          const vs = await api.versions(Number(id!)).catch(() => []);
+          w = vs.length > 0 ? await api.getVersion(id!, vs[0].number) : await api.getWorkflow(id!);
+        }
+        if (!cancelled) { setWf(w); setError(null); }
+      } catch (e) {
+        if (!cancelled) setError(e instanceof ApiError ? e.message : "Erreur de chargement");
+      }
+    })();
+    return () => { cancelled = true; };
   }, [id, versionParam]);
   useEffect(() => {
     api.versions(Number(id))
@@ -57,7 +72,7 @@ export default function ReaderPage() {
             <h1 className="m-0 min-w-0 flex-1 truncate text-base">
               {wf.title} <code className="rounded bg-surface-2 px-1.5 py-0.5 text-[0.8em]">{wf.reference}</code>
             </h1>
-            {versionParam && (
+            {versionParam && versionParam !== "draft" && (
               <span className="shrink-0 rounded bg-accent px-2 py-0.5 text-sm font-semibold text-foreground">
                 V{versionParam} (publiée)
               </span>
@@ -91,7 +106,10 @@ export default function ReaderPage() {
                 aria-label="Consulter une version publiée"
                 className="m-0 w-auto min-w-0 max-w-[45%] px-1.5 py-1 text-sm font-semibold"
               >
-                <option value="">{wf.state === "draft" ? "Brouillon (non publié)" : "Dernier état"}</option>
+                <option value="">{versions.length > 0 ? `Dernier publié (V${versions[0].number})` : "Brouillon (non publié)"}</option>
+                {user && user.role !== "reader" && (
+                  <option value="draft">Brouillon en cours</option>
+                )}
                 {versions.map((v) => (
                   <option key={v.number} value={v.number}>V{v.number}{v.changelog ? ` — ${v.changelog.slice(0, 40)}${v.changelog.length > 40 ? "…" : ""}` : ""}</option>
                 ))}
@@ -109,9 +127,9 @@ export default function ReaderPage() {
             </span>
           </div>
         </header>
-        {/* C-70 : un brouillon ne doit plus passer pour « le dernier état » —
-            bandeau explicite + action vers la dernière version publiée. */}
-        {wf.state === "draft" && !versionParam && (
+        {/* C-71 (#4) : le brouillon n'apparaît qu'à la demande explicite
+            (option « Brouillon en cours », auteurs). */}
+        {versionParam === "draft" && wf.state === "draft" && (
           <Alert variant="warn" title="Brouillon de travail — ce mode opératoire n'est pas publié">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-muted-foreground">

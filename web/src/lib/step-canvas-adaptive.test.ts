@@ -79,8 +79,12 @@ function fire(el: Element | EventTarget, type: string, opts: PointerEventInit = 
 }
 // C-28 : une photo se sélectionne au DOUBLE-CLIC ; un clic simple ne
 // sélectionne pas ; un clic fond désélectionne.
-function firePd(imgBox2: HTMLElement) {
+async function firePd(imgBox2: HTMLElement) {
+  // down et up sur des ticks distincts (comme au doigt/à la souris) : un
+  // pointerup dans le même tick serait traité par les listeners STALE du
+  // drag précédent (l'effet React ne les remplace qu'au flush suivant).
   fire(imgBox2, "pointerdown", { clientX: 200, clientY: 200 });
+  await new Promise((r) => setTimeout(r, 30));
   fire(dom.window, "pointerup", { clientX: 200, clientY: 200 });
 }
 firePd(imgBox);

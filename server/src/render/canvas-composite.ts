@@ -88,7 +88,8 @@ export async function composeStepCanvas(
     const y1 = s.y1 * REF_H;
     ctx.strokeStyle = color;
     ctx.fillStyle = color;
-    ctx.lineWidth = 3;
+    // C-71 (#10) : épaisseur du trait stockée avec la forme (défaut 3)
+    ctx.lineWidth = (s as { width?: number }).width ?? 3;
     if (s.type === "arrow") {
       const x2 = (s.x2 ?? s.x1 + 0.2) * width;
       const y2 = (s.y2 ?? s.y1 + 0.2) * REF_H;

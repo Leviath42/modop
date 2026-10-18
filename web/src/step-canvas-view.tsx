@@ -102,11 +102,11 @@ export default function StepCanvasView({ photos, shapes }: { photos: Photo[]; sh
         {sh.map((s, i) => {
           if (s.type === "arrow" && s.x2 !== undefined && s.y2 !== undefined) {
             return <line key={i} x1={s.x1 * W} y1={s.y1 * 240} x2={s.x2 * W} y2={s.y2 * 240}
-              stroke={s.color} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinecap="round" markerEnd={`url(#rv-ah-${s.color.replace("#", "")})`} />;
+              stroke={s.color} strokeWidth={s.width ?? 2} vectorEffect="non-scaling-stroke" strokeLinecap="round" markerEnd={`url(#rv-ah-${s.color.replace("#", "")})`} />;
           }
           if (s.type === "rect" && s.w !== undefined && s.h !== undefined) {
             return <rect key={i} x={s.x1 * W} y={s.y1 * 240} width={s.w * W} height={s.h * 240}
-              fill="none" stroke={s.color} strokeWidth="2" vectorEffect="non-scaling-stroke" />;
+              fill="none" stroke={s.color} strokeWidth={s.width ?? 2} vectorEffect="non-scaling-stroke" />;
           }
           return null;
         })}

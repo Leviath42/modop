@@ -11,6 +11,8 @@ export interface Shape {
   h?: number;
   text?: string;
   color: string;
+  // C-71 (#10) : épaisseur du trait (stockée avec la forme ; défaut 2).
+  width?: number;
 }
 
 export function parseShapes(raw: unknown): Shape[] {

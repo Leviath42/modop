@@ -1,6 +1,7 @@
 import {
   ArrowUpRight,
   Camera,
+  Palette,
   Check,
   Image as ImageIcon,
   Plus,
@@ -107,19 +108,6 @@ const shapes: CommandDefinition = {
           {ctx.insertTool === kind && <Check size={16} aria-hidden="true" className="text-ok" />}
         </button>
       ))}
-      <div className="mt-1 flex items-center gap-1.5 border-t border-border-soft pt-1.5" data-color-pop>
-        <span className="text-xs text-muted-foreground">Couleur</span>
-        {COLORS.map((c) => (
-          <button
-            key={c}
-            onClick={() => { ctx.actions.setInsertColor(c); ui.setOpen(false); }}
-            aria-label={`Couleur ${c}`}
-            aria-pressed={ctx.insertColor === c}
-            className={cn("size-4 cursor-pointer rounded-full sm:size-[22px]", ctx.insertColor === c ? "border-2 border-foreground" : "border border-border")}
-            style={{ background: c }}
-          />
-        ))}
-      </div>
     </div>
   ),
 };
@@ -136,6 +124,58 @@ const shapeShortcut = (kind: "arrow" | "rect" | "text", label: string, key: stri
   isVisible: () => false,
   run: (ctx) => ctx.actions.setInsertTool(ctx.insertTool === kind ? null : kind),
 });
+
+// — Style : couleur du trait + épaisseur (C-71 #10) —
+// Bouton compact (icône + pastille de la couleur en cours), flyout avec
+// grille de couleurs et curseur d'épaisseur — remplace la rangée de gros
+// ronds dans le flyout Formes (illisible sur mobile).
+const style: CommandDefinition = {
+  id: "style",
+  zone: "left",
+  label: "Style",
+  aria: "Style",
+  title: "Style : couleur et épaisseur du trait (S)",
+  shortcut: "s",
+  icon: (ctx) => (
+    <span className="inline-flex items-center gap-1">
+      <Palette size={16} aria-hidden="true" />
+      <span aria-hidden="true" className="size-3.5 rounded-full border border-border" style={{ background: ctx.insertColor }} />
+    </span>
+  ),
+  isVisible: () => true,
+  isActive: (ctx) => ctx.insertWidth !== 2,
+  run: (_ctx, ui) => ui.setOpen(!ui.open),
+  flyout: (ctx, _ui) => (
+    <div role="menu" aria-label="Style du trait" className="grid gap-2">
+      <div className="grid grid-cols-4 gap-1.5">
+        {COLORS.map((c) => (
+          <button
+            key={c}
+            onClick={() => ctx.actions.setInsertColor(c)}
+            aria-label={`Couleur ${c}`}
+            aria-pressed={ctx.insertColor === c}
+            title={`Couleur ${c}`}
+            className={cn("size-5 cursor-pointer rounded-full sm:size-6", ctx.insertColor === c ? "border-2 border-foreground" : "border border-border")}
+            style={{ background: c }}
+          />
+        ))}
+      </div>
+      <label className="grid gap-1 text-xs text-muted-foreground">
+        Épaisseur du trait : {ctx.insertWidth}
+        <input
+          type="range"
+          min={1}
+          max={6}
+          step={1}
+          value={ctx.insertWidth}
+          onChange={(e) => ctx.actions.setInsertWidth(Number(e.target.value))}
+          aria-label="Épaisseur du trait"
+          className="w-40"
+        />
+      </label>
+    </div>
+  ),
+};
 
 // — Indications (encarts métier de l'étape : attention, danger, EPI…) —
 const activePresetCount = (ctx: ToolContext) =>
@@ -209,6 +249,7 @@ export const EDITOR_COMMANDS: CommandDefinition[] = [
   stepAdd,
   photo,
   shapes,
+  style,
   indications,
   shapeShortcut("arrow", "Flèche", "a"),
   shapeShortcut("rect", "Zone", "r"),

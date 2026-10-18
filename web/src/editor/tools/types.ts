@@ -23,12 +23,14 @@ export interface ToolContext {
   activeStepId: number | null;
   insertTool: Shape["type"] | null;
   insertColor: string;
+  insertWidth: number;
   canvasSelection: number;
   actions: {
     addStep(): void;
     openPhotoSource(which: "gallery" | "camera"): void;
     setInsertTool(t: Shape["type"] | null): void;
     setInsertColor(c: string): void;
+    setInsertWidth(w: number): void;
     togglePreset(preset: PictoPreset): void;
     deleteActiveStep(): void;
     deleteCanvasSelection(): void;
