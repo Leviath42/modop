@@ -5,6 +5,11 @@
    - Compatibilité : les anciens noms (--accent, --surface, --text…) restent
      définis et remappés sur la nouvelle palette — le code non migré (styles
      inline) change donc de peau automatiquement.
+   - C-65 : les styles par ÉLÉMENT (a, button, input, titres…) vivent dans
+     @layer base — sinon (règles non layerées) ils écrasent TOUS les
+     utilitaires Tailwind (text-primary-foreground invisible sur les boutons,
+     liens et titres bleu-sur-bleu). Seules les garanties structurelles
+     (anti-débordement, tailles tactiles, impression) restent non layerées.
    Principe structurel inchangé : la PAGE ne doit JAMAIS scroller horizontalement. */
 @import "tailwindcss";
 
@@ -27,14 +32,18 @@
   --text-muted: #5b6470;
   --surface: #ffffff;
   --surface-2: #e9edf0;
-  --accent: #517485;           /* couleur d'action : liens, focus, bandeau */
-  --accent-bg: #e8eef1;        /* fond teinté bleu-gris */
-  --border: #c3ccd2;
+  /* --accent : couleur d'ACTION textuelle (liens, focus, sélection canevas) ;
+     distincte de --accent-bg (fond teinté). Liens bleu-gris sur blanc : 5:1. */
+  --accent: #517485;
+  --accent-bg: #e8eef1;
+  --border: #b7c3ca;
   --border-soft: #dfe4e8;
+  /* Primaire = couleur de FOND (boutons, bandeau) : bleu-gris + blanc = 5:1
+     dans les DEUX thèmes (en sombre un fond #96a9b1 était trop pâle/sale). */
   --primary: #517485;
   --primary-foreground: #ffffff;
   --secondary: #96a9b1;
-  --secondary-foreground: #16232a;
+  --secondary-foreground: #132030;
   /* Orange : décoratif par défaut (icônes, bordures, indicateurs) ; pour un
      texte ou un fond portant du texte, utiliser la variante "strong" — le
      contraste blanc sur #e84e0f est de 3,8:1 (WCAG insuffisant en texte
@@ -62,19 +71,21 @@
   --cat-pink: #c24f97;
 }
 
-/* Mode sombre (issue #2) — activé via data-theme sur <html>. */
+/* Mode sombre (issue #2) — activé via data-theme sur <html>.
+   Lisibilité : primaire/fonds inchangés (bleu-gris + blanc), les couleurs
+   TEXTUELLES s'éclaircissent (--accent 8,9:1 sur --bg, etc.). */
 html[data-theme="dark"] {
   --bg: #15191d;
   --text: #e4e8ea;
   --text-muted: #9daab3;
   --surface: #1f262c;
   --surface-2: #2a333b;
-  --accent: #96a9b1;
-  --accent-bg: #243037;
+  --accent: #a3bcc9;
+  --accent-bg: #243135;
   --border: #3b454e;
   --border-soft: #333d45;
-  --primary: #96a9b1;
-  --primary-foreground: #141f25;
+  --primary: #517485;
+  --primary-foreground: #ffffff;
   --secondary: #38434c;
   --secondary-foreground: #e4e8ea;
   --brand: #f2661f;
@@ -95,7 +106,9 @@ html[data-theme="dark"] {
 
 /* Exposition Tailwind v4 : chaque token devient un utilitaire (bg-primary,
    text-muted-foreground, border-border…). inline = suit la var à l'exécution,
-   donc le mode sombre s'applique partout sans recompiler. */
+   donc le mode sombre s'applique partout sans recompiler. --link est la
+   couleur d'action TEXTUELLE (liens, focus) : bleu-gris en clair, éclaircie
+   en sombre. */
 @theme inline {
   --color-background: var(--bg);
   --color-foreground: var(--text);
@@ -109,6 +122,7 @@ html[data-theme="dark"] {
   --color-border-soft: var(--border-soft);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-link: var(--accent);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-accent: var(--accent-bg);
@@ -175,7 +189,7 @@ input, select, textarea { font-size: 16px; }
 }
 /* Anti-débordement structurel : rien ne peut élargir la page, quoi qu'il
    arrive (champs, pré, SVG, images) ; la page ne scrolle JAMAIS
-   horizontalement. */
+   horizontalement. Garanties non layerées : elles doivent gagner. */
 img, svg, video, canvas { max-width: 100%; }
 input, textarea, select { max-width: 100%; }
 body { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
@@ -194,16 +208,6 @@ html, body {
   overflow-x: clip;      /* ne transmet jamais de débordement */
 }
 * { box-sizing: border-box; }
-body { background: var(--bg); color: var(--text); }
-button { cursor: pointer; color: var(--text); }
-a { color: var(--accent); }
-
-/* Saisies cohérentes + thème */
-input, select, textarea {
-  font: inherit;
-  background: var(--surface);
-  color: var(--text);
-}
 
 /* Anti-débordement : tout contenu long se replie, ne coupe jamais la page */
 pre, code {
@@ -218,11 +222,8 @@ figure { margin: 0; }
 ul { padding: 0; margin: 0; }
 li { list-style: none; }
 
-/* I2 : focus visible pour la navigation clavier (sans doubler le look au clic). */
-:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
+/* C-19 : navigations internes (liens d'étapes, retours en haut) fluides. */
+html { scroll-behavior: smooth; }
 
 /* RF-71 : impression de la vignette QR — la feuille seule, sans l'interface. */
 @media print {
@@ -231,10 +232,32 @@ li { list-style: none; }
   .qr-sheet { box-shadow: none !important; border: 1px solid #ccc; }
 }
 
-/* C-19 : navigations internes (liens d'étapes, retours en haut) fluides. */
-html { scroll-behavior: smooth; }
+/* ============================================================
+   Styles par élément — @layer base (C-65) : les utilitaires Tailwind
+   des composants DOIVENT pouvoir les surcharger ; hors layer, ces
+   règles écrasaient text-primary-foreground (boutons/liens invisibles)
+   et la taille des titres stylés.
+   ============================================================ */
+@layer base {
+  body { background: var(--bg); color: var(--text); }
+  button { cursor: pointer; color: var(--text); }
+  a { color: var(--accent); }
 
-/* Titres de page compacts : les h1 stylés explicitement (Tailwind ou inline)
-   restent prioritaires ; ce réglage borne les h1 "nus" du code non migré. */
-h1 { font-size: 1.05rem; margin: 0.4rem 0 0.6rem; }
-h2 { font-size: 0.95rem; }
+  /* Saisies cohérentes + thème */
+  input, select, textarea {
+    font: inherit;
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  /* I2 : focus visible pour la navigation clavier (sans doubler le look au clic). */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* Filet de sécurité pour les h1/h2 "nus" du code non migré — les titres
+     stylés explicitement (Tailwind) restent prioritaires. */
+  h1 { font-size: 1.05rem; margin: 0.4rem 0 0.6rem; }
+  h2 { font-size: 0.95rem; }
+}

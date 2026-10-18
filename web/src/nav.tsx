@@ -72,13 +72,13 @@ export default function NavBar() {
   return (
     <nav
       ref={navRef}
-      className="sticky top-0 z-[300] flex items-center gap-2 bg-primary px-3 py-2 text-primary-foreground shadow-sm"
+      className="sticky top-0 z-[300] flex items-center gap-2 bg-primary px-3 py-1.5 text-primary-foreground shadow-sm"
     >
       <Link
         to="/"
-        className="flex shrink-0 items-center gap-1.5 text-lg font-bold text-primary-foreground no-underline"
+        className="flex shrink-0 items-center gap-1.5 text-base font-bold text-primary-foreground no-underline"
       >
-        <span aria-hidden="true" className="inline-block size-2.5 rounded-sm bg-brand" />
+        <span aria-hidden="true" className="inline-block size-2 rounded-sm bg-brand" />
         Modop
       </Link>
       <div ref={menuRef} className="relative ml-auto">
@@ -88,7 +88,7 @@ export default function NavBar() {
           aria-haspopup="menu"
           aria-label="Menu"
           title="Menu"
-          className="inline-flex size-9 items-center justify-center rounded-md text-primary-foreground hover:bg-white/10 focus-visible:outline-white"
+          className="inline-flex size-8 items-center justify-center rounded-md text-primary-foreground hover:bg-white/10 focus-visible:outline-white"
         >
           <BarsIcon />
         </button>

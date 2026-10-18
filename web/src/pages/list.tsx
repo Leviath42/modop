@@ -156,7 +156,7 @@ export default function ListPage() {
               <li key={wf.id}>
                 <Card className="p-2.5">
                   <div className="flex min-w-0 items-center gap-2">
-                    <Link to={`/workflow/${wf.id}/read`} title={wf.title} className="min-w-0 flex-1 text-sm font-semibold text-primary no-underline line-clamp-2 break-words">
+                    <Link to={`/workflow/${wf.id}/read`} title={wf.title} className="min-w-0 flex-1 text-sm font-semibold text-link no-underline line-clamp-2 break-words">
                       {wf.title}
                     </Link>
                     <code className="shrink-0 rounded bg-surface-2 px-1 py-0.5 text-xs">{wf.reference}</code>

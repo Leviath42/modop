@@ -1,6 +1,6 @@
 # Modop — Roadmap
 
-*Dernière mise à jour : après C-64 — **refonte UI complète** (Tailwind v4 + design tokens de la palette officielle + composants type shadcn, toutes les pages migrées, comportements et accessibilité conservés) ; **priorité : fonctionnel et mode édition (vagues 7-8)**, vague 10 en standby ; vague 9 terminée code + ops (Uptime Kuma déployé, supervisé depuis Home Assistant) ; production maintenue sur `beta` ; reste côté propriétaire : recevoir les premières PR Dependabot.*
+*Dernière mise à jour : après C-65 — refonte UI (C-64 : Tailwind v4 + tokens palette + composants type shadcn ; C-65 : correctif lisibilité — règles de base dans `@layer base`, primaire bleu-gris + blanc dans les deux thèmes, token `link`, bandeau compact) ; **priorité : fonctionnel et mode édition (vagues 7-8)**, vague 10 en standby ; vague 9 terminée code + ops (Uptime Kuma déployé, supervisé depuis Home Assistant) ; production maintenue sur `beta` ; reste côté propriétaire : recevoir les premières PR Dependabot.*
 
 L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archives/roadmap-v1-a-v6bis.md](archives/roadmap-v1-a-v6bis.md). La série de correctifs UI/UX (C-01 → C-51) est journalisée dans [correctifs.md](correctifs.md).
 

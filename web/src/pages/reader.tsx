@@ -86,14 +86,14 @@ export default function ReaderPage() {
             </Select>
           )}
           {versionParam && (
-            <span className="rounded bg-accent px-2 py-0.5 text-sm font-semibold text-primary">
+            <span className="rounded bg-accent px-2 py-0.5 text-sm font-semibold text-foreground">
               V{versionParam} (publiée)
             </span>
           )}
-          <Link to={`/workflow/${wf.id}/guided`} aria-label="Mode lecture guidée" title="Lecture guidée : une étape par écran" className="text-xs text-primary no-underline">⇥ Guidé</Link>
-          <Link to={`/workflow/${wf.id}/qr`} aria-label="Vignette QR imprimable" title="Vignette QR imprimable" className="text-xs text-primary no-underline">QR</Link>
+          <Link to={`/workflow/${wf.id}/guided`} aria-label="Mode lecture guidée" title="Lecture guidée : une étape par écran" className="text-xs text-link no-underline">⇥ Guidé</Link>
+          <Link to={`/workflow/${wf.id}/qr`} aria-label="Vignette QR imprimable" title="Vignette QR imprimable" className="text-xs text-link no-underline">QR</Link>
           {user && user.role !== "reader" && (
-            <Link to={`/workflow/${wf.id}/feedbacks`} aria-label="Remontées terrain de ce mode opératoire" title="Remontées terrain : à traiter et historique" className="text-xs text-primary no-underline">⚑ Terrain</Link>
+            <Link to={`/workflow/${wf.id}/feedbacks`} aria-label="Remontées terrain de ce mode opératoire" title="Remontées terrain : à traiter et historique" className="text-xs text-link no-underline">⚑ Terrain</Link>
           )}
         </header>
         {wf.state === "published" && (
@@ -161,7 +161,7 @@ export default function ReaderPage() {
         </p>
         {user && user.role !== "reader" && wf.state === "published" && (
           <p className="mt-4 text-center">
-            <a href={api.exportUrl(wf.id)} className="text-primary">⬇ Exporter en .docx</a>
+            <a href={api.exportUrl(wf.id)} className="text-link">⬇ Exporter en .docx</a>
           </p>
         )}
       </main>

@@ -7,7 +7,7 @@ export function Input({ className, ...props }: React.ComponentProps<"input">) {
     <input
       className={cn(
         "h-10 w-full min-w-0 rounded-md border border-border bg-surface px-3 py-2 text-foreground",
-        "placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary",
+        "placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-link",
         "disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
@@ -21,7 +21,7 @@ export function Textarea({ className, ...props }: React.ComponentProps<"textarea
     <textarea
       className={cn(
         "min-h-20 w-full min-w-0 rounded-md border border-border bg-surface px-3 py-2 text-foreground",
-        "placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary",
+        "placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-link",
         "disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
@@ -37,7 +37,7 @@ export function Select({ className, ...props }: React.ComponentProps<"select">) 
     <select
       className={cn(
         "h-10 w-full min-w-0 rounded-md border border-border bg-surface px-3 py-2 text-foreground",
-        "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary",
+        "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-link",
         "disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}

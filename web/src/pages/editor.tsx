@@ -622,7 +622,7 @@ export default function EditorPage() {
                       ⠿
                     </span>
                     
-                    <span aria-hidden="true" className="inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-bold text-primary">{i + 1}</span>
+                    <span aria-hidden="true" className="inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-bold text-foreground">{i + 1}</span>
                     <Input
                       value={step.title}
                       onChange={(e) => { setActiveStepId(step.id); setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, title: e.target.value } : s))); }}

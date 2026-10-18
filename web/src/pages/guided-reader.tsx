@@ -39,7 +39,7 @@ export default function GuidedReaderPage() {
           <h1 className="m-0 min-w-[6rem] flex-1 truncate text-base">
             {wf.title} <code className="rounded bg-surface-2 px-1.5 py-0.5 text-[0.75em]">{wf.reference}</code>
           </h1>
-          <span aria-live="polite" className="rounded-full bg-accent px-2 py-0.5 text-sm font-semibold text-primary">
+          <span aria-live="polite" className="rounded-full bg-accent px-2 py-0.5 text-sm font-semibold text-foreground">
             {idx + 1}/{wf.steps.length}
           </span>
         </header>

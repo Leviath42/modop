@@ -36,6 +36,23 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-65 — Refonte UI : règles de base écrasant Tailwind + lisibilité des couleurs (correctif C-64)
+
+**Problème** (constaté sur le CT après C-64) : le bouton « + » de l'accueil et le titre « Modop » du bandeau étaient invisibles, les boutons semblaient mal colorés, la barre supérieure paraissait trop épaisse. **Cause racine** : les styles par élément de `styles.css` (`a { color: var(--accent) }`, `button { color: var(--text) }`, `h1 { font-size: 1.05rem }`…) étaient **non layerés** — or en CSS, une règle hors `@layer` bat TOUT `@layer`, spécificité égale par ailleurs : elles écrasaient systématiquement les utilitaires Tailwind (`text-primary-foreground` → texte bleu-gris sur fond bleu-gris, titres stylés ramenés à 1.05rem).
+
+**Correctif** :
+1. **`@layer base`** : les styles par élément (body, button, a, champs, `:focus-visible`, h1/h2) passent dans `@layer base` — les utilitaires Tailwind (layer `utilities`, déclaré après) gagnent désormais. Seules les garanties structurelles restent non layerées (anti-débordement, 16px iOS, cibles tactiles 44px, impression) : elles doivent gagner.
+2. **Tokens lisibles dans les deux thèmes** (proche palette) : primaire `#517485` + blanc en **clair ET sombre** (5:1 ; en sombre le fond pâle `#96a9b1` faisait sale) ; nouveau token **`--color-link`** pour l'action textuelle (liens, focus, sélection canevas) : `#517485` en clair (5:1 sur blanc), `#a3bcc9` en sombre (8,9:1) ; bordures claires un peu plus présentes (`#b7c3ca`) ; chips sur fond teinté en `text-foreground` (anthracite ≈ 12:1, le bleu-gris sur teinte ne faisait que 4,3:1).
+3. **Bandeau compact** : `py-1.5` + bouton menu `size-8` + logo `text-base` (≈44 px desktop au lieu de 52).
+
+**Tests** : suite front verte (nav-menu, list-groups, editor-sticky, header-tools, mobile-overflow…), build web + lint server/web + 117/117 tests serveur verts.
+
+**Fichiers** : `web/src/styles.css`, `web/src/nav.tsx`, `web/src/components/ui/{button,input}.tsx`, `web/src/pages/{list,reader,guided-reader,editor}.tsx`.
+
+**État** : livré sur beta.
+
+---
+
 ## C-64 — Refonte UI : Tailwind v4 + design tokens de la palette + composants type shadcn (réalisé)
 
 **Contexte** : l'interface était entièrement en styles inline React sur une palette ad-hoc (bleu `#1f4e9c`), sans système de design. Le propriétaire a fourni un guide UI/UX de référence ([Guide interface utilisateur.md](Guide%20interface%20utilisateur.md) : Tailwind + shadcn/ui, responsive, WCAG) et la palette de marque ([palette-couleurs.md](palette-couleurs.md) : bleu-gris `#517485` primaire, orange `#e84e0f` accent, anthracite `#2c3a43`).
