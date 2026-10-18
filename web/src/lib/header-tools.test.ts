@@ -6,9 +6,14 @@ import EditorPage from "../pages/editor";
 import { AuthProvider } from "../auth-context";
 import type { Step } from "../api";
 
-// Le bandeau d'édition doit contenir la rangée d'outils d'insertion :
-// 📷 photos, ➶ flèche, ▭ zone, T texte, et les pictos d'attention —
-// et la zone d'étape ne doit plus contenir le bouton photo ni les presets.
+// Palette d'outils (spec docs/spec-palette-outils.md, C-67) :
+// - le bandeau documentaire (nom d'étape, Publier, replier) reste sticky ;
+// - les outils d'insertion vivent dans la BARRE BASSE FIXE (role="toolbar") :
+//   Étape, Photos, Formes, Indications — visibles sans clic ;
+// - le flyout Formes s'ouvre au clic, liste flèche/zone/texte + couleurs,
+//   se referme à Échap ;
+// - les actions dangereuses sont contextuelles (1 étape = pas de
+//   « Supprimer l'étape »).
 
 const dom = new JSDOM(`<!doctype html><html><body><div id="root"></div></body></html>`, {
   url: "http://localhost/workflow/42/edit",
@@ -43,45 +48,46 @@ root.render(
   )
 );
 await new Promise((r) => setTimeout(r, 250));
-const html = dom.window.document.getElementById("root")!.innerHTML;
+const doc = dom.window.document;
+const html = doc.body.innerHTML;
 
-// C-49 : barre d'outils PERMANENTE — groupes Étape | Insertion | Indications | Actions
-// 0. le header contient : nom de l'étape, Publier, réduire/développer
-if (!html.includes("Dévisser")) throw new Error("nom de l'étape active absent du header");
-if (!/Publier( V\d)?</.test(html)) throw new Error("bouton Publier absent du header");
-if (!/(▾|▸)</.test(html)) throw new Error("bouton réduire/développer absent du header");
-// Sticky exprimé en classe Tailwind depuis la refonte UI (au lieu d'un style inline).
-if (!/class="[^"]*\bsticky\b/.test(html)) throw new Error("header non sticky");
+// 0. bandeau documentaire : nom de l'étape, Publier, réduire/développer, sticky
+if (!html.includes("Dévisser")) throw new Error("nom de l'étape active absent du bandeau");
+if (!/Publier( V\d)?</.test(html)) throw new Error("bouton Publier absent du bandeau");
+if (!/(▾|▸)</.test(html)) throw new Error("bouton réduire/développer absent du bandeau");
+// Sticky exprimé en classe Tailwind (refonte UI C-65).
+if (!/class="[^"]*\bsticky\b/.test(html)) throw new Error("bandeau non sticky");
 
-// 1. la barre d'outils est VISIBLE SANS clic (plus de bouton « Outils »)
-if (!html.includes('aria-label="Photos"')) throw new Error("bouton Photos absent (barre permanente attendue, C-49)");
-if (!/title="Flèche"/.test(html)) throw new Error("outil flèche absent (barre permanente)");
-if (!/title="Zone"/.test(html)) throw new Error("outil zone absent (barre permanente)");
-if (!/title="Texte"/.test(html)) throw new Error("outil texte absent (barre permanente)");
-if (!/title="Indications de l'étape/.test(html)) throw new Error("bouton pictos absent (barre permanente)");
-if (!/aria-label="Ajouter une étape"/.test(html)) throw new Error("bouton + Étape absent (barre permanente)");
-// le sélecteur de couleur compact est présent (pastille courante + chevron)
-if (!/Couleur : /.test(html)) throw new Error("sélecteur de couleur compact absent (C-49)");
-// plus de bouton « Outils » qui ouvre/ferme
-const btns = Array.from(dom.window.document.querySelectorAll("button"));
-if (btns.some((b) => b.getAttribute("aria-label") === "Outils")) throw new Error("le bouton Outils doit disparaître (barre permanente, C-49)");
+// 1. barre basse fixe : outils visibles SANS clic
+const toolbar = doc.querySelector('div[role="toolbar"][aria-label="Outils d\'édition"]');
+if (!toolbar) throw new Error("barre basse d'outils (role=toolbar) absente");
+for (const label of ["Ajouter une étape", "Photos", "Formes", "Indications"]) {
+  if (!toolbar.querySelector(`button[aria-label="${label}"]`)) throw new Error(`outil "${label}" absent de la barre basse`);
+}
 
-// 2. les 4 couleurs ne sont PAS étalées (elles sont dans le popover)
-const colorSwatches = (html.match(/aria-label="Couleur #/g) || []).length;
-if (colorSwatches !== 0) throw new Error(`les pastilles couleur doivent être dans le popover, pas étalées (${colorSwatches})`);
+// 2. contextualité : une seule étape -> pas de bouton Supprimer l'étape
+if ([...toolbar.querySelectorAll("button")].some((b) => b.textContent?.includes("Supprimer l'étape"))) {
+  throw new Error("Supprimer l'étape ne doit pas apparaître avec une seule étape");
+}
 
-// 3. zone d'étape : plus de bouton "Photo(s)…"
-const photoBtnCount = (html.match(/Photo\(s\)…/g) || []).length;
-if (photoBtnCount !== 0) throw new Error(`bouton photo encore présent dans la zone d'étape (${photoBtnCount})`);
+// 3. flyout Formes : ouverture au clic, items flèche/zone/texte + sélection
+const shapesBtn = toolbar.querySelector('button[aria-label="Formes"]') as HTMLElement;
+shapesBtn.click();
+await new Promise((r) => setTimeout(r, 150));
+const flyout = doc.querySelector('div[role="menu"][aria-label="Formes"]');
+if (!flyout) throw new Error("flyout Formes non ouvert au clic");
+const arrowItem = Array.from(flyout.querySelectorAll("button")).find((b) => b.textContent?.includes("Flèche")) as HTMLElement;
+if (!arrowItem) throw new Error("outil flèche absent du flyout");
+arrowItem.click();
+await new Promise((r) => setTimeout(r, 150));
+// la sélection d'un outil coche l'item et marque le bouton parent actif
+if (arrowItem.getAttribute("aria-checked") !== "true") throw new Error("flèche non cochée après sélection");
+if (!shapesBtn.className.includes("border-primary")) throw new Error("bouton Formes non marqué actif après sélection");
 
-// 4. ouvrir le popover couleurs : les 4 pastilles y apparaissent
-const colorBtn = btns.find((b) => (b.getAttribute("aria-label") ?? "").startsWith("Couleur :")) as HTMLElement;
-if (!colorBtn) throw new Error("bouton couleur introuvable");
-colorBtn.click();
-await new Promise((r) => setTimeout(r, 60));
-const html2 = dom.window.document.getElementById("root")!.innerHTML;
-const inPopover = (html2.match(/aria-label="Couleur #/g) || []).length;
-if (inPopover < 4) throw new Error(`les 4 couleurs doivent être dans le popover ouvert (${inPopover})`);
+// 4. Échap referme le flyout (règle 4 de la spec)
+doc.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+await new Promise((r) => setTimeout(r, 150));
+if (doc.querySelector('div[role="menu"][aria-label="Formes"]')) throw new Error("le flyout Formes doit se fermer à l'Échap");
 
-console.log("C-49 BARRE D'OUTILS PERMANENTE (groupes, popover couleurs) OK");
+console.log("BARRE BASSE OUTILS OK (bandeau sticky, outils visibles, flyout formes, Échap, contextualité)");
 process.exit(0);

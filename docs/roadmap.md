@@ -1,6 +1,6 @@
 # Modop — Roadmap
 
-*Dernière mise à jour : après C-66 — refonte UI (C-64 : Tailwind v4 + tokens palette + composants type shadcn ; C-65 : correctif lisibilité — `@layer base`, primaire bleu-gris + blanc dans les deux thèmes, token `link` ; C-66 : bandeau de navigation calqué sur meal_plan — barre neutre 48/56 px, liens desktop à plat, ThemeToggle dans la barre) ; **priorité : fonctionnel et mode édition (vagues 7-8)**, vague 10 en standby ; vague 9 terminée code + ops (Uptime Kuma déployé, supervisé depuis Home Assistant) ; production maintenue sur `beta` ; reste côté propriétaire : recevoir les premières PR Dependabot.*
+*Dernière mise à jour : après C-67 — **palette d'outils refondue** (spec du propriétaire intégrée : registre de commandes modulaire + barre basse fixe, flyouts, raccourcis clavier — ajouter un outil = une entrée au registre) ; refonte UI C-64→C-66 (Tailwind v4, tokens palette, bandeau meal_plan) ; **priorité : fonctionnel et mode édition**, vague 10 en standby ; vague 9 terminée code + ops (Uptime Kuma déployé, supervisé depuis Home Assistant) ; production maintenue sur `beta` ; reste côté propriétaire : recevoir les premières PR Dependabot.*
 
 L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archives/roadmap-v1-a-v6bis.md](archives/roadmap-v1-a-v6bis.md). La série de correctifs UI/UX (C-01 → C-51) est journalisée dans [correctifs.md](correctifs.md).
 
@@ -57,6 +57,21 @@ Automatisation des portes qualité et cycle de déploiement — revue externe du
 | 6 | **Sauvegardes SQLite cohérentes** : remplacer la copie de fichier par `VACUUM INTO` ou `.backup()` (better-sqlite3) dans `update.sh` ; test de restauration automatisé (`PRAGMA integrity_check`) | 🟡 | ✅ livré (C-57) — `server/scripts/backup-db.mjs` (VACUUM INTO + integrity_check de la copie, contrôle aussi après restauration/rollback), 3 tests runtime (`server/test/backup-restore.test.ts`) |
 
 Critères d'acceptation (issue #8) : un push cassant typecheck/build/tests refusé par le CI (✅ CI fonctionnelle) ; lint vert sur `server` et `web` (✅) ; premières PR Dependabot reçues (⏳ côté GitHub) ; déploiement de production visant `main` (✅ `MODOP_DEPLOY_BRANCH` — ⏳ activation différée : production maintenue sur `beta`, décision propriétaire) ; healthcheck supervisé avec alerte (✅ Uptime Kuma déployé, supervisé depuis Home Assistant) ; une sauvegarde restaure une base `integrity_check = ok` (✅ testé en runtime).
+
+### Palette d'outils d'édition — déploiement incrémental ([spec-palette-outils.md](spec-palette-outils.md))
+
+Architecture livrée (C-67) : **registre de commandes modulaire** (`web/src/editor/tools/` — ajouter un outil = une entrée `EDITOR_COMMANDS`) + **barre basse fixe** (flyouts, bouton parent affichant l'outil actif, actions contextuelles, raccourcis E/P/F/A/R/T/I). Backlog, par priorité :
+
+| Priorité | Outil | Notes |
+|---|---|---|
+| ✅ P0 livré | Étape +, Photos (galerie/appareil), Formes (flèche/zone/texte + couleur), Indications (encarts métier), suppression contextuelle | C-67 |
+| P0 | **Undo/redo global fusionné** (texte + structure + annotations) | spec § 5 — historique des commandes, la pièce maîtrante manquante |
+| P1 | Texte riche par étape (gras, italique, listes, titres internes) + barre flottante desktop | décision ouverte : markdown léger vs TipTap |
+| P1 | Numéros de repère sur image (callouts ①②③), ligne/chemin de geste | extensions du groupe Formes (nouvelles entrées du registre) |
+| P1 | Recadrage/pivot d'image post-import | flyout Photos |
+| P1 | Palette de commandes (Ctrl+K) | accès clavier à tous les outils, remplace tout panneau latéral |
+| P2 | Titre de section, séparateur, note/astuce (encart info), tableau, masquage/floutage, variables dynamiques | selon besoin métier |
+| À challenger | TipTap/ProseMirror comme socle document (spec § 6) | changerait le contrat figé `shared/` + export docx + rendu serveur — à décider AVANT toute adoption |
 
 ### Vague 10 — Palier sécurité entreprise (issue #9) — ⏸️ **en standby**
 

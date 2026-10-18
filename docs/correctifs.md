@@ -36,6 +36,24 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-67 — Palette d'outils : barre basse fixe + registre de commandes modulaire (spec)
+
+**Contexte** : spec fournie par le propriétaire ([spec-palette-outils.md](spec-palette-outils.md)) — revoir en profondeur l'utilisation des outils : barre basse unifiée desktop/mobile (modèle Figma), flyouts extensibles au-dessus du bouton, contextualité par mutation, raccourcis clavier, et une **architecture par registre** pour créer les outils au fur et à mesure.
+
+**Correctif** :
+1. **Registre de commandes modulaire** (`web/src/editor/tools/` — `types.ts`, `definitions.tsx`, `registry.ts`) : chaque outil = une entrée déclarative (id, zone, libellé, title avec raccourci, icône pouvant dépendre de l'état, visibilité, état actif, badge, danger, action, flyout, commande clavier-only). **Ajouter un outil = une entrée dans `EDITOR_COMMANDS`, rien d'autre** — la barre consomme le registre (source unique, spec § 6).
+2. **Barre basse fixe** (`web/src/editor/bottom-bar.tsx`, spec § 3.1) : ancrée en bas + `env(safe-area-inset-bottom)` ; gauche Structure/Insertion (Étape, Photos, Formes, Indications), droite actions contextuelles (Supprimer l'étape si >1 étape, Objets (n) si sélection canevas) ; flyout au-dessus du bouton, **un seul ouvert**, auto-repli à la sélection ou à Échap ; le bouton Formes **affiche l'outil actif** du groupe (règle 3) ; raccourcis **E P F A R T I** actifs hors saisie de texte ; classe `tool-icon-btn` conservée (cibles tactiles 44 px, C-37).
+3. **Éditeur** : la rangée d'outils haute (C-49/C-50) disparaît ; le bandeau documentaire (titre, Publier, sélecteur d'étape, tout replier) reste sticky ; les outils ne voient l'éditeur **que via `ToolContext`** (actions injectées) ; comportements pictos/photos/formes inchangés ; `data-keep-canvas-selection` conservé sur « Objets » (C-31) ; padding bas de page pour la barre fixe.
+4. **Non couvert — backlog roadmap** : undo/redo global, texte riche, numéros de repère, ligne de geste, recadrage/pivot, TipTap (décision ouverte : changerait le contrat figé `shared/` et l'export docx).
+
+**Tests** : `header-tools.test.ts` réécrit pour la barre basse (outils visibles sans clic, flyout Formes, sélection flèche cochée + bouton parent actif, Échap, pas de « Supprimer l'étape » à une étape) ; `photo-source`, `empty-tools`, `editor-sticky`, `mobile-overflow`, `editor-smoke`, `step-drag` verts sans modification ; suite front verte, lint server+web, 117/117 serveur.
+
+**Fichiers** : `web/src/editor/tools/{types.ts,definitions.tsx,registry.ts}`, `web/src/editor/bottom-bar.tsx` (nouveaux), `web/src/pages/editor.tsx`, `web/src/lib/header-tools.test.ts`, `docs/spec-palette-outils.md` (ajoutée au dépôt).
+
+**État** : livré sur beta.
+
+---
+
 ## C-66 — Bandeau de navigation calqué sur meal_plan (correctif C-65)
 
 **Problème** (constat propriétaire après C-65) : le bandeau bleu-gris plein semblait toujours trop massif — le propriétaire demande la barre identique à celle de **meal_plan** (référence historique : la base de `styles.css` vient déjà de cette app).

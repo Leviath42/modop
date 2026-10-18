@@ -1,6 +1,8 @@
-import StepCanvas, { TOOLS, COLORS } from "../step-canvas";
+import StepCanvas, { COLORS } from "../step-canvas";
 import type { Shape } from "../annotated-photo";
-import { PhotoIcon, ArrowIcon, RectIcon, TextIcon, PlusIcon, CollapseIcon, ExpandIcon } from "../icons";
+import { CollapseIcon, ExpandIcon } from "../icons";
+import { EditorBottomBar } from "../editor/bottom-bar";
+import type { PictoPreset, ToolContext } from "../editor/tools/registry";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError, type Step, type WorkflowDetail } from "../api";
@@ -13,16 +15,6 @@ import { Input, Label, Select, Textarea } from "../components/ui/input";
 import { cn } from "../lib/utils";
 
 import type { Picto } from "../api";
-
-const PICTO_PRESETS: { kind: string; label: string; color: string }[] = [
-  { kind: "attention", label: "Attention", color: "#f5a623" },
-  { kind: "danger", label: "Danger", color: "#d0021b" },
-  { kind: "epi", label: "EPI obligatoire", color: "#1f4e9c" },
-  { kind: "electrique", label: "Risque électrique", color: "#7b16c9" },
-  { kind: "point-chaud", label: "Point chaud", color: "#d0021b" },
-  { kind: "outil", label: "Outillage spécifique", color: "#108c5e" },
-  { kind: "info", label: "Information", color: "#5b7285" },
-];
 
 export async function compressImage(file: File, maxSize = 1280, quality = 0.82): Promise<File> {
   let bitmap: ImageBitmap;
@@ -41,10 +33,8 @@ export async function compressImage(file: File, maxSize = 1280, quality = 0.82):
   return new File([blob], file.name.replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" });
 }
 
-// Bouton de la palette d'outils : la classe tool-icon-btn est OBLIGATOIRE
-// (règle tactile @media pointer:coarse de styles.css — cibles 44px fixes).
-const toolIconBtn =
-  "tool-icon-btn inline-flex min-w-0 shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-xs leading-tight text-foreground";
+// Boutons de la palette : classe et habillage portés par la barre basse
+// (web/src/editor/bottom-bar.tsx) depuis la refonte palette d'outils.
 
 export default function EditorPage() {
   const { id } = useParams<{ id: string }>();
@@ -70,11 +60,6 @@ export default function EditorPage() {
   const [insertTool, setInsertTool] = useState<Shape["type"] | null>(null);
   const [insertColor, setInsertColor] = useState(COLORS[0]);
   const [activeStepId, setActiveStepId] = useState<number | null>(null);
-  const [showTools, setShowTools] = useState(false);
-  const [showPictos, setShowPictos] = useState(false);
-  const [showPhotoMenu, setShowPhotoMenu] = useState(false);
-  const [showColors, setShowColors] = useState(false);
-  const photoMenuRef = useRef<HTMLSpanElement | null>(null);
   const [confirmDeleteStep, setConfirmDeleteStep] = useState<Step | null>(null);
   const [confirmPublish, setConfirmPublish] = useState(false);
   const [reviewDue, setReviewDue] = useState("");
@@ -88,60 +73,6 @@ export default function EditorPage() {
   // C-42 : input dédié appareil photo (capture natif du navigateur, sans
   // couche supplémentaire) à côté de l'input galerie
   const cameraRefs = useRef<Record<number, HTMLInputElement | null>>({});
-  const pictosMenuRef = useRef<HTMLSpanElement | null>(null);
-  const toolsRef = useRef<HTMLDivElement | null>(null);
-  const bandeauRef = useRef<HTMLElement | null>(null);
-  // C-51 : publier la hauteur du bandeau pour que la barre d'outils sticky
-  // se colle JUSTE dessous (même mécanique que --nav-h).
-  useEffect(() => {
-    const el = bandeauRef.current;
-    if (!el) return;
-    const publish = () => document.documentElement.style.setProperty("--bandeau-h", `${el.offsetHeight}px`);
-    publish();
-    if (typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(publish);
-    ro.observe(el);
-    return () => ro.disconnect();
-  });
-  useEffect(() => {
-    if (!showTools) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setShowTools(false); };
-    // C-39 : la palette reste affichée pendant l'utilisation des outils —
-    // le clic dans le canevas (pose de flèche, sélection…) ne la ferme PLUS.
-    // Fermeture : bouton Outils, Échap ou navigation.
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [showTools]);
-  useEffect(() => {
-    if (!showPhotoMenu) return;
-    const onDown = (e: PointerEvent) => {
-      if (photoMenuRef.current && !photoMenuRef.current.contains(e.target as Node)) setShowPhotoMenu(false);
-    };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setShowPhotoMenu(false); };
-    document.addEventListener("pointerdown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("pointerdown", onDown); document.removeEventListener("keydown", onKey); };
-  }, [showPhotoMenu]);
-  useEffect(() => {
-    if (!showColors) return;
-    const onDown = (e: PointerEvent) => {
-      if (!(e.target as Element).closest?.("[data-color-pop]")) setShowColors(false);
-    };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setShowColors(false); };
-    document.addEventListener("pointerdown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("pointerdown", onDown); document.removeEventListener("keydown", onKey); };
-  }, [showColors]);
-  useEffect(() => {
-    if (!showPictos) return;
-    const onDown = (e: PointerEvent) => {
-      if (pictosMenuRef.current && !pictosMenuRef.current.contains(e.target as Node)) setShowPictos(false);
-    };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setShowPictos(false); };
-    document.addEventListener("pointerdown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("pointerdown", onDown); document.removeEventListener("keydown", onKey); };
-  }, [showPictos]);
 
   const isNew = id === "new";
   // C-45 : liste des comptes actifs pour le sélecteur de responsable
@@ -291,6 +222,41 @@ export default function EditorPage() {
     if (firstError) setError(`Photo(s) non envoyée(s) : ${firstError}${list.length > 1 ? " (les autres ont été envoyées)" : ""}`);
   }
 
+  // — Actions exposées à la barre basse d'outils (registre de commandes,
+  // docs/spec-palette-outils.md) : les outils ne voient QUE ce contexte. —
+  function openPhotoSource(which: "gallery" | "camera") {
+    const target = activeStepId ?? steps[0]?.id;
+    if (target == null) return;
+    if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); }
+    (which === "gallery" ? fileRefs : cameraRefs).current[target]?.click();
+  }
+  function selectInsertTool(t: Shape["type"] | null) {
+    setInsertTool(t);
+    const target = activeStepId ?? steps[0]?.id;
+    if (t && target != null && !openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); }
+  }
+  function togglePreset(preset: PictoPreset) {
+    const target = activeStepId ?? steps[0]?.id;
+    if (target == null) return;
+    const stp = steps.find((x) => x.id === target);
+    if (!stp) return;
+    if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); }
+    const idx = stp.pictos.findIndex((x) => x.kind === preset.kind);
+    void patchStep(stp, { pictos: idx >= 0 ? stp.pictos.filter((_, k) => k !== idx) : [...stp.pictos, { kind: preset.kind, label: preset.label, color: preset.color }] });
+  }
+  function deleteActiveStep() {
+    const target = activeStepId ?? steps[0]?.id;
+    if (target == null) return;
+    const stp = steps.find((x) => x.id === target);
+    if (stp) setConfirmDeleteStep(stp);
+  }
+  function deleteCanvasSelection() { canvasDeleteRef.current?.(); }
+
+  const toolCtx: ToolContext = {
+    isNew, steps, activeStepId, insertTool, insertColor, canvasSelection,
+    actions: { addStep, openPhotoSource, setInsertTool: selectInsertTool, setInsertColor, togglePreset, deleteActiveStep, deleteCanvasSelection },
+  };
+
   async function publish() {
     if (!wf) return;
     setError(null);
@@ -308,11 +274,11 @@ export default function EditorPage() {
   return (
     <>
       <NavBar />
-      <main className="mx-auto grid w-full min-w-0 max-w-[820px] gap-4 p-4">
+      <main className="mx-auto grid w-full min-w-0 max-w-[820px] gap-4 p-4 pb-28">
         {error && <Alert variant="error">{error}</Alert>}
         {notice && <Alert variant="ok">{notice}</Alert>}
 
-        <section ref={bandeauRef} className="sticky top-[var(--nav-h,2.9rem)] z-30 grid min-w-0 gap-2 rounded-lg border border-border bg-surface px-3 py-2.5 shadow-md">
+        <section className="sticky top-[var(--nav-h,2.9rem)] z-30 grid min-w-0 gap-2 rounded-lg border border-border bg-surface px-3 py-2.5 shadow-md">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="m-0 min-w-0 max-w-full flex-1 basis-32 truncate text-base">
               {isNew ? "Nouveau mode opératoire" : (title || "Sans titre")}{" "}
@@ -411,157 +377,6 @@ export default function EditorPage() {
             )}
         </section>
 
-        {/* C-50 : barre d'outils en rangée INDÉPENDANTE sous le bandeau (C-49 :
-            inspiration Figma/Docs) — groupes : Étape | Insertion | Indications | Actions */}
-        {!isNew && (
-        <div ref={toolsRef} className="sticky top-[calc(var(--nav-h,2.9rem)+var(--bandeau-h,3.6rem)+0.55rem)] z-[25] flex min-w-0 flex-wrap items-center gap-1.5 overflow-visible rounded-lg border border-border bg-background px-2.5 pt-1.5 pb-2 shadow-md">
-          {/* — groupe Étape — */}
-          <Button onClick={addStep} variant="outline" size="sm" className="gap-1 text-xs" title="Ajouter une étape" aria-label="Ajouter une étape">
-            <PlusIcon /><span>Étape</span>
-          </Button>
-
-          <span className="h-5 w-px shrink-0 bg-border" aria-hidden="true" />
-
-          {/* — groupe Insertion — */}
-          <span ref={photoMenuRef} className="relative inline-flex">
-            <button
-              onClick={() => setShowPhotoMenu((v) => !v)}
-              className={cn(toolIconBtn, "bg-surface border-border")} title="Photos : galerie ou appareil photo" aria-label="Photos" aria-expanded={showPhotoMenu} aria-haspopup="menu"
-            ><PhotoIcon /><span className="text-xs">Photos</span></button>
-            {showPhotoMenu && (() => {
-              const target = activeStepId ?? steps[0]?.id;
-              const openIt = (which: "gallery" | "camera") => {
-                if (target == null) return;
-                if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); }
-                (which === "gallery" ? fileRefs : cameraRefs).current[target]?.click();
-                setShowPhotoMenu(false);
-              };
-              return (
-                <div role="menu" aria-label="Source de la photo" className="absolute left-0 top-[calc(100%+0.35rem)] z-[135] grid min-w-44 gap-1 rounded-lg border border-border bg-surface p-1.5 shadow-xl">
-                  <button role="menuitem" onClick={() => openIt("gallery")} className="flex items-center gap-2 rounded-md border border-transparent bg-transparent px-2 py-1.5 text-left text-sm text-foreground hover:bg-muted">
-                    <span aria-hidden="true">🖼</span> Depuis la galerie
-                  </button>
-                  <button role="menuitem" onClick={() => openIt("camera")} className="flex items-center gap-2 rounded-md border border-transparent bg-transparent px-2 py-1.5 text-left text-sm text-foreground hover:bg-muted">
-                    <span aria-hidden="true">📷</span> Prendre une photo
-                  </button>
-                </div>
-              );
-            })()}
-          </span>
-          {TOOLS.map((t) => (
-            <button
-              key={t.kind}
-              onClick={() => { setInsertTool(insertTool === t.kind ? null : t.kind); const target = activeStepId ?? steps[0]?.id; if (target != null && !openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); } }}
-              className={cn(toolIconBtn, insertTool === t.kind ? "border-primary bg-accent" : "border-border bg-surface")}
-              aria-pressed={insertTool === t.kind}
-              title={t.label}
-            >{t.kind === "arrow" ? <ArrowIcon /> : t.kind === "rect" ? <RectIcon /> : <TextIcon />}<span className="text-xs">{t.label}</span></button>
-          ))}
-          {/* sélecteur de couleur compact : pastille de la couleur courante -> popover */}
-          <span data-color-pop className="relative inline-flex">
-            <button
-              onClick={() => setShowColors((v) => !v)}
-              className="tool-icon-btn inline-flex size-[2.2rem] items-center justify-center p-0"
-              aria-label={`Couleur : ${insertColor} — choisir`}
-              aria-expanded={showColors}
-              aria-haspopup="menu"
-              title="Couleur des formes"
-            >
-              <span className="size-3.5 rounded-full border-2 border-surface ring-1 ring-border" style={{ background: insertColor }} aria-hidden="true" />
-              <span aria-hidden="true" className="text-[0.6rem] leading-none text-muted-foreground">▾</span>
-            </button>
-            {showColors && (
-              <div role="menu" aria-label="Couleurs" className="absolute left-0 top-[calc(100%+0.35rem)] z-[135] flex gap-1.5 rounded-lg border border-border bg-surface p-2 shadow-xl">
-                {COLORS.map((c) => (
-                  <button key={c} onClick={() => { setInsertColor(c); setShowColors(false); }} aria-label={`Couleur ${c}`} aria-pressed={insertColor === c}
-                    className={cn("size-[22px] cursor-pointer rounded-full", insertColor === c ? "border-2 border-foreground" : "border border-border")} style={{ background: c }} />
-                ))}
-              </div>
-            )}
-          </span>
-
-          <span className="h-5 w-px shrink-0 bg-border" aria-hidden="true" />
-
-          {/* — groupe Indications — */}
-          <span ref={pictosMenuRef} className="relative inline-flex">
-            {(() => {
-              const st = steps.find((x) => x.id === (activeStepId ?? steps[0]?.id));
-              const activeCount = st ? st.pictos.length : 0;
-              return (
-                <>
-                  <button
-                    onClick={() => setShowPictos((v) => !v)}
-                    className={cn(toolIconBtn, showPictos || activeCount > 0 ? "border-primary bg-accent" : "border-border bg-surface")}
-                    aria-expanded={showPictos}
-                    aria-haspopup="menu"
-                    title="Indications de l'étape (attention, danger, EPI…)"
-                  >⚠<span className="text-xs"> Indications{activeCount > 0 ? ` (${activeCount})` : ""}</span></button>
-                  {showPictos && (
-                    <div role="menu" aria-label="Indications" className="absolute left-0 top-[calc(100%+0.35rem)] z-[120] grid min-w-40 gap-1 rounded-lg border border-border bg-surface p-1.5 shadow-xl">
-                      {PICTO_PRESETS.map((preset) => {
-                        const on = st ? st.pictos.some((x) => x.kind === preset.kind) : false;
-                        return (
-                          <button
-                            key={preset.kind}
-                            role="menuitemcheckbox"
-                            aria-checked={on}
-                            onClick={() => {
-                              const target = activeStepId ?? steps[0]?.id;
-                              if (target == null) return;
-                              const stp = steps.find((x) => x.id === target);
-                              if (!stp) return;
-                              if (!openSteps.has(target)) { setOpenSteps((prev) => new Set([...prev, target])); setActiveStepId(target); }
-                              const idx = stp.pictos.findIndex((x) => x.kind === preset.kind);
-                              void patchStep(stp, { pictos: idx >= 0 ? stp.pictos.filter((_, k) => k !== idx) : [...stp.pictos, { kind: preset.kind, label: preset.label, color: preset.color }] });
-                            }}
-                            className="flex w-full items-center gap-2 rounded-md border border-transparent bg-transparent px-2 py-1.5 text-left text-xs text-foreground"
-                            style={on ? { background: `${preset.color}22` } : undefined}
-                          >
-                            <span aria-hidden="true" className="size-[0.7rem] shrink-0 rounded-full" style={{ background: preset.color }} />
-                            {preset.label}
-                            {on && <span aria-hidden="true" className="ml-auto text-ok">✓</span>}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </>
-              );
-            })()}
-          </span>
-
-          <span className="h-5 w-px shrink-0 bg-border" aria-hidden="true" />
-
-          {/* — groupe Actions — */}
-          {steps.length > 1 && (
-            <Button
-              onClick={() => {
-                const target = activeStepId ?? steps[0]?.id;
-                if (target == null) return;
-                const stp = steps.find((x) => x.id === target);
-                if (stp) setConfirmDeleteStep(stp);
-              }}
-              variant="outline"
-              size="sm"
-              className="border-danger-border bg-danger-bg text-error hover:bg-danger-bg"
-              title={steps.length <= 1 ? "Impossible de supprimer la dernière étape" : "Supprimer l'étape affichée (confirmation demandée)"}
-              aria-label="Supprimer l'étape affichée"
-              disabled={steps.length <= 1}
-            >Supprimer l'étape</Button>
-          )}
-          {canvasSelection > 0 && (
-            <Button
-              onClick={() => canvasDeleteRef.current?.()}
-              data-keep-canvas-selection="1"
-              variant="outline"
-              size="sm"
-              className="border-danger-border bg-danger-bg text-error hover:bg-danger-bg"
-              title="Supprimer les objets sélectionnés du canevas de l'étape affichée"
-              aria-label="Supprimer les objets sélectionnés"
-            >🗑 Objets ({canvasSelection})</Button>
-          )}
-        </div>
-        )}
 
         {!isNew && (
         <>
@@ -759,6 +574,7 @@ export default function EditorPage() {
         </>
         )}
       </main>
+      {!isNew && <EditorBottomBar ctx={toolCtx} />}
       {dragIndex !== null && dragCursor && (
         <div ref={dragGhostRef} aria-hidden="true" className="pointer-events-none fixed z-[200] -translate-x-1/2 -translate-y-[120%] rounded-md bg-primary px-2.5 py-1 text-sm text-primary-foreground shadow-lg" style={{ left: dragCursor.x, top: dragCursor.y }}>
           Déplacer « {steps[dragIndex]?.title ?? ""} »
