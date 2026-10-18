@@ -36,6 +36,18 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-62 — Uptime Kuma déployé : supervision vague 9 bouclée côté ops (bilan)
+
+**Contexte** : C-57 laissait le déploiement réel d'Uptime Kuma à la charge du propriétaire (procédure dans guide-test-proxmox.md). C'est fait : moniteur HTTP sur `GET /api/health`, état online/offline remonté dans Home Assistant.
+
+**Bilan — ce que la supervision peut fournir au-delà de l'état binaire** : le healthcheck ne renvoie que `{ ok: true }` (app.ts) ; les informations supplémentaires viennent de Kuma lui-même (disponibilité 24 h/7 j/30 j, temps de réponse, historique d'incidents, expiration du certificat si le moniteur vise l'URL publique du tunnel) ou de moniteurs **push** (battement de cœur « sauvegarde OK » après `backup-db.mjs`, « déploiement OK » après `update.sh` — une absence de battement alerte). Pistes documentées, non implémentées à ce jour.
+
+**Docs** : `docs/roadmap.md` (vague 9 n°5 → déployé, critères issue #8 mis à jour), `docs/guide-test-proxmox.md` (§ supervision enrichi).
+
+**État** : documentation seule — aucun code modifié.
+
+---
+
 ## C-61 — update.sh bloqué par la sauvegarde quand node_modules est cassé (réalisé)
 
 **Problème** : constaté sur le CT — après un `npm ci` raté (C-60 : `make` absent), `better-sqlite3` n'est résoluble **nulle part** (l'ancien `cd server && npm ci` pré-C-57 avait vidé `server/node_modules` avant d'échouer, le `npm ci` racine a échoué avant de peupler `node_modules`). `update.sh` mourait alors à sa première étape utile — la sauvegarde VACUUM INTO — sans jamais atteindre le `npm ci` qui répare l'installation : **œuf et poule**, la mise à jour était bloquée à vie. Ce log confirme au passage la cause de l'incident initial (C-58) : app en crash-loop faute de modules, pm2 à ↺ 9.

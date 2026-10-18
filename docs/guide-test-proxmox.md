@@ -96,6 +96,8 @@ Observabilité minimale (vague 9) : le healthcheck `GET /api/health` est supervi
 1. Créer le moniteur : type **HTTP(s)**, URL `http://<ip-du-ct-modop>:3000/api/health`, intervalle 60 s (le healthcheck est quasi gratuit).
 2. **Notification** : brancher au moins un canal (e-mail SMTP, Gotify, ntfy…) — un monitoring sans notification ne prévient de rien.
 3. Option utile : un second moniteur sur `/` (code attendu 200) pour distinguer « API en vrac » et « front injoignable ».
+4. **Au-delà de l'état binaire** : Kuma historise aussi la disponibilité (24 h / 7 j / 30 j), le temps de réponse et l'expiration du certificat (si le moniteur vise l'URL publique du tunnel Cloudflare) — autant de courbes exploitables depuis Home Assistant.
+5. **Moniteurs push (battement de cœur)** : à terme, `update.sh` / `server/scripts/backup-db.mjs` peuvent pinger un moniteur push Kuma après chaque sauvegarde ou déploiement réussi — une absence de battement alerte (ex. sauvegardes silencieusement arrêtées). Piste documentée, non implémentée (voir roadmap, vague 9 n°5).
 
 En cas d'alerte : `pm2 logs modop` sur le CT, puis si besoin `bash /opt/modop/update.sh rollback` (la dernière sauvegarde vérifiée est restaurée).
 
