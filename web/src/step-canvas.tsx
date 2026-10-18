@@ -771,7 +771,9 @@ export default function StepCanvas({
                 />
               </div>
             </div>
-            <div className="absolute bottom-3 left-1/2 z-50 flex -translate-x-1/2 gap-2" onPointerDown={(e) => e.stopPropagation()}>
+            {/* C-75 : boutons FIXES au-dessus de la barre d'outils —
+                atteignables même si le canevas défile sous la barre. */}
+            <div className="fixed bottom-24 left-1/2 z-[150] flex -translate-x-1/2 gap-2" onPointerDown={(e) => e.stopPropagation()}>
               <button
                 onClick={() => { setCropFor(null); setCropDrag(null); }}
                 className="inline-flex items-center gap-1 rounded-md border border-white/50 bg-black/60 px-3 py-2 text-sm text-white"

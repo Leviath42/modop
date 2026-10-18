@@ -36,6 +36,20 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-75 — Rognage : boutons Annuler/Recadrer fixes au-dessus de la barre (correctif C-73)
+
+**Problème** : les boutons de validation du rognage vivaient en `absolute` dans l'overlay du canevas — inatteignables quand le canevas défilait sous la barre d'outils fixe.
+
+**Correctif** : `fixed bottom-24` au-dessus de la barre (`z-[150]`), toujours visibles et cliquables pendant le cadrage, quel que soit le scroll.
+
+**Tests** : suite front verte, 121/121 serveur, lint OK.
+
+**Fichiers** : `web/src/step-canvas.tsx`.
+
+**État** : livré sur beta.
+
+---
+
 ## C-74 — Cinquième vague : épaisseur par défaut paramétrable, rognage cliquable, focus texte, scroll (réalisé)
 
 **Contexte** : retour sur C-73 — épaisseur par défaut demandée à 5 (paramétrable), bouton Recadrer inopérant, navigation douloureuse (mon `touch-action: none` permanent était trop agressif), focus qui saute au champ de l'étape suivante après validation d'un texte, largeur de saisie texte incohérente.
