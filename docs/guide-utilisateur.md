@@ -40,11 +40,12 @@ Bouton **icône soleil / lune** dans la barre du haut (et sur la page de connexi
 - Toutes les étapes s'affichent **à la suite** — on défile naturellement.
 - Le **sélecteur d'étape** (en haut, toujours visible) suit la même logique que l'éditeur : l'étape affichée est marquée **▶**, choisir une étape y défile en douceur.
 - **Versions** : la lecture ouvre par défaut la **dernière version PUBLIÉE** — le brouillon en cours n'est jamais montré au poste. Le sélecteur de version (V1, V2…) consulte n'importe quelle version publiée avec son **changelog** ; l'option **« Brouillon en cours »** (auteurs/admins uniquement) affiche le brouillon de travail avec un bandeau d'avertissement.
-- Les pictogrammes d'avertissement apparaissent en couleur sous le titre de l'étape ; un badge **« à revoir »** signale un document en retard de revue.
+- Les pictogrammes d'avertissement apparaissent en couleur sous le titre de l'étape ; un document en retard de revue est signalé par une **alerte « à revoir » qui explique la raison** (date dépassée, avec la date, ou absence de date de revue) et propose aux auteurs le bouton **« Mettre à jour la revue »** (l'éditeur s'ouvre directement sur le champ).
+- La ligne d'information sous le titre affiche la **date de revue** (« À revoir le jj/mm/aaaa ») et le **responsable** (Prénom Nom) de la version publiée consultée.
 - Les photos s'affichent à la taille et la position choisies par l'auteur ; les annotations (flèches, zones, textes) sont dessinées dessus.
 - **Cliquez/touchez une photo** : elle s'ouvre **plein écran** (Échap ou toucher le fond pour fermer, pincez pour zoomer).
 - **Signaler un problème** : bouton « Signaler un problème sur cette étape » sous chaque étape — votre message va aux auteurs.
-- **« ⬇ Exporter en .docx »** télécharge la version publiée (ouvrable dans Word/LibreOffice).
+- **« ⬇ Exporter en .docx »** (auteurs/admins, dans l'entête avec les autres outils) télécharge la version affichée (ouvrable dans Word/LibreOffice) — le canevas composé (photos positionnées + formes + textes) reproduit fidèlement la lecture.
 - **« Éditer »** (auteurs/admins) ouvre directement l'éditeur depuis la lecture.
 - Le bouton **↑** flottant en bas à droite ramène au **début du document**, visible en toute position.
 - **⇥ Guidé** : lecture **une étape par écran** (mobile au poste) — boutons Précédent / Suivant / Terminé accrochés en bas de l'écran, progression n/N.
@@ -114,8 +115,8 @@ Bouton **⚠ Indications** : Attention, Danger, EPI, Risque électrique, Point c
 - **« Abandonner le brouillon »** (bandeau) : remplace le brouillon en cours par la dernière version publiée — le recours après un brouillon raté, sans rien retaper (confirmation demandée).
 - L'historique des versions (numéro, auteur, date, changelog) est consultable dans le lecteur ; une version peut être **restaurée** (l'état d'alors remplace le brouillon, l'historique reste intact).
 - **Dupliquer** : copie complète en brouillon (référence `-COPIE`), photos indépendantes.
-- **Revue périodique** : champ **« À revoir le »** dans les détails — passé l'échéance, le badge « à revoir » apparaît en liste et en lecture, et le filtre « À revoir » le remonte.
-- **Responsable** : champ à recherche dans les détails — tapez quelques lettres, choisissez parmi les comptes actifs (Prénom Nom). Si le compte responsable est désactivé, ses MO passent automatiquement **à revoir** pour réattribution.
+- **Revue périodique** : champ **« À revoir le »** dans les détails — vide à l'ouverture d'un MO sans date, il est **prérempli à J+30** (délai paramétrable, voir Paramètres) ; passé l'échéance, l'alerte « à revoir » apparaît en liste (avec la raison par document) et en lecture, et le filtre « À revoir » le remonte.
+- **Responsable** : champ à recherche dans les détails — tapez quelques lettres du **Prénom, du Nom ou de l'email**, choisissez parmi les comptes actifs (Prénom Nom) ; la recherche fonctionne pour tous les auteurs. Si le compte responsable est désactivé, ses MO passent automatiquement **à revoir** pour réattribution.
 
 ### Supprimer un mode opératoire (admin uniquement)
 
@@ -137,6 +138,7 @@ Section en bas de l'éditeur, double confirmation avec **case à cocher décoch�
 Options appliquées **immédiatement** à toute l'application :
 
 - **Sans date de revue = à revoir** (activé par défaut) ;
+- **Délai de revue par défaut** en jours (défaut 30) — préremplit « À revoir le » d'un MO sans date, à J+délai ;
 - **Brouillons visibles par les lecteurs** (désactivé par défaut) ;
 - **Épaisseur de trait par défaut** des formes (1–10, défaut 5).
 

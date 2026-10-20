@@ -17,7 +17,7 @@ import { exportRouter } from "./routes/export.js";
 import { restoreRouter } from "./routes/restore.js";
 import { settingsRouter } from "./routes/settings.js";
 import { deployRouter } from "./routes/deploy.js";
-import { adminRouter } from "./routes/admin.js";
+import { adminRouter, activeUsersRouter } from "./routes/admin.js";
 import { duplicateRouter } from "./routes/duplicate.js";
 import { statsRouter } from "./routes/stats.js";
 
@@ -59,6 +59,9 @@ export function createApp(db: Database.Database, webDist?: string): express.Expr
   app.use("/api/photos", photoReplaceRouter(db));
   app.use("/api/deploy", process.env.MODOP_DEPLOY === "off" ? disabledDeployRouter() : deployRouter());
   app.use("/api/admin", adminRouter(db));
+  // C-85 : candidats responsables (comptes actifs) pour la recherche de
+  // l'éditeur — accessible aux auteurs.
+  app.use("/api/users", activeUsersRouter(db));
   app.use("/api/stats", statsRouter(db));
   app.use("/api/workflows", duplicateRouter(db));
   app.use("/api/stats", statsRouter(db));

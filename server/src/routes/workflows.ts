@@ -44,11 +44,18 @@ export function workflowRouter(db: Database.Database): Router {
 
   r.get("/:id", requireAuth("reader"), (req, res) => {
     const wf = db.prepare("SELECT * FROM workflows WHERE id = ?")
-      .get(req.params.id) as { id: number } | undefined;
+      .get(req.params.id) as { id: number; owner_email?: string } | undefined;
     if (!wf) {
       res.status(404).json({ error: "not_found", message: "mode opératoire introuvable" });
       return;
     }
+    // C-84 : nom lisible du responsable (Prénom Nom) quand le compte existe.
+    const ownerRow = wf.owner_email
+      ? (db.prepare("SELECT first_name, last_name FROM users WHERE email = ?").get(wf.owner_email) as
+        | { first_name: string; last_name: string }
+        | undefined)
+      : undefined;
+    const ownerName = ownerRow ? [ownerRow.first_name, ownerRow.last_name].filter(Boolean).join(" ") || wf.owner_email : "";
     const steps = db
       .prepare("SELECT * FROM steps WHERE workflow_id = ? ORDER BY position")
       .all(wf.id) as StepRow[];
@@ -70,6 +77,7 @@ export function workflowRouter(db: Database.Database): Router {
     auditLog(db, (req as { user?: { email: string } }).user?.email ?? "?", "view_workflow", `workflow:${wf.id}`);
     res.json({
       ...wf,
+      owner_name: ownerName,
       steps: steps.map((s) => ({
         ...s,
         pictos: JSON.parse(s.pictos),

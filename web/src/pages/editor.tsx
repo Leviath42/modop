@@ -4,8 +4,8 @@ import { Camera, ChevronDown, ChevronRight, FoldVertical, GripVertical, Image as
 import { EditorBottomBar } from "../editor/bottom-bar";
 import type { PictoPreset, ToolContext } from "../editor/tools/registry";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { api, ApiError, type Photo, type Step, type WorkflowDetail } from "../api";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { api, ApiError, type AppSettings, type Photo, type Step, type WorkflowDetail } from "../api";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
 import { Badge } from "../components/ui/badge";
@@ -38,6 +38,7 @@ export async function compressImage(file: File, maxSize = 1280, quality = 0.82):
 
 export default function EditorPage() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [wf, setWf] = useState<WorkflowDetail | null>(null);
@@ -71,6 +72,9 @@ export default function EditorPage() {
   // C-71 (#4) : abandon du brouillon -> restauration de la dernière publiée
   const [confirmRevert, setConfirmRevert] = useState(false);
   const [reviewDue, setReviewDue] = useState("");
+  // C-86 : le préremplissage ne doit jamais écraser une saisie manuelle
+  // (date posée ou champ volontairement vidé).
+  const [reviewTouched, setReviewTouched] = useState(false);
   const [ownerEmail, setOwnerEmail] = useState("");
   // C-72 (#3) : le champ AFFICHE « Prénom Nom », la donnée stockée reste
   // l'email. Un responsable inconnu est interdit : la saisie libre filtre,
@@ -91,17 +95,27 @@ export default function EditorPage() {
 
   const isNew = id === "new";
   // C-74 : épaisseur par défaut depuis les paramètres admin.
+  // C-86 : le délai de revue par défaut arrive avec (préremplissage).
+  const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
   useEffect(() => {
-    api.getSettings().then((s) => setInsertWidth(s.default_stroke_width)).catch(() => { /* défaut 5 conservé */ });
+    api.getSettings().then((s) => { setInsertWidth(s.default_stroke_width); setAppSettings(s); }).catch(() => { /* défauts conservés */ });
   }, []);
-  // C-45 : liste des comptes actifs pour le sélecteur de responsable
+  // C-83 : lien « Mettre à jour la revue » depuis le lecteur — les détails
+  // s'ouvrent directement sur le champ de date de revue.
+  useEffect(() => {
+    if (searchParams.get("revue") === "1") setShowMeta(true);
+  }, [searchParams]);
+  // C-45 : liste des comptes actifs pour le sélecteur de responsable.
+  // C-85 : /api/users (author+) — l'ancien /api/admin/users renvoyait 403
+  // aux auteurs : aucune suggestion de responsable ne s'affichait.
   const [accounts, setAccounts] = useState<{ id: number; email: string; first_name?: string; last_name?: string; role: string }[]>([]);
   useEffect(() => {
     if (isNew) return;
-    fetch("/api/admin/users")
+    fetch("/api/users")
       .then((r) => (r.ok ? r.json() : []))
-      .then((list: { id: number; email: string; first_name: string; last_name: string; role: string; active: number }[]) =>
-        setAccounts(list.filter((u) => u.active === 1)))
+      .then((list: { id: number; email: string; first_name: string; last_name: string; role: string }[]) => {
+        if (Array.isArray(list)) setAccounts(list);
+      })
       .catch(() => setAccounts([]));
   }, [isNew]);
 
@@ -120,6 +134,18 @@ export default function EditorPage() {
   useEffect(() => {
     if (user?.role === "reader") navigate("/", { replace: true });
   }, [user, navigate]);
+  // C-86 : préremplissage de la date de revue — un MO sans date « À revoir
+  // le » reçoit aujourd'hui + default_review_days (paramètre admin, 30 j
+  // par défaut). Valeur affichée seulement : elle sera persistée à la
+  // prochaine sauvegarde des métadonnées ou à la publication.
+  useEffect(() => {
+    if (isNew || !wf || reviewTouched || !appSettings || reviewDue) return;
+    const days = typeof appSettings.default_review_days === "number" && appSettings.default_review_days >= 1
+      ? appSettings.default_review_days
+      : 30;
+    const d = new Date(Date.now() + days * 86400000);
+    setReviewDue(d.toISOString().slice(0, 10));
+  }, [wf, isNew, reviewTouched, appSettings, reviewDue]);
   // B-A2 : autosave des métadonnées (RF-16) — 800 ms après la dernière
   // frappe ; bandeau "Enregistrement…" pendant la requête, restauration de
   // l'indicateur si elle échoue.
@@ -413,7 +439,7 @@ export default function EditorPage() {
             </Label>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-[auto_1fr]">
               <Label className="grid min-w-0 gap-1 text-muted-foreground">À revoir le
-                <Input type="date" value={reviewDue} onChange={(e) => { setReviewDue(e.target.value); setMetaSaved(false); }} />
+                <Input type="date" value={reviewDue} onChange={(e) => { setReviewDue(e.target.value); setReviewTouched(true); setMetaSaved(false); }} />
               </Label>
               <div className="relative grid min-w-0 gap-1">
                 <Label htmlFor="owner-email" className="text-muted-foreground">Responsable</Label>

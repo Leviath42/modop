@@ -75,6 +75,18 @@ export interface AdminUser {
 
 export interface WorkflowDetail extends Workflow {
   steps: Step[];
+  // C-84 : nom lisible du responsable (Prénom Nom) quand le compte existe —
+  // porté par le workflow (brouillon) ou par le snapshot (version publiée).
+  owner_name?: string;
+}
+
+// C-72 (#4/#5) + C-86 : paramètres applicatifs (page Paramètres, admin).
+export interface AppSettings {
+  readers_see_drafts: boolean;
+  no_review_date_is_overdue: boolean;
+  default_stroke_width: number;
+  // C-86 : délai de revue par défaut en jours (préremplissage « À revoir le »).
+  default_review_days: number;
 }
 
 export class ApiError extends Error {
@@ -184,11 +196,11 @@ export const api = {
       })
     );
   },
-  // C-72 (#4/#5) : paramètres applicatifs (page Paramètres, admin).
-  async getSettings(): Promise<{ readers_see_drafts: boolean; no_review_date_is_overdue: boolean; default_stroke_width: number }> {
+  // C-72 (#4/#5) + C-86 : paramètres applicatifs (page Paramètres, admin).
+  async getSettings(): Promise<AppSettings> {
     return handle(await fetch("/api/settings"));
   },
-  async saveSettings(data: { readers_see_drafts?: boolean; no_review_date_is_overdue?: boolean; default_stroke_width?: number }): Promise<{ readers_see_drafts: boolean; no_review_date_is_overdue: boolean; default_stroke_width: number }> {
+  async saveSettings(data: Partial<AppSettings>): Promise<AppSettings> {
     return handle(
       await fetch("/api/settings", {
         method: "PUT",

@@ -1,11 +1,10 @@
 import StepCanvasView from "../step-canvas-view";
 import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { api, ApiError, type WorkflowDetail } from "../api";
+import { api, ApiError, type AppSettings, type WorkflowDetail } from "../api";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
 import { Button } from "../components/ui/button";
-import { Badge } from "../components/ui/badge";
 import { Alert } from "../components/ui/dialog";
 import { Select, Textarea } from "../components/ui/input";
 import { cn } from "../lib/utils";
@@ -25,6 +24,12 @@ export default function ReaderPage() {
   const [feedbackNotice, setFeedbackNotice] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   // C-34 : même logique que l'éditeur — le sélecteur suit l'étape active
   const [activeStep, setActiveStep] = useState(0);
+  // C-83 : paramètre « sans date = à revoir » — la raison du signalement
+  // dépend du réglage applicatif.
+  const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
+  useEffect(() => {
+    api.getSettings().then(setAppSettings).catch(() => { /* défauts conservés */ });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -124,6 +129,11 @@ export default function ReaderPage() {
               {user && user.role !== "reader" && (
                 <Link to={`/workflow/${wf.id}/edit`} aria-label="Modifier ce mode opératoire" title="Modifier ce mode opératoire" className="inline-flex items-center gap-1 text-xs text-link no-underline"><Pencil size={12} aria-hidden="true" /> Éditer</Link>
               )}
+              {user && user.role !== "reader" && wf.state === "published" && (
+                // C-81 : l'export vit avec les autres outils de l'entête —
+                // plus de lien isolé en bas d'un long document.
+                <a href={api.exportUrl(wf.id, versionParam && versionParam !== "draft" ? Number(versionParam) : undefined)} aria-label="Exporter en .docx" title="Exporter la version affichée en .docx" className="inline-flex items-center gap-1 text-xs text-link no-underline"><Download size={12} aria-hidden="true" /> Exporter</a>
+              )}
             </span>
           </div>
         </header>
@@ -148,10 +158,39 @@ export default function ReaderPage() {
         {wf.state === "published" && (
           <p className="mb-2 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
             <span>Version V{wf.current_version}{wf.category ? ` — ${wf.family || ""} ${wf.category}` : ""}</span>
-            {wf.review_due && wf.review_due < today && (
-              <Badge variant="error" title={`À revoir depuis le ${wf.review_due}`}>à revoir</Badge>
+            {/* C-84 : date de revue et responsable portés par la version
+                publiée (snapshot) — ils ne « sautent » plus selon l'état
+                du brouillon courant. */}
+            {wf.review_due && (
+              <span className="rounded bg-surface-2 px-1.5 py-0.5 text-xs">À revoir le {wf.review_due.split("-").reverse().join("/")}</span>
+            )}
+            {(wf.owner_name || wf.owner_email) && (
+              <span className="rounded bg-surface-2 px-1.5 py-0.5 text-xs">Responsable : {wf.owner_name || wf.owner_email}</span>
             )}
           </p>
+        )}
+        {/* C-83 : le signalement « à revoir » explique POURQUOI (date
+            dépassée, avec la date, ou absence de date selon le paramètre)
+            et propose d'ouvrir la mise à jour (auteurs). */}
+        {wf.state === "published" && (wf.review_due
+          ? wf.review_due < today
+          : (appSettings?.no_review_date_is_overdue ?? true)) && (
+          <Alert variant="warn" title="Ce mode opératoire est à revoir" className="mb-2.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-muted-foreground">
+                {wf.review_due
+                  ? `La date de revue est dépassée depuis le ${wf.review_due.split("-").reverse().join("/")}.`
+                  : "Aucune date de revue n'est définie pour ce document."}
+              </span>
+              {user && user.role !== "reader" && (
+                <Link
+                  to={`/workflow/${wf.id}/edit?revue=1`}
+                  className="inline-flex items-center gap-1 rounded-md border border-border bg-surface px-2.5 py-1 text-xs font-semibold text-foreground no-underline"
+                  title="Ouvrir le mode opératoire sur le champ de revue"
+                ><Pencil size={12} aria-hidden="true" /> Mettre à jour la revue</Link>
+              )}
+            </div>
+          </Alert>
         )}
         {feedbackNotice && (
           <p role={feedbackNotice.kind === "ok" ? "status" : "alert"} className={cn(
@@ -217,11 +256,6 @@ export default function ReaderPage() {
         >
           <ArrowUp size={20} aria-hidden="true" />
         </Button>
-        {user && user.role !== "reader" && wf.state === "published" && (
-          <p className="mt-4 text-center">
-            <a href={api.exportUrl(wf.id)} className="inline-flex items-center gap-1 text-link"><Download size={14} aria-hidden="true" /> Exporter en .docx</a>
-          </p>
-        )}
       </main>
     </>
   );

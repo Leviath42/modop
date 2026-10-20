@@ -62,9 +62,24 @@ export function exportRouter(db: Database.Database): Router {
       return;
     }
     const snap = JSON.parse(version.snapshot) as {
-      workflow: { title: string; reference: string; description: string; category: string; family?: string };
+      workflow: { title: string; reference: string; description: string; category: string; family?: string; review_due?: string | null; owner_email?: string };
       steps: SnapshotStep[];
     };
+    // C-84 : date de revue et responsables PORTÉS PAR LE SNAPSHOT — l'export
+    // d'une version ancienne montre les valeurs figées à sa publication,
+    // pas celles du brouillon courant (qui « sautaient » d'une version à
+    // l'autre). Le responsable s'affiche en « Prénom Nom » quand le compte
+    // existe encore.
+    const ownerEmail = snap.workflow.owner_email ?? "";
+    const ownerRow = ownerEmail
+      ? (db.prepare("SELECT first_name, last_name FROM users WHERE email = ?").get(ownerEmail) as
+        | { first_name: string; last_name: string }
+        | undefined)
+      : undefined;
+    const ownerLabel = ownerRow
+      ? [ownerRow.first_name, ownerRow.last_name].filter(Boolean).join(" ") || ownerEmail
+      : ownerEmail;
+    const reviewDue = snap.workflow.review_due ?? null;
 
     // ---------- styles ----------
     const ACCENT = "1F4E9C";
@@ -100,7 +115,14 @@ export function exportRouter(db: Database.Database): Router {
             children: [
               metaCell("Famille", snap.workflow.family ?? "—", ACCENT),
               metaCell("Type", snap.workflow.category || "—", ACCENT),
-              metaCell("Responsable", wf.owner_email || "—", ACCENT),
+              metaCell("Responsable", ownerLabel || "—", ACCENT),
+            ],
+          }),
+          new TableRow({
+            children: [
+              metaCell("À revoir le", reviewDue ?? "—", ACCENT),
+              metaCell("", "", ACCENT),
+              metaCell("", "", ACCENT),
             ],
           }),
         ],

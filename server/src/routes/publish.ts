@@ -88,9 +88,19 @@ export function publishRouter(db: Database.Database): Router {
       return;
     }
     const snap = JSON.parse(version.snapshot) as {
-      workflow: { title: string; reference: string; description: string; category: string; family?: string };
+      workflow: { title: string; reference: string; description: string; category: string; family?: string; review_due?: string | null; owner_email?: string };
       steps: { id: number; position: number; title: string; body: string; pictos: unknown[]; canvas?: unknown[]; photos: unknown[] }[];
     };
+    // C-84 : date de revue et responsable PORTÉS PAR LE SNAPSHOT — la vue
+    // publiée affiche les valeurs figées à la publication (et non celles,
+    // éventuellement déjà mises à jour, du brouillon courant).
+    const ownerEmail = snap.workflow.owner_email ?? "";
+    const owner = ownerEmail
+      ? (db.prepare("SELECT first_name, last_name FROM users WHERE email = ?").get(ownerEmail) as
+        | { first_name: string; last_name: string }
+        | undefined)
+      : undefined;
+    const ownerName = owner ? [owner.first_name, owner.last_name].filter(Boolean).join(" ") || ownerEmail : "";
     res.json({
       id: wf.id,
       title: snap.workflow.title,
@@ -100,6 +110,9 @@ export function publishRouter(db: Database.Database): Router {
       family: snap.workflow.family ?? "",
       state: "published",
       current_version: version.number,
+      review_due: snap.workflow.review_due ?? null,
+      owner_email: ownerEmail,
+      owner_name: ownerName,
       steps: snap.steps.map((s) => ({
         id: s.id,
         workflow_id: wf.id,

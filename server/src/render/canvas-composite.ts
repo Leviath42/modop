@@ -32,11 +32,13 @@ export interface CompositeShape {
 }
 
 function photoW(p: CompositePhoto): number {
+  // C-82 : défauts ALIGNÉS sur le lecteur (step-canvas-view.tsx) — une photo
+  // sans display_w (jamais déplacée) occupe TOUTE la largeur, pas 60 %.
   if (typeof p.display_w === "number") return p.display_w;
   if (p.display_size === "full") return 1;
   if (p.display_size === "large") return 0.85;
   if (p.display_size === "small") return 0.35;
-  return 0.6;
+  return 1;
 }
 
 export async function composeStepCanvas(
@@ -66,7 +68,11 @@ export async function composeStepCanvas(
   let maxH = 240;
   for (const o of loaded) maxH = Math.max(maxH, Math.round(o.y + o.h + 12));
   for (const s of shapes) {
-    const bottom = s.type === "arrow" && s.y2 !== undefined ? Math.max(s.y1, s.y2) : s.y1 + (s.h ?? 0.2);
+    // C-82 : mêmes bornes basses que le lecteur — un texte occupe y1 + 0.1
+    // (la pastille est centrée sur l'ancre), pas y1 + 0.2.
+    const bottom = s.type === "arrow" && s.y2 !== undefined
+      ? Math.max(s.y1, s.y2)
+      : s.y1 + (s.type === "text" ? 0.1 : (s.h ?? 0.2));
     maxH = Math.max(maxH, Math.round(bottom * REF_H + 24));
   }
 
@@ -88,8 +94,10 @@ export async function composeStepCanvas(
     const y1 = s.y1 * REF_H;
     ctx.strokeStyle = color;
     ctx.fillStyle = color;
-    // C-71 (#10) : épaisseur du trait stockée avec la forme (défaut 3)
-    ctx.lineWidth = (s as { width?: number }).width ?? 3;
+    // C-82 : épaisseur par défaut 2 comme le lecteur (les formes récentes
+    // portent leur épaisseur ; les anciennes étaient rendues en 2 à l'écran
+    // mais 3 dans l'export).
+    ctx.lineWidth = (s as { width?: number }).width ?? 2;
     if (s.type === "arrow") {
       const x2 = (s.x2 ?? s.x1 + 0.2) * width;
       const y2 = (s.y2 ?? s.y1 + 0.2) * REF_H;
@@ -111,8 +119,30 @@ export async function composeStepCanvas(
     } else if (s.type === "rect") {
       ctx.strokeRect(x1, y1, (s.w ?? 0.3) * width, (s.h ?? 0.2) * REF_H);
     } else if (s.type === "text") {
-      ctx.font = `600 16px ${font}`;
-      ctx.fillText(s.text ?? "", x1, y1);
+      // C-82 : pastille fidèle au lecteur — rectangle arrondi de la couleur
+      // de la forme, texte blanc centré SUR l'ancre (le lecteur centre via
+      // translate(-50%, -50%) ; l'ancien export dessinait le texte brut à
+      // partir de l'ancre, décalé d'une demi-pastille).
+      const label = s.text ?? "";
+      if (label) {
+        ctx.font = `600 13px ${font}`;
+        const padX = 6, padY = 2.5;
+        const tw = ctx.measureText(label).width + padX * 2;
+        const th = 13 * 1.25 + padY * 2;
+        const rx = x1 - tw / 2, ry = y1 - th / 2;
+        ctx.beginPath();
+        const c2d = ctx as unknown as { roundRect?: (x: number, y: number, w: number, h: number, r: number) => void };
+        if (typeof c2d.roundRect === "function") c2d.roundRect(rx, ry, tw, th, 4);
+        else ctx.rect(rx, ry, tw, th);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(label, x1, y1);
+        ctx.textAlign = "left";
+        ctx.textBaseline = "alphabetic";
+      }
     }
   }
 

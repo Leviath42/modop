@@ -131,3 +131,21 @@ test("export avec formes : le canevas composé est une image PNG valide", async 
   assert.equal(composed!.readUInt32BE(16), 800, "largeur du composé = 800");
   assert.ok(composed!.readUInt32BE(20) >= 240, "hauteur du composé >= repère 240px");
 });
+
+// C-82 : fidélité du composite au lecteur — une photo jamais déplacée (sans
+// display_w) occupe TOUTE la largeur (le lecteur la rend à 100 %, l'ancien
+// export la réduisait à 60 %) ; un texte borne la hauteur à y1 + 0.1 comme
+// le lecteur (pastille centrée sur l'ancre).
+test("C-82 : composite — photo sans display_w pleine largeur, hauteur du texte", async () => {
+  const { composeStepCanvas } = await import("../src/render/canvas-composite.js");
+  // photo 1x1 sans display_w : y par défaut 0.05, largeur 100 %
+  // → hauteur = 0.05*240 + 800*1 + 12 = 824 px.
+  const full = await composeStepCanvas(PHOTOS_DIR, [{ filename: "c25.png" }], [], 800);
+  assert.ok(full, "PNG composé");
+  assert.equal(full!.readUInt32BE(16), 800, "largeur 800");
+  assert.equal(full!.readUInt32BE(20), 824, "photo sans display_w rendue pleine largeur (824 px, pas 60 %)");
+  // texte posé à y1=1.5 : hauteur = (1.5 + 0.1)*240 + 24 = 408 px.
+  const withText = await composeStepCanvas(PHOTOS_DIR, [], [{ type: "text", x1: 0.5, y1: 1.5, text: "Point clé", color: "#1f4e9c" }], 800);
+  assert.ok(withText, "PNG composé avec texte");
+  assert.equal(withText!.readUInt32BE(20), 408, "hauteur du texte = y1 + 0.1 (comme le lecteur)");
+});

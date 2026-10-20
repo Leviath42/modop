@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
-import { api, ApiError } from "../api";
+import { api, ApiError, type AppSettings } from "../api";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
 import { Alert } from "../components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-
-type AppSettings = { readers_see_drafts: boolean; no_review_date_is_overdue: boolean; default_stroke_width: number };
 
 // C-72 (#4/#5) : page Paramètres (admin) — chaque option est appliquée
 // immédiatement côté serveur (PUT) : le listing « à revoir » et la
@@ -99,6 +97,27 @@ export default function SettingsPage() {
                   <option key={n} value={n}>{n}</option>
                 ))}
               </select>
+            </label>
+            {/* C-86 : délai de revue par défaut — préremplit « À revoir le »
+                d'un MO sans date (à J+30 par défaut, paramétrable). */}
+            <label className="grid gap-1 rounded-lg border border-border bg-surface p-3">
+              <span className="text-sm font-semibold text-foreground">Délai de revue par défaut (jours)</span>
+              <span className="text-sm text-muted-foreground">
+                Préremplit la date « À revoir le » d'un mode opératoire sans date de revue, à la date du jour + ce délai (30 par défaut).
+              </span>
+              <input
+                type="number"
+                min={1}
+                max={3650}
+                value={settings ? settings.default_review_days : 30}
+                disabled={!settings}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  if (Number.isFinite(v) && v >= 1 && v <= 3650) void update({ default_review_days: Math.round(v) });
+                }}
+                className="h-9 w-24 rounded-md border border-border bg-surface px-2 text-sm"
+                aria-label="Délai de revue par défaut en jours"
+              />
             </label>
             {toggle(
               "readers_see_drafts",

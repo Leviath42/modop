@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { api, ApiError, type Workflow } from "../api";
+import { api, ApiError, type AppSettings, type Workflow } from "../api";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
 import { Badge } from "../components/ui/badge";
@@ -52,7 +52,7 @@ export default function ListPage() {
   const [loading, setLoading] = useState(true);
   // C-72 (#4/#5) : paramètres applicatifs (sans date = à revoir ;
   // brouillons visibles par les lecteurs).
-  const [settings, setSettings] = useState<{ readers_see_drafts: boolean; no_review_date_is_overdue: boolean; default_stroke_width: number }>({ readers_see_drafts: false, no_review_date_is_overdue: true, default_stroke_width: 5 });
+  const [settings, setSettings] = useState<AppSettings>({ readers_see_drafts: false, no_review_date_is_overdue: true, default_stroke_width: 5, default_review_days: 30 });
   useEffect(() => {
     api.getSettings().then(setSettings).catch(() => { /* défauts conservés */ });
   }, []);
@@ -82,11 +82,13 @@ export default function ListPage() {
 
   const activeFilters = [state, family, overdueOnly ? "1" : "", sort].filter(Boolean).length;
   // Alerte « à revoir » pour les auteurs/admins : documents dont la date de
-  // revue est dépassée (bandeau une fois, action directe vers le filtre).
+  // revue est dépassée — C-83 : chaque document est listé avec SA raison
+  // (date dépassée ou absence de date) et un lien qui l'ouvre.
   const today = new Date().toISOString().slice(0, 10);
-  const overdueCount = workflows.filter((w) =>
+  const overdueDocs = workflows.filter((w) =>
     (w.review_due ? w.review_due < today : settings.no_review_date_is_overdue)
-  ).length;
+  );
+  const overdueCount = overdueDocs.length;
 
   return (
     <>
@@ -166,6 +168,23 @@ export default function ListPage() {
         {error && <p role="alert" className="text-error">{error}</p>}
         {!loading && user && user.role !== "reader" && overdueCount > 0 && (
           <Alert variant="warn" title={`${overdueCount} mode${overdueCount > 1 ? "s" : ""} opératoire${overdueCount > 1 ? "s" : ""} à revoir`}>
+            {/* C-83 : la raison de chaque signalement + un lien qui ouvre le
+                document concerné (détail de la revue dans le lecteur). */}
+            <ul className="mb-2 grid gap-1">
+              {overdueDocs.slice(0, 5).map((w) => (
+                <li key={w.id} className="flex min-w-0 flex-wrap items-center gap-1.5">
+                  <Link to={`/workflow/${w.id}/read`} title={w.title} className="min-w-0 truncate text-sm font-semibold text-link no-underline">{w.title}</Link>
+                  <span className="text-xs text-muted-foreground">
+                    {w.review_due
+                      ? `revue dépassée depuis le ${w.review_due.split("-").reverse().join("/")}`
+                      : "aucune date de revue"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {overdueCount > 5 && (
+              <p className="m-0 mb-2 text-xs text-muted-foreground">+ {overdueCount - 5} autre{overdueCount - 5 > 1 ? "s" : ""}…</p>
+            )}
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-muted-foreground">Des documents ont dépassé leur date de revue.</span>
               <Button size="sm" variant="outline" onClick={() => { setOverdueOnly(true); setSearch(""); }}>Voir à revoir</Button>

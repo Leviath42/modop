@@ -36,6 +36,75 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-81 — Lecteur : bouton d'export remonté dans l'entête (réalisé)
+
+**Problème** : le lien « Exporter en .docx » vivait seul en bas de page — inaccessible sans scroller tout le document.
+
+**Correctif** : le lien rejoint l'entête avec les autres outils (Guidé, QR, Terrain, Éditer), et exporte **la version affichée** (`?version=` transmis quand une version publiée est consultée). Le lien en bas de page est supprimé.
+
+**Test** : `web/src/lib/review-banner.test.ts` — lien présent dans `<header>` avec le bon href.
+
+**Fichiers** : `web/src/pages/reader.tsx`, `web/src/lib/review-banner.test.ts`, `docs/guide-utilisateur.md`
+
+## C-82 — Export docx : images et formes ne suivaient pas le lecteur (réalisé)
+
+**Problème** : le composite serveur divergeait du rendu du lecteur — une photo jamais déplacée (sans `display_w`) sortait à **60 % de largeur** (le lecteur la rend pleine largeur), les textes étaient dessinés **bruts à partir de l'ancre** (le lecteur centre une pastille), l'épaisseur de trait par défaut était 3 (lecteur : 2) et la hauteur réservée aux textes surestimée.
+
+**Correctif** (`render/canvas-composite.ts`, défauts alignés sur `step-canvas-view.tsx`) : photo sans `display_w` = pleine largeur ; texte = **pastille arrondie** de la couleur de la forme, texte blanc centré sur l'ancre ; épaisseur par défaut 2 ; hauteur d'un texte bornée à `y1 + 0.1` (comme le lecteur).
+
+**Tests** : `server/test/export.test.ts` (C-82) — photo 1×1 sans `display_w` : composite de 800×824 px (pleine largeur, pas 492) ; texte à `y1=1.5` : hauteur 408 px (`y1 + 0.1`).
+
+**Fichiers** : `server/src/render/canvas-composite.ts`, `server/test/export.test.ts`
+
+## C-83 — « À revoir » : la raison manque, pas de lien (réalisé)
+
+**Problème** : un document « à revoir » n'expliquait pas pourquoi (date dépassée ? depuis quand ? absence de date ?) et n'offrait aucun lien pour agir.
+
+**Correctif** :
+1. **Lecteur** : le badge devient une **alerte** qui donne la raison (« La date de revue est dépassée depuis le jj/mm/aaaa » ou « Aucune date de revue n'est définie », selon le paramètre « sans date = à revoir ») et propose aux auteurs **« Mettre à jour la revue »** → l'éditeur s'ouvre avec les détails dépliés sur le champ (`?revue=1`).
+2. **Accueil** : l'alerte « à revoir » liste chaque document avec **sa raison** et un **lien qui l'ouvre** (5 premiers + compteur).
+
+**Tests** : `web/src/lib/review-banner.test.ts` — alerte avec la date de dépassement + lien `edit?revue=1` ; `web/src/pages/editor.tsx` ouvre les détails sur `?revue=1`.
+
+**Fichiers** : `web/src/pages/reader.tsx`, `web/src/pages/list.tsx`, `web/src/pages/editor.tsx`, `web/src/lib/review-banner.test.ts`, `docs/guide-utilisateur.md`
+
+## C-84 — Versions publiées : date de revue et responsable perdus (réalisé)
+
+**Problème** : en consultant une version publiée, la date de revue et le responsable « sautaient » — `GET /api/workflows/:id/versions/:number` ne renvoyait ni l'un ni l'autre (badge « à revoir » jamais affiché en vue publiée), et l'export docx prenait les valeurs du workflow **courant** au lieu du snapshot de la version exportée.
+
+**Correctif** :
+1. **Serveur** : la version publiée renvoie `review_due` et `owner_email` **portés par le snapshot** (figés à la publication) + `owner_name` (Prénom Nom, jointure users) ; `GET /api/workflows/:id` expose aussi `owner_name`.
+2. **Export docx** : page de garde alimentée par le snapshot — nouvelle ligne « À revoir le », responsable affiché en « Prénom Nom ».
+3. **Lecteur** : la ligne d'information affiche « À revoir le jj/mm/aaaa » et « Responsable : Prénom Nom ».
+
+**Tests** : `server/test/version-read.test.ts` (C-84) — V1 garde sa date et son responsable après modification du brouillon ; `owner_name` résolu.
+
+**Fichiers** : `server/src/routes/publish.ts`, `server/src/routes/workflows.ts`, `server/src/routes/export.ts`, `web/src/pages/reader.tsx`, `web/src/api.ts`, `server/test/version-read.test.ts`
+
+## C-85 — Recherche de responsable muette pour les auteurs (réalisé)
+
+**Problème** : le champ Responsable chargeait `/api/admin/users` (admin seul) — pour un auteur : **aucune suggestion**, et le champ se vidait au blur. La recherche par mot-clé semblait inexistante.
+
+**Correctif** : nouvelle route `GET /api/users` (author+) qui liste les **comptes actifs** (id, email, Prénom/Nom, rôle) ; l'éditeur l'utilise pour son type-ahead (recherche sur Prénom, Nom et email).
+
+**Tests** : `server/test/settings.test.ts` (C-85) — anonyme 401, auteur 200, compte actif présent / désactivé absent, Prénom/Nom exposés.
+
+**Fichiers** : `server/src/routes/admin.ts` (`activeUsersRouter`), `server/src/app.ts`, `web/src/pages/editor.tsx`, `server/test/settings.test.ts`
+
+## C-86 — Préremplissage de la date de revue paramétrable (réalisé)
+
+**Problème** : la date « À revoir le » devait être posée à la main à chaque MO ; beaucoup de documents naissaient sans date (donc « à revoir » selon le paramétrage).
+
+**Correctif** : nouveau paramètre applicatif **« Délai de revue par défaut »** (jours, 1–3650, défaut **30**, page Paramètres). À l'ouverture d'un MO **sans date** dans l'éditeur, le champ est prérempli à **J + délai** — valeur affichée seulement (persistée à la sauvegarde des métadonnées ou à la publication), jamais imposée : une date saisie ou un champ vidé manuellement ne sont pas écrasés.
+
+**Tests** : `server/test/settings.test.ts` (C-86) — défaut 30, PUT admin, bornes (0 et 99999 refusés), arrondi entier ; préremplissage couvert par le build front + suite verte.
+
+**Fichiers** : `server/src/routes/settings.ts`, `web/src/pages/settings.tsx`, `web/src/pages/editor.tsx`, `web/src/api.ts`, `server/test/settings.test.ts`, `docs/guide-utilisateur.md`
+
+**État (C-81 → C-86)** : ✅ livré sur beta — 125/125 tests serveur, build serveur + front, lint, tous tests front verts.
+
+---
+
 ## C-80 — Validation texte : plus de saut de fenêtre + documentation à jour (correctif C-77)
 
 **Problème** : à la validation d'un texte, le focus explicite sur le canevas (C-77) provoquait un **saut de la fenêtre** — `focus()` fait défiler l'élément par défaut.
