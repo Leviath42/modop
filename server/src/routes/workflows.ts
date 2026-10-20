@@ -38,7 +38,9 @@ export function workflowRouter(db: Database.Database): Router {
       res.status(422).json({ error: "validation", message: "review_due : date YYYY-MM-DD, vide ou null" });
       return;
     }
-    const exists = db.prepare("SELECT 1 FROM workflows WHERE reference = ?").get(reference.trim());
+    // C-88 : unicité INSENSIBLE À LA CASSE — « MO-001 » et « mo-001 » sont
+    // le même numéro (la contrainte SQL UNIQUE seule ne voit pas la casse).
+    const exists = db.prepare("SELECT 1 FROM workflows WHERE reference = ? COLLATE NOCASE").get(reference.trim());
     if (exists) {
       res.status(422).json({ error: "validation", message: "référence déjà utilisée" });
       return;

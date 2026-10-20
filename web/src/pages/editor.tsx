@@ -94,6 +94,36 @@ export default function EditorPage() {
   const cameraRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const isNew = id === "new";
+  // C-88 : unicité du numéro — vérification EN DIRECT en création (le
+  // serveur reste le garde-fou final, insensible à la casse).
+  const [refTaken, setRefTaken] = useState(false);
+  const refCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!isNew) return;
+    const v = reference.trim();
+    if (!v) { setRefTaken(false); return; }
+    if (refCheckTimer.current) clearTimeout(refCheckTimer.current);
+    refCheckTimer.current = setTimeout(() => {
+      api.listWorkflows({ reference: v })
+        .then((wfs) => setRefTaken(wfs.some((w) => w.reference.toLowerCase() === v.toLowerCase())))
+        .catch(() => setRefTaken(false));
+    }, 400);
+    return () => { if (refCheckTimer.current) clearTimeout(refCheckTimer.current); };
+  }, [reference, isNew]);
+  // C-88 : Famille = liste de recherche — suggestions des familles
+  // existantes (la saisie libre reste possible pour en créer une nouvelle).
+  const [families, setFamilies] = useState<string[]>([]);
+  const [familyOpen, setFamilyOpen] = useState(false);
+  useEffect(() => {
+    api.listWorkflows()
+      .then((wfs) => setFamilies([...new Set(wfs.map((w) => w.family).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"))))
+      .catch(() => { /* suggestions indisponibles : saisie libre conservée */ });
+  }, []);
+  const familySuggestions = useMemo(() => {
+    const q = family.trim().toLowerCase();
+    const list = q ? families.filter((f) => f.toLowerCase().includes(q)) : families;
+    return list.slice(0, 8);
+  }, [family, families]);
   // C-74 : épaisseur par défaut depuis les paramètres admin.
   // C-86 : le délai de revue par défaut arrive avec (préremplissage).
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
@@ -444,15 +474,41 @@ export default function EditorPage() {
               <Input value={title} onChange={(e) => { setTitle(e.target.value); setMetaSaved(false); }} placeholder="Remplacement courroie" />
             </Label>
             {isNew ? (
+              // C-88 : le numéro est vérifié en direct — deux documents ne
+              // peuvent pas partager la même référence (casse ignorée).
               <Label className="grid min-w-0 gap-1 text-muted-foreground">Référence
-                <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="MO-001" />
+                <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="MO-001" aria-label="Référence du mode opératoire (unique)" />
+                {refTaken && (
+                  <p role="alert" className="m-0 text-xs font-semibold text-error">Cette référence est déjà utilisée par un autre document.</p>
+                )}
               </Label>
             ) : (
               <p className="m-0 text-muted-foreground"><code>{wf?.reference}</code> — {wf?.state === "published" ? `publié (V${wf.current_version})` : "brouillon"}</p>
             )}
-            <Label className="grid min-w-0 gap-1 text-muted-foreground">Famille
-              <Input value={family} onChange={(e) => { setFamily(e.target.value); setMetaSaved(false); }} placeholder="Mécanique / Électrique / Qualité…" />
-            </Label>
+            <div className="relative grid min-w-0 gap-1">
+              <Label htmlFor="wf-family" className="text-muted-foreground">Famille</Label>
+              <Input
+                id="wf-family"
+                value={family}
+                onChange={(e) => { setFamily(e.target.value); setMetaSaved(false); setFamilyOpen(true); }}
+                onFocus={() => setFamilyOpen(true)}
+                onBlur={() => setTimeout(() => setFamilyOpen(false), 150)}
+                placeholder="Mécanique / Électrique / Qualité… (recherche)"
+                aria-label="Famille — rechercher parmi les familles existantes"
+                autoComplete="off"
+              />
+              {familyOpen && familySuggestions.length > 0 && (
+                <div role="listbox" aria-label="Familles existantes" className="absolute top-full z-40 grid max-h-48 w-full min-w-0 gap-0.5 overflow-y-auto rounded-md border border-border bg-surface p-1 shadow-lg">
+                  {familySuggestions.map((f) => (
+                    <button key={f} type="button" role="option" aria-selected={f === family}
+                      onMouseDown={(e) => { e.preventDefault(); setFamily(f); setMetaSaved(false); setFamilyOpen(false); }}
+                      className="flex min-w-0 items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-muted">
+                      <span className="truncate font-medium">{f}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <Label className="grid min-w-0 gap-1 text-muted-foreground">Type
               <Input value={category} onChange={(e) => { setCategory(e.target.value); setMetaSaved(false); }} placeholder="Maintenance, Contrôle…" />
             </Label>
@@ -511,7 +567,7 @@ export default function EditorPage() {
           </div>
           )}
           {isNew && (
-            <Button onClick={createWorkflow} disabled={!title.trim() || !reference.trim()}>
+            <Button onClick={createWorkflow} disabled={!title.trim() || !reference.trim() || refTaken}>
               Créer
             </Button>
           )}

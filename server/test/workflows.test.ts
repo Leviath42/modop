@@ -59,6 +59,38 @@ test("C-87 : création avec review_due + owner_email, date invalide rejetée", a
   assert.equal(bare.json.owner_email, "");
 });
 
+// C-88 : deux documents ne peuvent pas partager le même numéro — la casse
+// est ignorée (« MO-001 » ≡ « mo-001 »), et le filtre exact ?reference=
+// alimente la vérification en direct du formulaire de création.
+test("C-88 : référence unique insensible à la casse + filtre ?reference=", async () => {
+  const create = await call("POST", "/api/workflows", { title: "Original", reference: "MO-88" }, author);
+  assert.equal(create.status, 201);
+  const variant = await call("POST", "/api/workflows", { title: "Clone", reference: "mo-88" }, author);
+  assert.equal(variant.status, 422, "mo-88 doit être refusé (même numéro, casse différente)");
+  const spaced = await call("POST", "/api/workflows", { title: "Clone", reference: "  MO-88  " }, author);
+  assert.equal(spaced.status, 422, "espaces ignorés : même numéro refusé");
+  const unique = await call("POST", "/api/workflows", { title: "Autre", reference: "MO-89" }, author);
+  assert.equal(unique.status, 201);
+  // filtre exact (nocase) pour la vérification en direct
+  const found = await call("GET", "/api/workflows?reference=Mo-88", undefined, author);
+  assert.equal(found.json.length, 1, "trouvé quelle que soit la casse de la requête");
+  assert.equal(found.json[0].reference, "MO-88");
+  const none = await call("GET", "/api/workflows?reference=MO-999", undefined, author);
+  assert.equal(none.json.length, 0, "numéro libre : aucune réponse");
+});
+
+// C-88 : la duplication ne doit pas non plus entrer en collision par la
+// casse — le suffixe -COPIE saute au prochain libre si l'équivalent
+// (casse différente) existe déjà.
+test("C-88 : duplication — suffixe unique même en casse différente", async () => {
+  await call("POST", "/api/workflows", { title: "Garde-fou", reference: "mo-dup-copie" }, author);
+  const src = await call("POST", "/api/workflows", { title: "Source", reference: "MO-DUP" }, author);
+  assert.equal(src.status, 201);
+  const dup = await call("POST", `/api/workflows/${src.json.id}/duplicate`, undefined, author);
+  assert.equal(dup.status, 201);
+  assert.equal(dup.json.reference, "MO-DUP-COPIE-2", "« MO-DUP-COPIE » ≡ « mo-dup-copie » existant → -COPIE-2");
+});
+
 test("création + lecture avec étapes", async () => {
   const create = await call("POST", "/api/workflows", { title: "Remplacement courroie", reference: "MO-001", description: "Procédure complète", category: "Maintenance" }, author);
   assert.equal(create.status, 201);

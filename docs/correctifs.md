@@ -36,6 +36,23 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-88 — Numéro unique vérifié en direct + Familles en liste de recherche (réalisé)
+
+**Problème** : 1) deux documents pouvaient coexister avec le « même » numéro en changeant la casse (`MO-001` vs `mo-001` — la contrainte SQL UNIQUE est sensible à la casse), et le doublon n'était signalé qu'après soumission du formulaire de création. 2) le champ Famille était une saisie texte libre, sans rattachement aux familles existantes (fautes de frappe → familles parasites dans les filtres).
+
+**Correctif** :
+1. **Unicité insensible à la casse** : `POST /api/workflows` compare `COLLATE NOCASE` (`mo-001` ≡ `MO-001`, espaces trimés) ; la boucle de suffixe `-COPIE` de la duplication suit la même règle ; nouveau filtre exact `GET /api/workflows?reference=` (nocase) pour la vérification en direct.
+2. **Formulaire de création** : la référence est vérifiée **debounced (400 ms)** pendant la frappe — message d'erreur sous le champ + bouton « Créer » désactivé si le numéro est pris ; le 422 serveur reste le garde-fou final.
+3. **Famille = liste de recherche** : type-ahead listant les familles **existantes** (distinctes, triées), filtré par mot-clé insensible à la casse ; le clic pose la valeur ; la saisie libre reste possible (créer une nouvelle famille reste autorisé).
+
+**Tests** : `server/test/workflows.test.ts` (C-88) — `mo-88`/`"  MO-88  "` refusés (422), filtre `?reference=Mo-88` nocase, duplication sautant à `-COPIE-2` quand l'équivalent casse-différente existe ; `web/src/lib/editor-ref-family.test.ts` — erreur en direct + Créer désactivé sur numéro pris, réactivé sur numéro libre, suggestion « Mécanique » pour « méca » posée au clic.
+
+**Fichiers** : `server/src/routes/workflows.ts`, `server/src/routes/list.ts`, `server/src/routes/duplicate.ts`, `web/src/api.ts`, `web/src/pages/editor.tsx`, `server/test/workflows.test.ts`, `web/src/lib/editor-ref-family.test.ts`, `shared/api.md`, `docs/guide-utilisateur.md`
+
+**État** : ✅ livré sur beta — 128/128 tests serveur, tsc + build + lint, tous tests front verts.
+
+---
+
 ## C-87 — Création : champs date de revue et responsable non robustes (réalisé)
 
 **Problème** : en création, le champ Responsable n'affichait **aucune suggestion** (la liste des comptes n'était chargée qu'en édition), la date de revue n'était **pas préremplie** (le préremplissage C-86 ignorait le mode création), et surtout `Créer` n'envoyait **ni la date ni le responsable** : les valeurs saisies étaient perdues et les deux champs se retrouvaient vides dès le passage en mode édition (le rechargement les remplaçait par les valeurs serveur, jamais enregistrées).

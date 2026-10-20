@@ -64,7 +64,7 @@ Le lien **« ⚑ Terrain »** du lecteur ouvre la page dédiée : **À traiter**
 ### Créer
 
 1. **« + »** dans la liste.
-2. Titre, référence (unique, ex. `MO-001`), **famille** (ex. Mécanique) et **type** (ex. Maintenance), description → **Créer**.
+2. Titre, **référence unique** (vérifiée pendant la frappe — deux documents ne peuvent pas partager le même numéro, majuscules/minuscules ignorées), **famille** (liste de recherche parmi les familles existantes, saisie libre possible) et **type** (ex. Maintenance), description → **Créer**.
 3. Dès la création, la **date « À revoir le » est préremplie** (J+30 par défaut, voir Paramètres) et le **responsable se choisit par recherche** (Prénom, Nom ou email) — les deux valeurs sont enregistrées avec le document, et restent affichées au passage en édition.
 
 ### L'interface d'édition

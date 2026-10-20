@@ -47,7 +47,10 @@ export function duplicateRouter(db: Database.Database): Router {
     }
     let ref = `${wf.reference}-COPIE`;
     let n = 2;
-    while (db.prepare("SELECT 1 FROM workflows WHERE reference = ?").get(ref)) {
+    // C-88 : unicité insensible à la casse (alignée sur le contrôle de la
+    // création) — une copie ne peut pas entrer en collision avec un numéro
+    // existant juste par la casse.
+    while (db.prepare("SELECT 1 FROM workflows WHERE reference = ? COLLATE NOCASE").get(ref)) {
       ref = `${wf.reference}-COPIE-${n++}`;
     }
     const actor = (req as { user?: { email: string } }).user!;

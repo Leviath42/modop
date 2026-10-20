@@ -11,6 +11,9 @@ export function listRouter(db: Database.Database): Router {
     const category = typeof req.query.category === "string" && req.query.category ? req.query.category : null;
     const state = req.query.state === "draft" || req.query.state === "published" ? req.query.state : null;
     const family = typeof req.query.family === "string" && req.query.family ? req.query.family : null;
+    // C-88 : filtre exact (insensible à la casse) sur la référence — sert à
+    // la vérification d'unicité en direct depuis le formulaire de création.
+    const reference = typeof req.query.reference === "string" ? req.query.reference.trim() : "";
     const review = req.query.review === "overdue" ? "overdue" : null;
     const clauses: string[] = [];
     const params: unknown[] = [];
@@ -23,6 +26,7 @@ export function listRouter(db: Database.Database): Router {
     if (category) { clauses.push("category = ?"); params.push(category); }
     if (family) { clauses.push("family = ?"); params.push(family); }
     if (state) { clauses.push("state = ?"); params.push(state); }
+    if (reference) { clauses.push("reference = ? COLLATE NOCASE"); params.push(reference); }
     if (review === "overdue") {
       // C-72 (#4) : « sans date de revue = à revoir » est paramétrable.
       const overdueAll = getSettings(db).no_review_date_is_overdue;

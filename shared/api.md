@@ -93,3 +93,8 @@ Fusion séquentielle delta ← une branche à la fois, portes : tsc + 96 tests r
 - Table `feedback` dédiée : `id, workflow_id, step_id, by_email, message, status ('open'|'resolved'), resolved_by, resolved_at, created_at` (migration idempotente, anciens signalements de l'audit log ne sont pas migrés)
 - `GET /api/workflows/:id/feedback` (author+) → `{ id, step_id, by, message, status, resolved_by, resolved_at, at }[]` — ouverts d'abord
 - `PUT /api/workflows/:id/feedback/:feedbackId/resolve` (author+) → `{ ok: true }` ; trace `feedback_resolved` dans l'audit
+
+## Contrat C-88 — unicité du numéro + familles en recherche
+- `POST /api/workflows` : la référence est unique **insensible à la casse** (`mo-001` ≡ `MO-001`, espaces trimés) — 422 `référence déjà utilisée` ; la duplication (`-COPIE`, `-COPIE-2`…) suit la même règle
+- `GET /api/workflows?reference=<réf>` (reader+) → filtre **exact** `COLLATE NOCASE` — 0 ou 1 workflow ; sert à la vérification d'unicité en direct du formulaire de création
+- Famille : pas de changement de contrat (texte libre) — le front propose une liste de recherche des familles existantes
