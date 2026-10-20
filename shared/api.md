@@ -12,7 +12,7 @@ Auth par cookie de session (httpOnly). Codes : 401 non connecté, 403 rôle insu
 ## Workflows (W2, W4, W5)
 - `GET  /api/workflows?search=&category=&state=` → Workflow[]
 - `GET  /api/workflows/:id` → Workflow + steps[] + photos[]
-- `POST /api/workflows` { title, reference, description?, category? } → Workflow (author+)
+- `POST /api/workflows` { title, reference, description?, category?, family?, review_due?, owner_email? } → Workflow (author+ ; C-87 : date de revue et responsable persistés à la création)
 - `PUT  /api/workflows/:id` { title?, description?, category? } (author+)
 - `DELETE /api/workflows/:id` (author+)
 - `POST /api/workflows/:id/publish` → { number } (author+, W4)

@@ -24,9 +24,18 @@ export function workflowRouter(db: Database.Database): Router {
   const r = Router();
 
   r.post("/", requireAuth("author"), (req, res) => {
-    const { title, reference, description, category, family } = req.body ?? {};
+    const { title, reference, description, category, family, review_due, owner_email } = req.body ?? {};
     if (typeof title !== "string" || !title.trim() || typeof reference !== "string" || !reference.trim()) {
       res.status(422).json({ error: "validation", message: "title et reference requis" });
+      return;
+    }
+    // C-87 : la création accepte la date de revue et le responsable (mêmes
+    // règles que le PUT) — les valeurs saisies en mode création étaient
+    // perdues au passage en édition.
+    const dateOk = (v: unknown): boolean =>
+      v === undefined || v === null || v === "" || (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v));
+    if (!dateOk(review_due)) {
+      res.status(422).json({ error: "validation", message: "review_due : date YYYY-MM-DD, vide ou null" });
       return;
     }
     const exists = db.prepare("SELECT 1 FROM workflows WHERE reference = ?").get(reference.trim());
@@ -35,8 +44,16 @@ export function workflowRouter(db: Database.Database): Router {
       return;
     }
     const info = db
-      .prepare("INSERT INTO workflows (title, reference, description, category, family) VALUES (?, ?, ?, ?, ?)")
-      .run(title.trim(), reference.trim(), description ?? "", category ?? "", family ?? "");
+      .prepare("INSERT INTO workflows (title, reference, description, category, family, review_due, owner_email) VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .run(
+        title.trim(),
+        reference.trim(),
+        description ?? "",
+        category ?? "",
+        family ?? "",
+        review_due === "" || review_due == null ? null : (review_due as string),
+        typeof owner_email === "string" ? owner_email.trim() : ""
+      );
     auditLog(db, (req as { user?: { email: string } }).user?.email ?? "?", "create_workflow", `workflow:${info.lastInsertRowid}`, reference.trim());
     const wf = db.prepare("SELECT * FROM workflows WHERE id = ?").get(info.lastInsertRowid);
     res.status(201).json(wf);

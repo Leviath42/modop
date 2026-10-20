@@ -139,7 +139,7 @@ export const api = {
   async getWorkflow(id: number | string): Promise<WorkflowDetail> {
     return handle<WorkflowDetail>(await fetch(`/api/workflows/${id}`));
   },
-  async createWorkflow(data: { title: string; reference: string; description?: string; category?: string; family?: string }): Promise<Workflow> {
+  async createWorkflow(data: { title: string; reference: string; description?: string; category?: string; family?: string; review_due?: string | null; owner_email?: string | null }): Promise<Workflow> {
     return handle<Workflow>(
       await fetch("/api/workflows", {
         method: "POST",

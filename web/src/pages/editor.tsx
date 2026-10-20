@@ -108,16 +108,18 @@ export default function EditorPage() {
   // C-45 : liste des comptes actifs pour le sélecteur de responsable.
   // C-85 : /api/users (author+) — l'ancien /api/admin/users renvoyait 403
   // aux auteurs : aucune suggestion de responsable ne s'affichait.
+  // C-87 : chargée DÈS LA CRÉATION — le champ responsable est une recherche
+  // aussi en mode création (avant : suggestions vides jusqu'au premier
+  // chargement en édition).
   const [accounts, setAccounts] = useState<{ id: number; email: string; first_name?: string; last_name?: string; role: string }[]>([]);
   useEffect(() => {
-    if (isNew) return;
     fetch("/api/users")
       .then((r) => (r.ok ? r.json() : []))
       .then((list: { id: number; email: string; first_name: string; last_name: string; role: string }[]) => {
         if (Array.isArray(list)) setAccounts(list);
       })
       .catch(() => setAccounts([]));
-  }, [isNew]);
+  }, []);
 
   useEffect(() => {
     if (isNew) return;
@@ -138,8 +140,10 @@ export default function EditorPage() {
   // le » reçoit aujourd'hui + default_review_days (paramètre admin, 30 j
   // par défaut). Valeur affichée seulement : elle sera persistée à la
   // prochaine sauvegarde des métadonnées ou à la publication.
+  // C-87 : actif AUSSI EN CRÉATION (avant : champ vide au premier affichage).
   useEffect(() => {
-    if (isNew || !wf || reviewTouched || !appSettings || reviewDue) return;
+    if (reviewTouched || !appSettings || reviewDue) return;
+    if (!isNew && !wf) return;
     const days = typeof appSettings.default_review_days === "number" && appSettings.default_review_days >= 1
       ? appSettings.default_review_days
       : 30;
@@ -166,7 +170,25 @@ export default function EditorPage() {
   async function createWorkflow() {
     setError(null);
     try {
-      const created = await api.createWorkflow({ title: title.trim(), reference: reference.trim(), category, family, description });
+      // C-87 : la date de revue et le responsable saisis en CRÉATION sont
+      // transmis au POST (avant : perdus au passage en édition, les champs
+      // se vidaient au rechargement).
+      const created = await api.createWorkflow({
+        title: title.trim(),
+        reference: reference.trim(),
+        category,
+        family,
+        description,
+        review_due: reviewDue || null,
+        owner_email: ownerEmail || null,
+      });
+      // pas d'autosave fantôme : les valeurs viennent d'être enregistrées,
+      // le rechargement en édition resynchronisera l'état.
+      setMetaSaved(true);
+      // C-87 : le panneau de détails reste OUVERT après la création — les
+      // champs date/responsable viennent d'être remplis, ils ne doivent pas
+      // disparaître derrière le bouton « Détails » au passage en édition.
+      setShowMeta(true);
       navigate(`/workflow/${created.id}/edit`, { replace: true });
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Création impossible");

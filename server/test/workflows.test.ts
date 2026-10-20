@@ -40,6 +40,25 @@ test("lecteur ne peut pas créer (403)", async () => {
   assert.equal(r.status, 403);
 });
 
+// C-87 : la création persiste la date de revue et le responsable saisis en
+// mode création (avant : perdus au passage en édition).
+test("C-87 : création avec review_due + owner_email, date invalide rejetée", async () => {
+  const bad = await call("POST", "/api/workflows", { title: "Date invalide", reference: "MO-C87X", review_due: "pas-une-date" }, author);
+  assert.equal(bad.status, 422);
+  const create = await call("POST", "/api/workflows", { title: "GED dès la création", reference: "MO-C87", review_due: "2030-06-15", owner_email: "resp@usine.fr" }, author);
+  assert.equal(create.status, 201);
+  assert.equal(create.json.review_due, "2030-06-15", "date de revue persistée à la création");
+  assert.equal(create.json.owner_email, "resp@usine.fr", "responsable persisté à la création");
+  const got = await call("GET", `/api/workflows/${create.json.id}`, undefined, author);
+  assert.equal(got.json.review_due, "2030-06-15", "relu : date de revue");
+  assert.equal(got.json.owner_email, "resp@usine.fr", "relu : responsable");
+  // valeurs absentes : null/vide, pas d'erreur
+  const bare = await call("POST", "/api/workflows", { title: "Sans GED", reference: "MO-C87B" }, author);
+  assert.equal(bare.status, 201);
+  assert.equal(bare.json.review_due, null);
+  assert.equal(bare.json.owner_email, "");
+});
+
 test("création + lecture avec étapes", async () => {
   const create = await call("POST", "/api/workflows", { title: "Remplacement courroie", reference: "MO-001", description: "Procédure complète", category: "Maintenance" }, author);
   assert.equal(create.status, 201);

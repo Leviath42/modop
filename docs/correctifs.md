@@ -36,6 +36,22 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-87 — Création : champs date de revue et responsable non robustes (réalisé)
+
+**Problème** : en création, le champ Responsable n'affichait **aucune suggestion** (la liste des comptes n'était chargée qu'en édition), la date de revue n'était **pas préremplie** (le préremplissage C-86 ignorait le mode création), et surtout `Créer` n'envoyait **ni la date ni le responsable** : les valeurs saisies étaient perdues et les deux champs se retrouvaient vides dès le passage en mode édition (le rechargement les remplaçait par les valeurs serveur, jamais enregistrées).
+
+**Correctif** :
+1. **Serveur** : `POST /api/workflows` accepte `review_due` (même validation que le PUT) et `owner_email` — les valeurs sont persistées à la création.
+2. **Éditeur** : comptes actifs chargés **dès la création** (recherche fonctionnelle), préremplissage J+délai **aussi en création**, `Créer` transmet les deux champs, panneau de détails **maintenu ouvert** au passage en édition (les champs restent visibles), et pas d'autosave fantôme après la création.
+
+**Tests** : `server/test/workflows.test.ts` (C-87) — création avec date/responsable persistés et relus, date invalide 422, valeurs absentes acceptées ; `web/src/lib/editor-create-review.test.ts` — flux complet création→édition en jsdom (date préremplie, suggestion posée, POST transmis, champs conservés en édition). NB : ce test pose les globales jsdom **avant** l'import de react-dom — sinon react-dom s'initialise « sans DOM » et le onChange des champs texte ne se déclenche pas sur un événement dispatché.
+
+**Fichiers** : `server/src/routes/workflows.ts`, `web/src/api.ts`, `web/src/pages/editor.tsx`, `server/test/workflows.test.ts`, `web/src/lib/editor-create-review.test.ts`, `docs/guide-utilisateur.md`
+
+**État** : ✅ livré sur beta — 126/126 tests serveur, tsc + build + lint, tous tests front verts.
+
+---
+
 ## C-81 — Lecteur : bouton d'export remonté dans l'entête (réalisé)
 
 **Problème** : le lien « Exporter en .docx » vivait seul en bas de page — inaccessible sans scroller tout le document.
