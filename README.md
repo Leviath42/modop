@@ -37,7 +37,7 @@ L'app écoute sur `http://<IP-du-conteneur>:3000`. Détails : [docs/guide-test-p
 |---|---|
 | [docs/cahier-des-charges.md](docs/cahier-des-charges.md) | Exigences RF/RNF et leur statut (implémenté / restant) |
 | [docs/roadmap.md](docs/roadmap.md) | **État actuel** : implémenté, restant (vagues 7-10) |
-| [docs/correctifs.md](docs/correctifs.md) | Journal des correctifs C-01 → C-80 |
+| [docs/correctifs.md](docs/correctifs.md) | Journal des correctifs C-01 → C-88 |
 | [docs/guide-utilisateur.md](docs/guide-utilisateur.md) | Guide utilisateur : consulter, créer, publier, administrer |
 | [docs/guide-test-proxmox.md](docs/guide-test-proxmox.md) | Installation conteneur LXC + parcours de validation |
 | [docs/durcissement-securite.md](docs/durcissement-securite.md) | Production : SSO OIDC, TLS, variables d'environnement |
