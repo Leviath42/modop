@@ -17,7 +17,7 @@ L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archi
 - **Suppression MO** : admin uniquement, double confirmation, case décochée par défaut.
 - **Sécurité** : anti-CSRF (+ allowlist `MODOP_ALLOWED_HOSTS`), magic numbers, rate limits (login, feedback), révocation au changement de rôle, en-têtes durcis, audit.
 - **Ops** : mise à jour/retour arrière depuis l'interface (admin), journal en direct, tests rationalisés (~9 s serveur + ~16 s front).
-- **Refonte UI (C-64)** : Tailwind v4 + design tokens de la palette officielle (bleu-gris/orange, clair + sombre) + composants type shadcn faits maison (`web/src/components/ui/`) ; toutes les pages migrées vers les classes/utilitaires, comportements, aria et invariants conservés ; guide de référence `docs/Guide interface utilisateur.md`, palette `docs/palette-couleurs.md`.
+- **Refonte UI (C-64)** : Tailwind v4 + design tokens de la palette officielle (bleu-gris/orange, clair + sombre) + composants type shadcn faits maison (`web/src/components/ui/`) ; toutes les pages migrées vers les classes/utilitaires, comportements, aria et invariants conservés ; guide de référence `docs/guide-interface-utilisateur.md`, palette `web/src/styles.css`.
 
 ## 🚧 Restant à implémenter
 
