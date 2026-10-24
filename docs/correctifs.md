@@ -455,7 +455,7 @@ Nota : le correctif de focus de C-77 (focus explicite sur le canevas avant démo
 
 ## C-64 — Refonte UI : Tailwind v4 + design tokens de la palette + composants type shadcn (réalisé)
 
-**Contexte** : l'interface était entièrement en styles inline React sur une palette ad-hoc (bleu `#1f4e9c`), sans système de design. Le propriétaire a fourni un guide UI/UX de référence ([Guide interface utilisateur.md](Guide%20interface%20utilisateur.md) : Tailwind + shadcn/ui, responsive, WCAG) et la palette de marque ([palette-couleurs.md](palette-couleurs.md) : bleu-gris `#517485` primaire, orange `#e84e0f` accent, anthracite `#2c3a43`).
+**Contexte** : l'interface était entièrement en styles inline React sur une palette ad-hoc (bleu `#1f4e9c`), sans système de design. Le propriétaire a fourni un guide UI/UX de référence ([Guide interface utilisateur.md](guide-interface-utilisateur.md) : Tailwind + shadcn/ui, responsive, WCAG) et la palette de marque ([palette-couleurs.md](../web/src/styles.css) : bleu-gris `#517485` primaire, orange `#e84e0f` accent, anthracite `#2c3a43`).
 
 **Correctif** :
 1. **Fondation** : Tailwind v4 (plugin `@tailwindcss/vite`, compatible Vite 8) ; `styles.css` remappé sur la palette **en conservant les noms de variables** (`--accent`, `--surface`…) — le code non migré change de peau automatiquement ; exposition `@theme inline` (utilitaires `bg-primary`, `text-muted-foreground`, `border-border`…) ; variante `dark:` sur `data-theme` (compatible `theme.ts`, pas de classe `dark`).

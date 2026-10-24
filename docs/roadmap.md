@@ -4,7 +4,7 @@
 
 L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archives/roadmap-v1-a-v6bis.md](archives/roadmap-v1-a-v6bis.md). La série de correctifs UI/UX (C-01 → C-51) est journalisée dans [correctifs.md](correctifs.md).
 
-## ✅ Implémenté (v0 → v6bis + correctifs C-01..C-51)
+## ✅ Implémenté (v0 → v6bis + correctifs C-01..C-80)
 
 - **Éditeur complet** : canevas par étape (photos libres, flèches/zones/textes clic-clic, corbeille de drag), étape active dynamique, autosave des métadonnées, uploads galerie **ou appareil photo**, barre d'outils sticky avec labels, pictos couleur+texte, familles/types.
 - **Publication versionnée** : V1 → Vn immuable (snapshot complet : canevas + mise en page), changelog à la publication, restauration de version, duplication.

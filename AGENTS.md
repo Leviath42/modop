@@ -7,7 +7,7 @@
 | Couche | Technologie |
 |---|---|
 | Serveur | Node + Express 4 + TypeScript, better-sqlite3 (migrations idempotentes dans `server/src/db/schema.ts`) |
-| Front | React + Vite + **Tailwind v4** (PWA), composants type shadcn (`web/src/components/ui/`), canevas d'annotations maison (`web/src/step-canvas.tsx`) ; design tokens + palette dans `web/src/styles.css` (`docs/palette-couleurs.md`) |
+| Front | React + Vite + **Tailwind v4** (PWA), composants type shadcn (`web/src/components/ui/`), canevas d'annotations maison (`web/src/step-canvas.tsx`) ; design tokens + palette dans `web/src/styles.css` |
 | Export DOCX | `docx` + composition canevas `@napi-rs/canvas` (`server/src/render/canvas-composite.ts`) |
 | Auth | bcrypt maison + OIDC optionnel + TOTP admin (`MODOP_TOTP_SECRET`, transitoire) ; rôles `reader` / `author` / `admin` |
 | Tests | `node:test` runtime côté serveur ; scripts jsdom autonomes côté front (`web/scripts/run-tests.sh`) |
