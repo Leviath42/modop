@@ -1,6 +1,6 @@
 # Modop — Roadmap
 
-*Dernière mise à jour : après C-88 — **cycle de retour terrain clos (C-70 → C-80, fusionné sur main) + correctifs GED/lecture C-81 → C-88** : export en entête du lecteur, fidélité du composite docx, alerte « à revoir » expliquée avec lien, date de revue/responsable portés par les versions publiées, recherche de responsable accessible aux auteurs, délai de revue par défaut paramétrable (30 j), champs date/responsable robustes dès la création, numéro unique vérifié en direct (casse ignorée) + Familles en liste de recherche. **Backlog prioritaire** : undo/redo global, **templates de documents** (mode de réaction, tableau, enregistrements, FIT, fiches d'aspect), vidéo liée au MO, texte riche. Vague 10 (sécurité) en standby. Vague 9 terminée code + ops ; production sur `beta`.*
+*Dernière mise à jour : après C-88 — **cycle de retour terrain clos (C-70 → C-80, fusionné sur main) + correctifs GED/lecture C-81 → C-88** : export en entête du lecteur, fidélité du composite docx, alerte « à revoir » expliquée avec lien, date de revue/responsable portés par les versions publiées, recherche de responsable accessible aux auteurs, délai de revue par défaut paramétrable (30 j), champs date/responsable robustes dès la création, numéro unique vérifié en direct (casse ignorée) + Familles en liste de recherche. **Backlog prioritaire** : undo/redo global, **templates de documents** (mode de réaction, tableau, enregistrements, FIT, fiches d'aspect), vidéo liée au MO, texte riche. Vague 10 (sécurité) en standby. Vague 9 terminée code + ops ; production sur `beta`. **Ajout (26 oct. 2026) : vague 11 « preuve de formation » (quiz de compréhension pré/post) proposée — voir § Vague 11.***
 
 L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archives/roadmap-v1-a-v6bis.md](archives/roadmap-v1-a-v6bis.md). La série de correctifs UI/UX (C-01 → C-88) est journalisée dans [correctifs.md](correctifs.md).
 
@@ -78,7 +78,7 @@ Architecture livrée (C-67) : **registre de commandes modulaire** (`web/src/edit
 
 ### Vague 10 — Palier sécurité entreprise (issue #9) — ⏸️ **en standby**
 
-*Décision propriétaire (2026-10-18) : pas de besoin pour le moment — priorité au fonctionnel et au mode édition. Contenu conservé pour relance ultérieure. Rappel en attendant : l'UI de login n'a pas de champ `totp`, **`MODOP_TOTP_SECRET` reste désactivé**.*
+*Décision propriétaire (2026-10-18) : pas de besoin pour le moment — priorité au fonctionnel et au mode édition. Contenu conservé pour relance ultérieure. Rappel en attendant : l'UI de login n'a pas de champ `totp`, **`MODOP_TOTP_SECRET` reste désactivé`***
 
 | # | Action | Priorité | État |
 |---|---|---|---|
@@ -88,6 +88,20 @@ Architecture livrée (C-67) : **registre de commandes modulaire** (`web/src/edit
 | 4 | **PRA écrit et testé** : `docs/plan-de-reprise.md` + **exercice réel** chronométré (base + photos dans un CT vierge), corriger le doc ; lié au test de restauration de la vague 9 | 🟡 | partiel — brouillon du document présent ; exercice de restauration à faire |
 
 Critères d'acceptation (issue #9) : un compte admin sans code TOTP valide ne se connecte pas (replay impossible) ; la base est illisible sans la clé ; sauvegardes chiffrées et restauration testée sur CT vierge ; rapport ZAP/Nuclei archivé et constats classés ; `plan-de-reprise.md` + exercice chronométré.
+
+### Vague 11 — Preuve de formation & habilitation (proposition — ajoutée le 26 oct. 2026)
+
+*Origine : pattern pédagogique « pré-quiz → contenu → knowledge checks → post-quiz » observé dans [microsoft/Web-Dev-For-Beginners](https://github.com/microsoft/Web-Dev-For-Beginners) lors d'une analyse du top 200 GitHub (26 oct. 2026). Objectif : faire passer Modop de la **consultation** de MO à la **preuve de formation** — argument habilitation / ISO 9001, et mesure concrète pour le dossier de création de poste (taux de réussite, temps d'habilitation). Réutilise l'existant : rôles, stats admin, journal d'audit, snapshot versionné. À spécifier avant implémentation (contrat figé `shared/`).*
+
+| # | Fonctionnalité | Pistes |
+|---|---------------|-------|
+| 1 | **Quiz de prérequis (pré-lecture)** | questions rattachées au MO, **versionnées avec le snapshot** à la publication (Vn immuable = quiz immuable) ; optionnel par MO |
+| 2 | **Quiz de compréhension (post-lecture)** | global ou par étape, correction immédiate, seuil de réussite paramétrable ; une nouvelle version publiée impose de re-valider l'acquis |
+| 3 | **Traçabilité & audit** | tentatives (utilisateur, date, score, version du MO) en SQLite, jamais modifiables côté lecteur ; export admin pour audit habilitation |
+| 4 | **Stats admin** | taux de réussite par MO / par opérateur / par version, temps d'habilitation — alimente le tableau de bord existant |
+| 5 | **Rédaction des questions** | côté éditeur (author), par étape ou par MO ; anti-triche minimal : ordre aléatoire, tentatives limitées par défaut |
+
+Critères d'acceptation (à affiner) : un MO avec quiz actif conserve les scores par version ; une tentative enregistrée n'est jamais modifiable côté lecteur ; l'admin peut exporter l'historique des tentatives par opérateur ; la publication d'une nouvelle version réinitialise l'acquis à re-valider.
 
 ### Vision long terme
 
