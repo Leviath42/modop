@@ -1,6 +1,6 @@
 # Modop — Roadmap
 
-*Dernière mise à jour : après C-88 — **cycle de retour terrain clos (C-70 → C-80, fusionné sur main) + correctifs GED/lecture C-81 → C-88** : export en entête du lecteur, fidélité du composite docx, alerte « à revoir » expliquée avec lien, date de revue/responsable portés par les versions publiées, recherche de responsable accessible aux auteurs, délai de revue par défaut paramétrable (30 j), champs date/responsable robustes dès la création, numéro unique vérifié en direct (casse ignorée) + Familles en liste de recherche. **Backlog prioritaire** : undo/redo global, **templates de documents** (mode de réaction, tableau, enregistrements, FIT, fiches d'aspect), vidéo liée au MO, texte riche. Vague 10 (sécurité) en standby. Vague 9 terminée code + ops ; production sur `beta`. **Ajout (26 oct. 2026) : vague 11 « preuve de formation » (quiz de compréhension pré/post) proposée — voir § Vague 11.*** **Porte de déploiement (26 oct. 2026)** ajoutée en Vague 9 #7 : `update.sh` devra refuser un SHA dont la CI est rouge — constat : un déploiement a eu lieu alors que la CI était rouge (échec audit undici).***
+*Dernière mise à jour : après C-88 — **cycle de retour terrain clos (C-70 → C-80, fusionné sur main) + correctifs GED/lecture C-81 → C-88** : export en entête du lecteur, fidélité du composite docx, alerte « à revoir » expliquée avec lien, date de revue/responsable portés par les versions publiées, recherche de responsable accessible aux auteurs, délai de revue par défaut paramétrable (30 j), champs date/responsable robustes dès la création, numéro unique vérifié en direct (casse ignorée) + Familles en liste de recherche. **Backlog prioritaire** : undo/redo global, **templates de documents** (mode de réaction, tableau, enregistrements, FIT, fiches d'aspect), vidéo liée au MO, texte riche. Vague 10 (sécurité) en standby. Vague 9 terminée code + ops ; production sur `beta`. **Ajout (26 oct. 2026) : vague 11 « preuve de formation » (quiz de compréhension pré/post) proposée — voir § Vague 11.*** **Ajout (26 oct. 2026) : § Conformité & traçabilité contractuelle — suivi des versions des CGV (art. 19) + liaison licence ↔ version.** **Porte de déploiement (26 oct. 2026)** ajoutée en Vague 9 #7 : `update.sh` devra refuser un SHA dont la CI est rouge — constat : un déploiement a eu lieu alors que la CI était rouge (échec audit undici).***
 
 L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archives/roadmap-v1-a-v6bis.md](archives/roadmap-v1-a-v6bis.md). La série de correctifs UI/UX (C-01 → C-88) est journalisée dans [correctifs.md](correctifs.md).
 
@@ -103,6 +103,10 @@ Critères d'acceptation (issue #9) : un compte admin sans code TOTP valide ne se
 | 5 | **Rédaction des questions** | côté éditeur (author), par étape ou par MO ; anti-triche minimal : ordre aléatoire, tentatives limitées par défaut |
 
 Critères d'acceptation (à affiner) : un MO avec quiz actif conserve les scores par version ; une tentative enregistrée n'est jamais modifiable côté lecteur ; l'admin peut exporter l'historique des tentatives par opérateur ; la publication d'une nouvelle version réinitialise l'acquis à re-valider.
+
+### Conformité & traçabilité contractuelle (ajouté le 26 oct. 2026)
+
+- [ ] **Suivi des versions des CGV (art. 19) + liaison licence ↔ version** : si Modop est un jour distribué commercialement (via Néliora), chaque révision des CGV doit être versionnée, datée et archivée, et chaque licence/contrat enregistré avec **la version des CGV acceptée + la date de licence** — même mécanique que meal_plan. En interne dès maintenant : versionner les documents contractuels associés aux déploiements clients (conditions d'accès, charte) et conserver la date d'acceptation.
 
 ### Vision long terme
 
