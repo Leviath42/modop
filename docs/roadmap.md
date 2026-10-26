@@ -107,6 +107,7 @@ Critères d'acceptation (à affiner) : un MO avec quiz actif conserve les scores
 ### Conformité & traçabilité contractuelle (ajouté le 26 oct. 2026)
 
 - [ ] **Suivi des versions des CGV (art. 19) + liaison licence ↔ version** : si Modop est un jour distribué commercialement (via Néliora), chaque révision des CGV doit être versionnée, datée et archivée, et chaque licence/contrat enregistré avec **la version des CGV acceptée + la date de licence** — même mécanique que meal_plan. En interne dès maintenant : versionner les documents contractuels associés aux déploiements clients (conditions d'accès, charte) et conserver la date d'acceptation.
+- [ ] **Suspension / réactivation d'une licence ou d'un accès** : action admin (raison tracée, date) — cas d'usage : litige, départ d'un opérateur, incident de sécurité, test ; l'accès suspendu est bloqué sans suppression des données ; toute suspension/réactivation consignée dans le journal d'audit existant. Ajouté le 26 oct. 2026.
 
 ### Vision long terme
 
