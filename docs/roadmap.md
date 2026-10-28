@@ -104,6 +104,20 @@ Critères d'acceptation (issue #9) : un compte admin sans code TOTP valide ne se
 
 Critères d'acceptation (à affiner) : un MO avec quiz actif conserve les scores par version ; une tentative enregistrée n'est jamais modifiable côté lecteur ; l'admin peut exporter l'historique des tentatives par opérateur ; la publication d'une nouvelle version réinitialise l'acquis à re-valider.
 
+### Retours terrain — GED & lecture docx (28 oct. 2026 — portés depuis vibe_docs « Corrections Modop »)
+
+- [ ] Arborescence documentaire paramétrable (types de documents / regroupements sur plusieurs niveaux)
+- [ ] Nouvelle image par drag & drop ou depuis le presse-papier
+- [ ] Gestion de documents parents
+- [ ] Paramétrage des indications métiers
+- [ ] Section de commentaires réservée aux auteurs en mode édition, à chaque étape
+- [ ] Pouvoir abandonner un brouillon introuvable
+- [ ] Docx : images et formes légèrement décalées
+- [ ] Les remontées terrain ne sont pas visibles en mode édition (indiquer que des éditions sont à faire)
+- [ ] Si pas de commentaire de version, le commentaire précédent est repris
+- [ ] Docx : mauvaise gestion des photos et formes (position relative)
+- [ ] Docx : formes plus basses que l'image tronquées en lecture
+
 ### Conformité & traçabilité contractuelle (ajouté le 26 oct. 2026)
 
 - [ ] **Suivi des versions des CGV (art. 19) + liaison licence ↔ version** : si Modop est un jour distribué commercialement (via Néliora), chaque révision des CGV doit être versionnée, datée et archivée, et chaque licence/contrat enregistré avec **la version des CGV acceptée + la date de licence** — même mécanique que meal_plan. En interne dès maintenant : versionner les documents contractuels associés aux déploiements clients (conditions d'accès, charte) et conserver la date d'acceptation.
