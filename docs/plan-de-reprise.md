@@ -29,10 +29,10 @@ Dépendances externes : hôte Proxmox, copie de sauvegarde hors CT, gestionnaire
 |---|---|---|
 | 1 | Snapshot `VACUUM INTO` + `integrity_check` **avant chaque update** (`update.sh` ; fallback copie brute assumée si `better-sqlite3` indisponible — C-61) | ✅ automatique |
 | 2 | `server/scripts/backup-db.mjs` : snapshot vérifié en un fichier, restauration testée en runtime (C-57) | ✅ livré |
-| 3 | **Planification régulière** de la sauvegarde (cible : toutes les 15 min pour tenir le RPO) + **copie hors CT** | ⚠️ **à planifier** — sans elle, le RPO réel = « depuis la dernière mise à jour » |
-| 4 | Sauvegarde du dossier photos, même cadence que la base | ⚠️ à inclure dans le cron n° 3 |
-| 5 | Sauvegarde du `.env` (secrets) hors CT | ⚠️ idem — sans les secrets, la base restaurée ne démarre pas |
-| 6 | Piste supervision : moniteur push Kuma « battement sauvegarde OK » (une absence de battement alerte) | documentée, non implémentée |
+| 3 | **Planification régulière** de la sauvegarde + **copie hors CT** | ✅ copie hors CT couverte : vzdump quotidien du CT (job 05:00) → export chiffré R2 (rétention 2 j), méthode de restauration **prouvée le 28/10/2026** sur le CT 103 (RTO 10 min, §7). ⚠️ RPO fin : la chaîne vzdump donne du 24 h — le 15 min suppose un cron dédié (C-57), toujours à mettre en place |
+| 4 | Sauvegarde du dossier photos, même cadence que la base | ✅ embarquées dans le vzdump du CT (→ R2) — à vérifier au premier exercice chronométré |
+| 5 | Sauvegarde du `.env` (secrets) hors CT | ✅ embarqué dans le vzdump du CT (→ R2, chiffré côté client) |
+| 6 | Piste supervision : moniteur push Kuma « battement sauvegarde OK » (une absence de battement alerte) | ✅ implémentée côté homelab le 28/10/2026 : moniteur Push « Sauvegardes-R2 » (chaîne vzdump→R2, drill complet) — à répliquer le jour du cron 15 min modop |
 
 ## 4. Scénarios de sinistre et procédures
 
@@ -43,7 +43,7 @@ Dépendances externes : hôte Proxmox, copie de sauvegarde hors CT, gestionnaire
 4. Vérifications §5.
 
 ### S2 — Perte du conteneur (suppression, hôte HS, corruption massive)
-1. Reconstruire un CT vierge et réinstaller : `git clone -b <branche prod> https://github.com/Leviath42/modop.git /opt/modop` (production maintenue sur `beta`, décision propriétaire ; `MODOP_DEPLOY_BRANCH` > `.deploy-branch` > `beta`), puis installation selon `docs/guide-test-proxmox.md`.
+1. Reconstruire un CT vierge et réinstaller : `git clone -b <branche prod> https://github.com/Leviath42/modop.git /opt/modop` (production maintenue sur `beta`, décision propriétaire ; `MODOP_DEPLOY_BRANCH` > `.deploy-branch` > `beta`), puis installation selon `docs/guide-test-proxmox.md`. **Alternative prouvée (28/10/2026)** : restaurer le CT entier depuis l'archive R2 (§7), puis rebrancher le réseau — ~10 min.
 2. Recréer le `.env` depuis la copie hors CT (secrets, `MODOP_DEPLOY_BRANCH`).
 3. Restaurer la base : dernier snapshot `VACUUM INTO` → emplacement du fichier de base, puis `PRAGMA integrity_check`.
 4. Restaurer le dossier photos depuis la copie externe (**même date que la base**, sinon références/étapes incohérentes).
@@ -80,3 +80,16 @@ Reconstruire **un CT vierge** en ne suivant que ce document, chronomètre en mai
 - noter pendant l'exercice : durée réelle, chemins exacts manquants, commandes fausses, étapes ambiguës ;
 - corriger ce PRA dans la foulée — le PRA est vivant, il se réécrit à chaque exercice ;
 - périodicité ensuite : 1×/an, ou après tout changement majeur (chiffrement at-rest, changement d'hôte, passage de la production sur `main`).
+
+## 7. Restauration offsite (méthode validée le 28/10/2026)
+
+Le CT 105 est couvert chaque nuit par le job vzdump 05:00 → export chiffré R2 (`rclone crypt`, rétention 2 j). La méthode est **prouvée en conditions réelles sur le CT 103** (meal_plan) le 28/10/2026 :
+
+1. Télécharger l'archive (rclone déchiffre à la volée) : `rclone copy "r2crypt:vzdump/vzdump-lxc-105-<date>.tar.zst" /root/r2-restore-test/ --progress`
+2. Restaurer sur un CT scratch **sans le démarrer** : `pct restore 120 /root/r2-restore-test/<archive>.tar.zst --storage local-zfs`
+3. **Retirer le réseau avant tout démarrage** : `pct set 120 --delete net0` — un clone de prod booté sur le LAN double l'app et son daemon cloudflared détourne le tunnel
+4. Démarrer, vérifier base + `.env` + photos (`pct exec 120 -- find / -name "*.db" 2>/dev/null`), puis détruire le scratch
+
+**RTO mesuré : 10 min** (téléchargement inclus). Recette complète : runbook R2 §« Restauration testée » (repo vibe_docs, `homelab/2026-10-25-runbook-sauvegardes-r2.md`).
+
+⚠️ L'exercice chronométré §6 (critère vague 10) reste à jouer une fois sur le CT 105 lui-même : restauration sur CT vierge + `PRAGMA integrity_check` + vérification des photos (§5).
