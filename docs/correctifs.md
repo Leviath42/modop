@@ -36,6 +36,23 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-89 — Porte de déploiement : update.sh refuse un SHA dont la CI est rouge (réalisé)
+
+**Problème** : un déploiement a eu lieu le 26 oct. alors que la CI de `beta` était rouge (job audit, vulnérabilité undici — découverte 2 j après, runs 40117974090 / 40279284449) : `update.sh` déployait `origin/<branche>` sans jamais regarder le statut GitHub du SHA.
+
+**Correctif** :
+1. `update.sh` interroge les check-runs GitHub du SHA cible (API publique `commits/<SHA>/check-runs`, sans token) **avant tout arrêt** de l'app : fetch → `TARGET_SHA` → `ci_gate`.
+2. Verdicts : CI verte = autorisé ; SHA rouge, CI en cours, aucun run, ou API injoignable = refus net avec message actionnable.
+3. Override manuel explicite uniquement : `bash update.sh --force` — chaque contournement consigné noir sur blanc (« PORTE CI OUTPASSÉE (--force) : … ») dans le journal de déploiement (visible dans l'UI admin) ; l'UI ne peut pas le passer (route deploy : arguments figés `update.sh` / `update.sh rollback`).
+
+**Tests** : matrice fonctionnelle contre l'API GitHub réelle — SHA vert (cf7858b) autorisé ; SHA rouge (01756d8) refusé avec le nom du job fautif ; rouge + `--force` outpassé et consigné ; SHA sans run refusé puis outpassé ; `bash -n`, shellcheck et vw-gate verts.
+
+**Fichiers** : `update.sh`, `docs/roadmap.md` (vague 9 #7 + critères issue #8)
+
+**État** : ✅ livré sur beta.
+
+---
+
 ## C-88 — Numéro unique vérifié en direct + Familles en liste de recherche (réalisé)
 
 **Problème** : 1) deux documents pouvaient coexister avec le « même » numéro en changeant la casse (`MO-001` vs `mo-001` — la contrainte SQL UNIQUE est sensible à la casse), et le doublon n'était signalé qu'après soumission du formulaire de création. 2) le champ Famille était une saisie texte libre, sans rattachement aux familles existantes (fautes de frappe → familles parasites dans les filtres).

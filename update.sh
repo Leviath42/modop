@@ -6,15 +6,18 @@
 # Usage :
 #   bash /opt/modop/update.sh            # mise à jour depuis origin/<branche>
 #   bash /opt/modop/update.sh rollback   # restaure la dernière sauvegarde de la base
+#   bash /opt/modop/update.sh --force    # outrepasse la porte CI (consigné dans le journal)
 #
 # Branche de déploiement : $MODOP_DEPLOY_BRANCH > fichier .deploy-branch >
 # "beta" par défaut (rétro-compatible homelab ; la production vise "main").
 #
 # Ordre des opérations (chaque étape s'arrête net en cas d'échec) :
+#   0. porte CI : statut GitHub du SHA à déployer vérifié AVANT tout arrêt —
+#      SHA rouge / en cours / sans run = refus, sauf --force (consigné)
 #   1. stop de l'app (la base ne doit pas être écrite pendant l'échange)
 #   2. sauvegarde cohérente de server/modop.db : VACUUM INTO + integrity_check
 #      (fichier unique, WAL inclus — plus de copie .db/-wal/-shm), 10 dernières conservées
-#   3. git fetch + reset --hard origin/<branche>
+#   3. reset --hard origin/<branche> (le fetch a eu lieu à l'étape 0)
 #   4. restauration de la base de production (vérifiée)
 #   5. npm ci à la racine (monorepo workspaces : lockfile racine unique)
 #   6. build du front (vite build) et du serveur
@@ -49,6 +52,10 @@ PM2_NAME="modop"
 BRANCH="${MODOP_DEPLOY_BRANCH:-$(cat "$APP_DIR/.deploy-branch" 2>/dev/null || true)}"
 BRANCH="${BRANCH:-beta}"
 PORT="${PORT:-3000}"
+# Porte CI (vague 9 #7, C-89) : --force est le seul override, manuel (console),
+# consigné dans le journal de déploiement. L'UI admin ne peut pas le passer.
+FORCE=0
+if [ "${1:-}" = "--force" ]; then FORCE=1; fi
 BACKUP_DIR="$APP_DIR/server/data/backups"
 KEEP_BACKUPS=10
 DB_FILE="server/modop.db"
@@ -88,6 +95,64 @@ on_unexpected_exit() {
 trap on_unexpected_exit EXIT
 
 # ---------------------------------------------------------------------------
+# Porte CI (vague 9 #7, C-89) : refuser de déployer un SHA dont la CI est
+# rouge. Interroge les check-runs GitHub du SHA cible AVANT tout arrêt.
+# Verdicts : vert = passe ; rouge / en cours / sans run / API injoignable =
+# refus. --force outpasse tout, en le consignant noir sur blanc dans le journal.
+# ---------------------------------------------------------------------------
+ci_gate() {
+  local payload verdict rc
+  payload=$(mktemp)
+  if ! curl -sf -m 20 -H "Accept: application/vnd.github+json" \
+      "https://api.github.com/repos/Leviath42/modop/commits/$TARGET_SHA/check-runs" \
+      -o "$payload"; then
+    rm -f "$payload"
+    if [ "$FORCE" = "1" ]; then
+      log "PORTE CI OUTPASSÉE (--force) : API GitHub injoignable, SHA ${TARGET_SHA:0:7} non vérifié"
+      return 0
+    fi
+    die "porte CI : API GitHub injoignable (réseau ? rate limit ? SHA inconnu ?) — déploiement refusé (bash update.sh --force pour outpasser)"
+  fi
+  set +e
+  verdict=$(node -e '
+    const d = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+    const runs = d.check_runs || [];
+    if (runs.length === 0) { console.log("aucun run CI"); process.exit(3); }
+    const failed = runs.filter((r) => r.conclusion === "failure");
+    const ongoing = runs.filter((r) => !r.conclusion);
+    if (failed.length > 0) { console.log(failed.map((r) => r.name).join(", ")); process.exit(1); }
+    if (ongoing.length > 0) { console.log(ongoing.length + " job(s) en cours"); process.exit(2); }
+    console.log("CI verte (" + runs.length + " jobs)");
+  ' "$payload" 2>/dev/null)
+  rc=$?
+  set -e
+  rm -f "$payload"
+  case $rc in
+    0) log "porte CI : $verdict — ${TARGET_SHA:0:7} validé, déploiement autorisé" ;;
+    1) if [ "$FORCE" = "1" ]; then
+         log "PORTE CI OUTPASSÉE (--force) : ${TARGET_SHA:0:7} ROUGE ($verdict) — décision manuelle"
+       else
+         die "porte CI : ${TARGET_SHA:0:7} rouge ($verdict) — déploiement refusé (bash update.sh --force pour outpasser)"
+       fi ;;
+    2) if [ "$FORCE" = "1" ]; then
+         log "PORTE CI OUTPASSÉE (--force) : ${TARGET_SHA:0:7} CI en cours ($verdict)"
+       else
+         die "porte CI : ${TARGET_SHA:0:7} en cours de validation ($verdict) — réessayer dans quelques minutes (ou --force)"
+       fi ;;
+    3) if [ "$FORCE" = "1" ]; then
+         log "PORTE CI OUTPASSÉE (--force) : aucun run CI sur ${TARGET_SHA:0:7} — SHA jamais validé"
+       else
+         die "porte CI : aucun run CI sur ${TARGET_SHA:0:7} — déploiement refusé (--force pour outpasser)"
+       fi ;;
+    *) if [ "$FORCE" = "1" ]; then
+         log "PORTE CI OUTPASSÉE (--force) : réponse API illisible, SHA ${TARGET_SHA:0:7} non vérifié"
+       else
+         die "porte CI : réponse API illisible — refus par précaution (--force pour outpasser)"
+       fi ;;
+  esac
+}
+
+# ---------------------------------------------------------------------------
 # Mode rollback : restaurer la dernière sauvegarde de la base
 # ---------------------------------------------------------------------------
 if [ "${1:-}" = "rollback" ]; then
@@ -117,6 +182,13 @@ fi
 # Mise à jour
 # ---------------------------------------------------------------------------
 BEFORE=$(git rev-parse --short HEAD)
+
+log "récupération du code ($BEFORE -> ?, branche $BRANCH)"
+git fetch origin "$BRANCH" || die "git fetch a échoué (réseau ?)"
+TARGET_SHA=$(git rev-parse "origin/$BRANCH") || die "SHA cible introuvable sur origin/$BRANCH"
+
+log "porte CI sur ${TARGET_SHA:0:7} (branche $BRANCH)"
+ci_gate
 
 log "arrêt de l'application"
 pm2 stop "$PM2_NAME" 2>/dev/null || log "process pm2 absent, on continue"
@@ -150,8 +222,7 @@ ls -1t "$BACKUP_DIR"/db-*.db 2>/dev/null | tail -n +$((KEEP_BACKUPS + 1)) | xarg
 # résidus -wal/-shm des anciennes sauvegardes (avant VACUUM INTO)
 rm -f "$BACKUP_DIR"/db-*.db-wal "$BACKUP_DIR"/db-*.db-shm 2>/dev/null || true
 
-log "récupération du code ($BEFORE -> ?, branche $BRANCH)"
-git fetch origin "$BRANCH" || die "git fetch a échoué (réseau ?)"
+log "application du code ($BEFORE -> ${TARGET_SHA:0:7}, branche $BRANCH)"
 git reset --hard "origin/$BRANCH" || die "git reset a échoué"
 AFTER=$(git rev-parse --short HEAD)
 
