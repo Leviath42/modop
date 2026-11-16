@@ -126,7 +126,7 @@ Critères d'acceptation (à affiner) : un MO avec quiz actif conserve les scores
 ### Vision long terme
 
 - Multi-langue (interface + contenus)
-- API publique (intégrations GMAO)
+- API publique (intégrations GMAO) — **premier pas livré (C-90)** : serveur MCP natif sur `/mcp`, 24 outils, doc `docs/connecteur-mcp.md`
 - Statistiques d'usage fines par MO
 
 ## 🧭 Principes de développement

@@ -36,6 +36,24 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-90 — Connecteur MCP natif : 24 outils IA sur /mcp (réalisé)
+
+**Problème** : aucun moyen programmatique pour un agent IA de lire/piloter les modes opératoires — la roadmap « Vision long terme » prévoyait une API publique (intégrations GMAO) sans premier pas concret.
+
+**Correctif** : serveur MCP **intégré à l'application** (pas de CT dédié — déployé par update.sh/CI, embarqué dans toute install future).
+1. **Endpoint stateless** `POST /mcp` (StreamableHTTP, `sessionIdGenerator: undefined`, transport neuf par requête ; GET/DELETE → 405) ; monté avant le catch-all SPA dans `app.ts`.
+2. **Auth** : Bearer `MODOP_MCP_TOKEN` en comparaison temps constant ; compte de service `svc-mcp` upserté au démarrage depuis l'env (rôle `author`, moindre privilège). Token absent → 501 (désactivé), invalide → 401.
+3. **Zéro duplication métier** : les 24 outils (workflows CRUD+GED, étapes, versions, publication, photos multipart, export docx, retours terrain, comptes) appellent l'API en **loopback HTTP** (client singleton, re-login 401) — validations C-88, magic numbers, rate limits et audit s'appliquent à l'identique.
+4. Erreurs API converties en erreurs d'outils MCP avec le message serveur.
+
+**Tests** : `server/test/mcp.test.ts` — 9 tests E2E avec client SDK réel : 401 sans/avec mauvais token, 405 GET/DELETE, ≥ 20 outils listés, whoami svc-mcp, cycle complet (création → vérif DB → étapes → réordonnancement → publication → versions → export docx signature PK → feedback send/list/resolve), upload photo multipart PNG 1×1 (magic numbers), get_stats 403 pour author, list_users. Suite serveur 134 pass / 0 fail, tsc + lint verts, tests front verts.
+
+**Fichiers** : `server/src/mcp/` (config, bootstrap, modop-client, tools, route), `server/src/app.ts`, `server/src/index.ts`, `server/test/mcp.test.ts`, `docs/connecteur-mcp.md` (nouveau), `docs/durcissement-securite.md`, `AGENTS.md`, `docs/roadmap.md`
+
+**État** : ✅ livré sur beta.
+
+---
+
 ## C-89 — Porte de déploiement : update.sh refuse un SHA dont la CI est rouge (réalisé)
 
 **Problème** : un déploiement a eu lieu le 26 oct. alors que la CI de `beta` était rouge (job audit, vulnérabilité undici — découverte 2 j après, runs 40117974090 / 40279284449) : `update.sh` déployait `origin/<branche>` sans jamais regarder le statut GitHub du SHA.

@@ -21,6 +21,8 @@ Sans configuration, Modop utilise l'auth maison (bcrypt), les cookies `sameSite=
 | `MODOP_ALLOWED_HOSTS` | Allowlist des hôtes acceptés dans `X-Forwarded-Host` (anti-CSRF derrière proxy/tunnel), séparés par des virgules. Vide = aucun contrôle (comportement historique) | — |
 | `MODOP_DEPLOY` | `off` désactive totalement /api/deploy (statut inclus) | `off` en prod stricte |
 | `MODOP_TOTP_SECRET` | Active la MFA TOTP sur le login local des **admins** (secret base32) — **transitoire** : ne pas activer tant que l'UI de login n'offre pas le champ code (vague 10) ; le login SSO est exempté | secret base32 aléatoire (ex. 20 octets) |
+| `MODOP_MCP_TOKEN` | Active le serveur MCP `/mcp` (24 outils IA, Bearer temps constant) ; absent = désactivé (501) | secret aléatoire ≥ 32 octets |
+| `MODOP_MCP_EMAIL` / `MODOP_MCP_PASSWORD` / `MODOP_MCP_ROLE` | Compte de service `svc-mcp` (upsert au démarrage, rôle défaut `author`) | email dédié + secret aléatoire |
 
 Le SSO est **générique** : aucun fournisseur codé en dur, tout passe par OIDC Discovery. En mode SSO, les mots de passe locaux sont ignorés pour ces comptes (`change-password` refusé) ; le login maison reste disponible en fallback si l'IdP tombe.
 

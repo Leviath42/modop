@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { openDb } from "./db/schema.js";
 import { createApp } from "./app.js";
+import { setMcpBaseUrl } from "./mcp/config.js";
 import path from "node:path";
 
 const PORT = Number(process.env.PORT ?? 3000);
@@ -12,6 +13,7 @@ const db = openDb(DB_FILE);
 const app = createApp(db, fs.existsSync(WEB_DIST) ? WEB_DIST : undefined);
 
 app.listen(PORT, HOST, () => {
+  setMcpBaseUrl(`http://127.0.0.1:${PORT}`);
   console.log(`Modop prêt sur http://${HOST}:${PORT}`);
   console.log(`Base : ${DB_FILE}`);
   if (fs.existsSync(WEB_DIST)) console.log(`Interface : ${WEB_DIST}`);

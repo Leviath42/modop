@@ -9,6 +9,7 @@
 | Serveur | Node + Express 4 + TypeScript, better-sqlite3 (migrations idempotentes dans `server/src/db/schema.ts`) |
 | Front | React + Vite + **Tailwind v4** (PWA), composants type shadcn (`web/src/components/ui/`), canevas d'annotations maison (`web/src/step-canvas.tsx`) ; design tokens + palette dans `web/src/styles.css` |
 | Export DOCX | `docx` + composition canevas `@napi-rs/canvas` (`server/src/render/canvas-composite.ts`) |
+| Serveur MCP | `@modelcontextprotocol/sdk` StreamableHTTP stateless sur `/mcp` (24 outils, Bearer `MODOP_MCP_TOKEN`, compte service `svc-mcp`) — voir `docs/connecteur-mcp.md` |
 | Auth | bcrypt maison + OIDC optionnel + TOTP admin (`MODOP_TOTP_SECRET`, transitoire) ; rôles `reader` / `author` / `admin` |
 | Tests | `node:test` runtime côté serveur ; scripts jsdom autonomes côté front (`web/scripts/run-tests.sh`) |
 
@@ -47,6 +48,7 @@ web/src/lib/         tests front autonomes (jsdom, un fichier = un scénario, ex
 - **Correctifs numérotés C-xx** : toute modification non triviale = une entrée dans `docs/correctifs.md` (problème → correctif → tests → fichiers) + docs associées mises à jour dans le même commit.
 - Portes qualité avant tout commit : build (tsc) + tests des deux côtés. Tout ce qui écrit en base est testé **en runtime** (tsc ne détecte pas, par ex., les transactions async refusées par better-sqlite3).
 - Le formatage des fichiers existants peut être « compacté » (des blocs entiers sur une seule ligne) : **lire le texte réel avant tout remplacement** et vérifier chaque pattern.
+- Serveur MCP : `MODOP_MCP_TOKEN` (absent = MCP désactivé, 501), `MODOP_MCP_EMAIL`, `MODOP_MCP_PASSWORD`, `MODOP_MCP_ROLE` (défaut `author`) — compte de service synchronisé au démarrage. Détails : `docs/connecteur-mcp.md`.
 - Env de durcissement : `MODOP_SESSION_TTL_HOURS`, `MODOP_ALLOWED_HOSTS`, `MODOP_SECURE_COOKIES`, `MODOP_DEPLOY=off`, `MODOP_DEPLOY_BRANCH` (déploiement : défaut `beta`), `MODOP_OIDC_*`, `MODOP_TOTP_SECRET` (⚠ transitoire : l'UI de login n'a pas de champ TOTP — voir roadmap vague 10). Détails : `docs/durcissement-securite.md`.
 
 ## Routage documentaire — ne lire QUE ce qui est utile à la tâche
