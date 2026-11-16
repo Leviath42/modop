@@ -40,6 +40,8 @@ Client MCP (agent IA)                  Modop (même process Express)
 
 Générer les secrets : `openssl rand -base64 32`. **Jamais dans le repo** — uniquement dans le `.env` du CT.
 
+À l'initialize, le serveur renvoie des **instructions** (carte du domaine : concepts, conventions, recette de création d'un MO complet, périmètre non couvert) — un agent qui découvre Modop les reçoit automatiquement.
+
 ## Outils exposés (24)
 
 **Session** : `whoami`

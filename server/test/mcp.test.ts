@@ -65,6 +65,31 @@ test("C-90 : GET/DELETE /mcp interdits (stateless, 405)", async () => {
   assert.equal(del.status, 405);
 });
 
+test("C-91 : instructions servies à l'initialize", async () => {
+  const res = await fetch(`${base}/mcp`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      accept: "application/json, text/event-stream",
+      authorization: "Bearer jeton-test-c90",
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-06-18",
+        capabilities: {},
+        clientInfo: { name: "t", version: "0" },
+      },
+    }),
+  });
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { result?: { instructions?: string } };
+  assert.ok(body.result?.instructions?.includes("Modop"), "instructions absentes");
+  assert.ok(body.result?.instructions?.includes("publish_workflow"), "recette absente des instructions");
+});
+
 test("C-90 : liste des outils complète (≥ 20, cœur présent)", async () => {
   const tools = await client.listTools();
   const names = tools.tools.map((t) => t.name);

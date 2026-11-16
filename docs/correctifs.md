@@ -36,6 +36,20 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-91 — MCP : instructions serveur servies à l'initialize (réalisé)
+
+**Problème** : un agent qui découvre le connecteur MCP ne voit que 24 outils isolés — pas la carte du domaine (cycle draft→publish→versions, conventions, recette de création complète). Il apprend le fonctionnement par essais/erreurs.
+
+**Correctif** : chaîne `MCP_INSTRUCTIONS` passée au `McpServer` (option `instructions` du SDK) : rôle du compte de service, concepts (workflow/étapes/photos/versions/retours terrain), conventions (ids entiers, dates AAAA-MM-JJ, erreurs auto-corrigibles), périmètre non couvert (rognage/layout/replace), recette pas-à-pas pour créer un MO complet.
+
+**Tests** : `mcp.test.ts` — initialize renvoie les instructions (contient « Modop » + la recette). Suite serveur 135 pass / 0 fail.
+
+**Fichiers** : `server/src/mcp/route.ts`, `server/test/mcp.test.ts`, `docs/connecteur-mcp.md`
+
+**État** : ✅ livré sur beta.
+
+---
+
 ## C-90 — Connecteur MCP natif : 24 outils IA sur /mcp (réalisé)
 
 **Problème** : aucun moyen programmatique pour un agent IA de lire/piloter les modes opératoires — la roadmap « Vision long terme » prévoyait une API publique (intégrations GMAO) sans premier pas concret.
