@@ -36,6 +36,23 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-94 — Arborescence documentaire paramétrable + documents parents (réalisé)
+
+**Problème** (Vague 12 #11-12 / Vague 13 #1, demande propriétaire 16 nov. 2026) : les MO ne se rangeaient que par « famille » texte libre — pas de hiérarchie paramétrable, pas de notion de document parent, donc ni navigation arborescente ni socle d'indexation IA (spéc [spec-api-ia.md](spec-api-ia.md) §1).
+
+**Correctif** :
+1. **Serveur** : table `categories` (`parent_id`, `name` renommable, `slug` **immuable** — chemins stables, `position`) ; profondeur libre bornée à 20, anti-cycle au déplacement et au rattachement ; CRUD admin sur `/api/categories` (suppression gardée : refus si enfants ou docs rattachés), lecture ouverte à tous les rôles. `workflows.category_id` (emplacement) et `workflows.parent_id` (document parent) acceptés au POST/PUT, portés par les versions publiées (snapshot), copiés par la duplication ; filtres `?parent=` / `?category_id=` sur la liste.
+2. **Front** : page admin **Arborescence** (`/categories`, menu admin) — arbre reconstruit du flat, création racine/enfant, renommage inline (le slug ne change pas), déplacement (descendants exclus), ordre manuel ↑/↓ entre frères, badge du nombre de MO par nœud. Éditeur : **Détails → Emplacement** (select indenté) + **Document parent**, inclus dans l'autosave (800 ms) et la création. Accueil : filtre **Arborescence** (sous-arbre complet, côté client) + badge « ↳ parent » sur les cartes. Lecteur : ligne « Document parent » sous l'entête + section **Documents liés** après les étapes.
+3. Helpers partagés `web/src/lib/categories-tree.ts` (buildTree / flattenTree / descendantIds) — testables, réutilisés par la page admin, l'éditeur et la liste.
+
+**Test** : `server/test/categories.test.ts` (6 tests runtime : CRUD, profondeur, anti-cycle, garde de suppression) + `web/src/lib/categories-page.test.ts` (arbre rendu en ordre préfixe indenté + création d'enfant avec parent).
+
+**Fichiers** : `server/src/db/schema.ts`, `server/src/routes/categories.ts`, `server/src/routes/workflows.ts`, `server/src/routes/list.ts`, `server/src/routes/publish.ts`, `server/src/routes/duplicate.ts`, `server/src/app.ts`, `shared/api.md`, `shared/types.md`, `web/src/api.ts`, `web/src/lib/categories-tree.ts`, `web/src/pages/categories.tsx`, `web/src/pages/editor.tsx`, `web/src/pages/list.tsx`, `web/src/pages/reader.tsx`, `web/src/app.tsx`, `web/src/nav.tsx`, `server/test/categories.test.ts`, `web/src/lib/categories-page.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + lint + 145/145 tests serveur + tous tests front verts.
+
+---
+
 ## C-93 — Texte des étapes en dessous des images (réalisé)
 
 **Problème** (retour propriétaire 16 nov. 2026, Vague 12 #1) : le texte d'une étape s'affichait AU-DESSUS des images — l'opérateur lisait l'instruction puis devait remonter vers le geste illustré. Le terrain veut l'inverse : voir d'abord, lire ensuite.

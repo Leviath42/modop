@@ -1,6 +1,6 @@
 # Modop — Roadmap
 
-*Dernière mise à jour : après C-88 — **cycle de retour terrain clos (C-70 → C-80, fusionné sur main) + correctifs GED/lecture C-81 → C-88** : export en entête du lecteur, fidélité du composite docx, alerte « à revoir » expliquée avec lien, date de revue/responsable portés par les versions publiées, recherche de responsable accessible aux auteurs, délai de revue par défaut paramétrable (30 j), champs date/responsable robustes dès la création, numéro unique vérifié en direct (casse ignorée) + Familles en liste de recherche. **Backlog prioritaire** : undo/redo global, **templates de documents** (mode de réaction, tableau, enregistrements, FIT, fiches d'aspect), vidéo liée au MO, texte riche. Vague 10 (sécurité) en standby. Vague 9 terminée code + ops ; production sur `beta`. **Ajout (26 oct. 2026) : vague 11 « preuve de formation » (quiz de compréhension pré/post) proposée — voir § Vague 11.*** **Ajout (26 oct. 2026) : § Conformité & traçabilité contractuelle — suivi des versions des CGV (art. 19) + liaison licence ↔ version.** **Porte de déploiement (26 oct. 2026)** ajoutée en Vague 9 #7 : `update.sh` refuse un SHA rouge / en cours / sans run (livré C-89, 15 nov. 2026) — constat : un déploiement a eu lieu alors que la CI était rouge (échec audit undici).*** **Ajout (16 nov. 2026) : C-90/C-91 — serveur MCP natif sur `/mcp` (24 outils IA + instructions serveur), premier pas de la Vision long terme « API publique » ; doc `docs/connecteur-mcp.md`. Nouvel item backlog : texte des étapes en dessous des images.** **Ajout (16 nov. 2026) : Vague 12 « corrections retour terrain » (texte des étapes sous les images en tête, fidélité docx, édition) + Vague 13 « API publique, exports multi-formats & accès IA » (spéc `docs/spec-api-ia.md`). O2 retiré : la production reste sur `beta` jusqu'à une prod réelle stable.**
+*Dernière mise à jour : après C-88 — **cycle de retour terrain clos (C-70 → C-80, fusionné sur main) + correctifs GED/lecture C-81 → C-88** : export en entête du lecteur, fidélité du composite docx, alerte « à revoir » expliquée avec lien, date de revue/responsable portés par les versions publiées, recherche de responsable accessible aux auteurs, délai de revue par défaut paramétrable (30 j), champs date/responsable robustes dès la création, numéro unique vérifié en direct (casse ignorée) + Familles en liste de recherche. **Backlog prioritaire** : undo/redo global, **templates de documents** (mode de réaction, tableau, enregistrements, FIT, fiches d'aspect), vidéo liée au MO, texte riche. Vague 10 (sécurité) en standby. Vague 9 terminée code + ops ; production sur `beta`. **Ajout (26 oct. 2026) : vague 11 « preuve de formation » (quiz de compréhension pré/post) proposée — voir § Vague 11.*** **Ajout (26 oct. 2026) : § Conformité & traçabilité contractuelle — suivi des versions des CGV (art. 19) + liaison licence ↔ version.** **Porte de déploiement (26 oct. 2026)** ajoutée en Vague 9 #7 : `update.sh` refuse un SHA rouge / en cours / sans run (livré C-89, 15 nov. 2026) — constat : un déploiement a eu lieu alors que la CI était rouge (échec audit undici).*** **Ajout (16 nov. 2026) : C-90/C-91 — serveur MCP natif sur `/mcp` (24 outils IA + instructions serveur), premier pas de la Vision long terme « API publique » ; doc `docs/connecteur-mcp.md`. Nouvel item backlog : texte des étapes en dessous des images.** **Ajout (16 nov. 2026) : Vague 12 « corrections retour terrain » (texte des étapes sous les images en tête, fidélité docx, édition) + Vague 13 « API publique, exports multi-formats & accès IA » (spéc `docs/spec-api-ia.md`). O2 retiré : la production reste sur `beta` jusqu'à une prod réelle stable.** **Livré (16 nov. 2026) : C-93 — texte des étapes sous les images (Vague 12 #1) ; C-94 — arborescence documentaire paramétrable (1 à X niveaux, titres renommables, slug immuable) + documents parents (Vague 12 #11-12 / Vague 13 #1).**
 
 L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archives/roadmap-v1-a-v6bis.md](archives/roadmap-v1-a-v6bis.md). La série de correctifs UI/UX (C-01 → C-88) est journalisée dans [correctifs.md](correctifs.md).
 
@@ -111,7 +111,7 @@ Critères d'acceptation (à affiner) : un MO avec quiz actif conserve les scores
 
 | # | Correction | Notes |
 |---|---|---|
-| 1 | **Texte des étapes en dessous des images** | lecture ET édition — demande propriétaire (16 nov. 2026), prioritaire |
+| 1 | **Texte des étapes en dessous des images** | ✅ livré C-93 (16 nov. 2026) — lecture, guidé, édition |
 | 2 | Docx : images et formes légèrement décalées | ⚠️ lié au candidat C-92 : annotations absentes du snapshot de publication → invisibles en lecture publiée + docx, perdues au restore — à corriger au passage |
 | 3 | Docx : mauvaise gestion des photos et formes (position relative) | même chantier export docx que #2 |
 | 4 | Docx : formes plus basses que l'image tronquées en lecture | idem |
@@ -121,8 +121,8 @@ Critères d'acceptation (à affiner) : un MO avec quiz actif conserve les scores
 | 8 | Paramétrage des indications métiers | déjà demandé (C-70) — voir palette P2 |
 | 9 | Pouvoir abandonner un brouillon introuvable | suppression/reset de brouillon |
 | 10 | Nouvelle image par drag & drop ou presse-papier | repris en Vague 8 #1 |
-| 11 | Arborescence documentaire paramétrable | repris en Vague 8 #3 / Vague 13 #1 |
-| 12 | Gestion de documents parents | repris en Vague 8 #5 |
+| 11 | Arborescence documentaire paramétrable | ✅ livré C-94 (16 nov. 2026) — voir Vague 13 #1 |
+| 12 | Gestion de documents parents | ✅ livré C-94 (16 nov. 2026) — parent affiché au lecteur + « Documents liés » |
 
 ### Vague 13 — API publique, exports multi-formats & accès IA (proposition — ajoutée le 16 nov. 2026)
 
@@ -130,7 +130,7 @@ Critères d'acceptation (à affiner) : un MO avec quiz actif conserve les scores
 
 | # | Fonctionnalité | Notes |
 |---|---|---|
-| 1 | **Arborescence documentaire** Famille > Sous-famille > Type | reprend Vague 8 #3 ; chemin matérialisé par MO (URLs/filtres stables) |
+| 1 | **Arborescence documentaire** Famille > Sous-famille > Type | ✅ livré C-94 (16 nov. 2026) : catégories imbriquées 1 à X niveaux (titres renommables, slug immuable), rattachement MO, filtre par sous-arbre, page admin `/categories` ; reste l'exposition des chemins/slug en API (spéc §1) |
 | 2 | **Export Markdown** (`?format=md`) | YAML front matter + étapes + descriptions images — format LLM/RAG |
 | 3 | **Export JSON canonique** (`?format=json`) | snapshot exact de la version + métadonnées GED + arborescence — zéro perte |
 | 4 | **Export PDF** (`?format=pdf`) | rendu du composite lecteur existant |

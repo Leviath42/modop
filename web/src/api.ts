@@ -17,7 +17,19 @@ export interface Workflow {
   current_version: number;
   review_due?: string | null;
   owner_email?: string;
+  // C-94 : rattachement arborescent + document parent.
+  category_id?: number | null;
+  parent_id?: number | null;
   updated_at: string;
+}
+
+// C-94 : nœud de l'arborescence documentaire (1 à X niveaux).
+export interface Category {
+  id: number;
+  parent_id: number | null; // null = racine
+  name: string;             // titre libre (renommable)
+  slug: string;              // immuable — chemins stables
+  position: number;
 }
 
 export interface Photo {
@@ -131,7 +143,7 @@ export const api = {
   async me(): Promise<User> {
     return handle<User>(await fetch("/api/auth/me"));
   },
-  async listWorkflows(params: { search?: string; category?: string; state?: string; family?: string; review?: string; sort?: string; reference?: string } = {}): Promise<Workflow[]> {
+  async listWorkflows(params: { search?: string; category?: string; state?: string; family?: string; review?: string; sort?: string; reference?: string; parent?: string; category_id?: string } = {}): Promise<Workflow[]> {
     const q = new URLSearchParams();
     for (const [k, v] of Object.entries(params)) if (v) q.set(k, v);
     return handle<Workflow[]>(await fetch(`/api/workflows?${q}`));
@@ -139,7 +151,7 @@ export const api = {
   async getWorkflow(id: number | string): Promise<WorkflowDetail> {
     return handle<WorkflowDetail>(await fetch(`/api/workflows/${id}`));
   },
-  async createWorkflow(data: { title: string; reference: string; description?: string; category?: string; family?: string; review_due?: string | null; owner_email?: string | null }): Promise<Workflow> {
+  async createWorkflow(data: { title: string; reference: string; description?: string; category?: string; family?: string; review_due?: string | null; owner_email?: string | null; category_id?: number | null; parent_id?: number | null }): Promise<Workflow> {
     return handle<Workflow>(
       await fetch("/api/workflows", {
         method: "POST",
@@ -148,7 +160,7 @@ export const api = {
       })
     );
   },
-  async updateWorkflow(id: number, data: Partial<Pick<Workflow, "title" | "description" | "category" | "family" | "review_due">> & { owner_email?: string | null }): Promise<Workflow> {
+  async updateWorkflow(id: number, data: Partial<Pick<Workflow, "title" | "description" | "category" | "family" | "review_due">> & { owner_email?: string | null; category_id?: number | null; parent_id?: number | null }): Promise<Workflow> {
     return handle<Workflow>(
       await fetch(`/api/workflows/${id}`, {
         method: "PUT",
@@ -314,5 +326,31 @@ export const api = {
     return handle<{ temporaryPassword: string }>(
       await fetch(`/api/admin/users/${id}/reset-password`, { method: "POST" })
     );
+  },
+  // C-94 : arborescence documentaire — l'admin structure l'arbre,
+  // tous les rôles lisent (lecteur inclus : navigation par arborescence).
+  async listCategories(): Promise<Category[]> {
+    return handle<Category[]>(await fetch("/api/categories"));
+  },
+  async createCategory(name: string, parentId?: number | null): Promise<Category> {
+    return handle<Category>(
+      await fetch("/api/categories", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name, parent_id: parentId ?? null }),
+      })
+    );
+  },
+  async updateCategory(id: number, data: { name?: string; parent_id?: number | null; position?: number }): Promise<Category> {
+    return handle<Category>(
+      await fetch(`/api/categories/${id}`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(data),
+      })
+    );
+  },
+  async deleteCategory(id: number): Promise<void> {
+    await handle<unknown>(await fetch(`/api/categories/${id}`, { method: "DELETE" }));
   },
 };

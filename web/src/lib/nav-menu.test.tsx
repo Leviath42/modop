@@ -47,7 +47,7 @@ if (before.includes('to="/admin"') && before.includes("Statistiques") && !before
 (menuBtn as HTMLElement).click();
 await new Promise((r) => setTimeout(r, 200));
 const open = doc.body.innerHTML;
-for (const label of ["Comptes", "Statistiques", "Déploiement", "Déconnexion", "Modes opératoires"]) {
+for (const label of ["Comptes", "Arborescence", "Statistiques", "Déploiement", "Déconnexion", "Modes opératoires"]) {
   if (!open.includes(label)) throw new Error(`entrée "${label}" absente du menu ouvert`);
 }
 // Échap ferme le menu

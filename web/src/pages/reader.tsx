@@ -1,7 +1,7 @@
 import StepCanvasView from "../step-canvas-view";
 import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { api, ApiError, type AppSettings, type WorkflowDetail } from "../api";
+import { api, ApiError, type AppSettings, type Workflow, type WorkflowDetail } from "../api";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
 import { Button } from "../components/ui/button";
@@ -59,6 +59,21 @@ export default function ReaderPage() {
       .then((v) => setVersions(v))
       .catch(() => { /* lecture seule : liste optionnelle */ });
   }, [id]);
+  // C-94 : document parent (lien remontant) + documents liés (enfants).
+  const [parentDoc, setParentDoc] = useState<Workflow | null>(null);
+  const [childDocs, setChildDocs] = useState<Workflow[]>([]);
+  const wfParentId = wf?.parent_id ?? null;
+  const wfId = wf?.id ?? null;
+  useEffect(() => {
+    setParentDoc(null);
+    if (!wfParentId) return;
+    api.getWorkflow(wfParentId).then((p) => setParentDoc(p)).catch(() => setParentDoc(null));
+  }, [wfParentId]);
+  useEffect(() => {
+    setChildDocs([]);
+    if (!wfId) return;
+    api.listWorkflows({ parent: String(wfId) }).then((list) => setChildDocs(Array.isArray(list) ? list : [])).catch(() => setChildDocs([]));
+  }, [wfId]);
 
   if (error) return (<><NavBar /><main className="p-8"><p role="alert" className="text-error">{error}</p><Link to="/">Retour</Link></main></>);
   if (!wf) return (<><NavBar /><main className="p-8">Chargement…</main></>);
@@ -155,6 +170,13 @@ export default function ReaderPage() {
             </div>
           </Alert>
         )}
+        {/* C-94 : lien vers le document parent, sous l'entête. */}
+        {parentDoc && (
+          <p className="mb-1.5 text-sm text-muted-foreground">
+            Document parent :{" "}
+            <Link to={`/workflow/${parentDoc.id}/read`} className="text-link no-underline hover:underline">{parentDoc.title}</Link>
+          </p>
+        )}
         {wf.state === "published" && (
           <p className="mb-2 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
             <span>Version V{wf.current_version}{wf.category ? ` — ${wf.family || ""} ${wf.category}` : ""}</span>
@@ -246,6 +268,20 @@ export default function ReaderPage() {
             )}
           </article>
         ))}
+        {/* C-94 : documents liés — les enfants de ce document. */}
+        {childDocs.length > 0 && (
+          <section aria-label="Documents liés" className="mt-4 rounded-lg bg-surface p-4 shadow-sm">
+            <h2 className="mt-0 text-base font-semibold">Documents liés ({childDocs.length})</h2>
+            <ul className="mt-2 grid gap-1.5">
+              {childDocs.map((d) => (
+                <li key={d.id} className="min-w-0">
+                  <Link to={`/workflow/${d.id}/read`} title={d.title} className="text-sm font-semibold text-link no-underline">{d.title}</Link>
+                  <code className="ml-1.5 rounded bg-surface-2 px-1 py-0.5 text-xs">{d.reference}</code>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         {/* C-70 : retour au début FIXE — toujours atteignable, même en bas
             d'un long document. */}
         <Button

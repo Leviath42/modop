@@ -4,14 +4,15 @@ import { Camera, ChevronDown, ChevronRight, FoldVertical, GripVertical, Image as
 import { EditorBottomBar } from "../editor/bottom-bar";
 import type { PictoPreset, ToolContext } from "../editor/tools/registry";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { api, ApiError, type AppSettings, type Photo, type Step, type WorkflowDetail } from "../api";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { api, ApiError, type AppSettings, type Category, type Photo, type Step, type Workflow, type WorkflowDetail } from "../api";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Alert, Modal } from "../components/ui/dialog";
 import { Input, Label, Select, Textarea } from "../components/ui/input";
+import { buildTree, flattenTree } from "../lib/categories-tree";
 import { cn } from "../lib/utils";
 
 import type { Picto } from "../api";
@@ -114,6 +115,11 @@ export default function EditorPage() {
   // existantes (la saisie libre reste possible pour en créer une nouvelle).
   const [families, setFamilies] = useState<string[]>([]);
   const [familyOpen, setFamilyOpen] = useState(false);
+  // C-94 : rattachement arborescence + document parent.
+  const [cats, setCats] = useState<Category[]>([]);
+  const [categoryId, setCategoryId] = useState("");
+  const [parentIdDoc, setParentIdDoc] = useState("");
+  const [otherDocs, setOtherDocs] = useState<Workflow[]>([]);
   useEffect(() => {
     api.listWorkflows()
       .then((wfs) => setFamilies([...new Set(wfs.map((w) => w.family).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"))))
@@ -150,6 +156,11 @@ export default function EditorPage() {
       })
       .catch(() => setAccounts([]));
   }, []);
+  // C-94 : catégories (arborescence) + autres documents (parent possible).
+  useEffect(() => {
+    api.listCategories().then((list) => { if (Array.isArray(list)) setCats(list); }).catch(() => setCats([]));
+    api.listWorkflows().then((wfs) => setOtherDocs(Array.isArray(wfs) ? wfs : [])).catch(() => setOtherDocs([]));
+  }, []);
 
   useEffect(() => {
     if (isNew) return;
@@ -159,6 +170,7 @@ export default function EditorPage() {
         setTitle(w.title); setReference(w.reference);
         setCategory(w.category); setFamily(w.family ?? ""); setDescription(w.description);
         setReviewDue(w.review_due ?? ""); setOwnerEmail(w.owner_email ?? "");
+        setCategoryId(w.category_id ? String(w.category_id) : ""); setParentIdDoc(w.parent_id ? String(w.parent_id) : "");
       })
       .catch((e) => setError(e instanceof ApiError ? e.message : "Erreur de chargement"));
   }, [id, isNew]);
@@ -188,14 +200,14 @@ export default function EditorPage() {
     if (isNew || !wfId || metaSaved) return;
     const t = setTimeout(async () => {
       try {
-        await api.updateWorkflow(wfId, { title, category, family, description, review_due: reviewDue || null, owner_email: ownerEmail || null });
+        await api.updateWorkflow(wfId, { title, category, family, description, review_due: reviewDue || null, owner_email: ownerEmail || null, category_id: categoryId ? Number(categoryId) : null, parent_id: parentIdDoc ? Number(parentIdDoc) : null });
         setMetaSaved(true);
       } catch {
         /* l'indicateur reste "à enregistrer" ; la publication retentera */
       }
     }, 800);
     return () => clearTimeout(t);
-  }, [wfId, isNew, metaSaved, title, category, family, description, reviewDue, ownerEmail]);
+  }, [wfId, isNew, metaSaved, title, category, family, description, reviewDue, ownerEmail, categoryId, parentIdDoc]);
 
   async function createWorkflow() {
     setError(null);
@@ -211,6 +223,8 @@ export default function EditorPage() {
         description,
         review_due: reviewDue || null,
         owner_email: ownerEmail || null,
+        category_id: categoryId ? Number(categoryId) : null,
+        parent_id: parentIdDoc ? Number(parentIdDoc) : null,
       });
       // pas d'autosave fantôme : les valeurs viennent d'être enregistrées,
       // le rechargement en édition resynchronisera l'état.
@@ -383,6 +397,7 @@ export default function EditorPage() {
       setTitle(w.title); setReference(w.reference);
       setCategory(w.category); setFamily(w.family ?? ""); setDescription(w.description);
       setReviewDue(w.review_due ?? ""); setOwnerEmail(w.owner_email ?? "");
+      setCategoryId(w.category_id ? String(w.category_id) : ""); setParentIdDoc(w.parent_id ? String(w.parent_id) : "");
       setNotice(`Brouillon abandonné — retour à V${w.current_version}`);
       setTimeout(() => setNotice(null), 2500);
     } catch (e) {
@@ -512,6 +527,27 @@ export default function EditorPage() {
             <Label className="grid min-w-0 gap-1 text-muted-foreground">Type
               <Input value={category} onChange={(e) => { setCategory(e.target.value); setMetaSaved(false); }} placeholder="Maintenance, Contrôle…" />
             </Label>
+            {cats.length > 0 && (
+              <Label className="grid min-w-0 gap-1 text-muted-foreground">Emplacement (arborescence)
+                <Select value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setMetaSaved(false); }} aria-label="Emplacement dans l'arborescence">
+                  <option value="">— Non classé —</option>
+                  {flattenTree(buildTree(cats)).map((r) => (
+                    <option key={r.id} value={String(r.id)}>{" ".repeat(r.depth * 2)}{r.name}</option>
+                  ))}
+                </Select>
+                {user?.role === "admin" && <Link to="/categories" className="text-xs text-link hover:underline">Gérer l'arborescence</Link>}
+              </Label>
+            )}
+            {!isNew && (
+              <Label className="grid min-w-0 gap-1 text-muted-foreground">Document parent
+                <Select value={parentIdDoc} onChange={(e) => { setParentIdDoc(e.target.value); setMetaSaved(false); }} aria-label="Document parent">
+                  <option value="">— Aucun —</option>
+                  {otherDocs.filter((d) => d.id !== wf?.id).map((d) => (
+                    <option key={d.id} value={String(d.id)}>{d.reference} — {d.title}</option>
+                  ))}
+                </Select>
+              </Label>
+            )}
             <Label className="grid min-w-0 gap-1 text-muted-foreground">Description
               <Textarea value={description} onChange={(e) => { setDescription(e.target.value); setMetaSaved(false); }} rows={2} className="min-h-0" />
             </Label>

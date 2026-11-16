@@ -10,9 +10,15 @@ Les modes opératoires sont regroupés : **Publié** (avec compteur) puis **Brou
 
 **Cliquez un en-tête d'état ou de famille pour le replier/déplier** (chevron ▸, compteur conservé) — vos replis sont mémorisés entre les visites.
 
-**Filtres** (bouton « Filtres ») : par état, famille, tri, et **« À revoir »** (documents dont la date de revue est dépassée — ou sans date de revue, selon les paramètres).
+**Filtres** (bouton « Filtres ») : par état, famille, arborescence, tri, et **« À revoir »** (documents dont la date de revue est dépassée — ou sans date de revue, selon les paramètres).
 
 **Rechercher** : la loupe de la barre du haut ouvre l'accueil avec le champ de recherche prêt à saisir ; le champ cherche dans les titres, les références **et le texte des étapes**.
+
+## Arborescence des documents
+
+Les modes opératoires peuvent être rangés dans une **arborescence de catégories** (profondeur libre), choisie par l'administrateur sur la page **Arborescence** du menu. Un document rattaché à un autre devient son **document parent** : le lecteur l'affiche en haut de page, et les **documents liés** (enfants) en bas. À l'accueil, le filtre **Arborescence** sélectionne un sous-arbre complet et les cartes des enfants portent un badge « ↳ parent ».
+
+Pour rattacher un document : éditeur → **Détails → Emplacement** (catégorie) et **Document parent**. Les titres des catégories peuvent être renommés à tout moment sans casser les liens.
 
 ## Se connecter
 

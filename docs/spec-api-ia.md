@@ -5,6 +5,7 @@ Objectif : rendre chaque MO nativement **indexable, exportable en multi-format e
 ## 1. Arborescence documentaire (socle)
 
 - Arbre paramétrable **Famille > Sous-famille > Type** (table `categories` : `parent_id`, `slug`, `ordre`) — reprend la Vague 8 #3.
+- **Socle livré (C-94, 16 nov. 2026)** : table `categories` (1 à X niveaux, `name` renommable, `slug` immuable), `workflows.category_id` / `parent_id`, filtre par sous-arbre, page admin `/categories`. Reste à matérialiser le `path` et l'exposer en API (cette section).
 - Chaque MO rattaché à un nœud feuille ; la **référence `MO-xxx` reste l'identifiant documentaire unique**.
 - `path` matérialisé par MO (ex. `mecanique/montage/pose-fusibles`) : URLs API stables, filtres arborescents, navigation facettée.
 
