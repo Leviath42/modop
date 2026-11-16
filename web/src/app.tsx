@@ -16,12 +16,14 @@ import GuidedReaderPage from "./pages/guided-reader";
 import FeedbacksPage from "./pages/feedbacks";
 import StatsPage from "./pages/stats";
 import SettingsPage from "./pages/settings";
+import CategoriesPage from "./pages/categories";
 
-function RequireAuth({ children, min }: { children: React.ReactNode; min?: "reader" | "author" }) {
+function RequireAuth({ children, min }: { children: React.ReactNode; min?: "reader" | "author" | "admin" }) {
   const { user, loading } = useAuth();
   if (loading) return <p>Chargement…</p>;
   if (!user) return <Navigate to="/login" replace />;
   if (min === "author" && user.role === "reader") return <ErrorPage code="403" message="Rôle insuffisant" />;
+  if (min === "admin" && user.role !== "admin") return <ErrorPage code="403" message="Rôle insuffisant" />;
   return <>{children}</>;
 }
 
@@ -41,6 +43,7 @@ export default function App() {
           <Route path="/deploy" element={<RequireAuth><DeployPage /></RequireAuth>} />
           <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
           <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
+          <Route path="/categories" element={<RequireAuth min="admin"><CategoriesPage /></RequireAuth>} />
           <Route path="*" element={<ErrorPage code="404" message="Page introuvable" />} />
         </Routes>
       </BrowserRouter>

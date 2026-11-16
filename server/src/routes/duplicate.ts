@@ -39,7 +39,7 @@ export function duplicateRouter(db: Database.Database): Router {
     const wf = db
       .prepare("SELECT * FROM workflows WHERE id = ?")
       .get(Number(req.params.id)) as
-      | { id: number; title: string; reference: string; description: string; category: string; family: string }
+      | { id: number; title: string; reference: string; description: string; category: string; family: string; category_id?: number | null; parent_id?: number | null }
       | undefined;
     if (!wf) {
       res.status(404).json({ error: "not_found", message: "mode opératoire introuvable" });
@@ -47,7 +47,10 @@ export function duplicateRouter(db: Database.Database): Router {
     }
     let ref = `${wf.reference}-COPIE`;
     let n = 2;
-    while (db.prepare("SELECT 1 FROM workflows WHERE reference = ?").get(ref)) {
+    // C-88 : unicité insensible à la casse (alignée sur le contrôle de la
+    // création) — une copie ne peut pas entrer en collision avec un numéro
+    // existant juste par la casse.
+    while (db.prepare("SELECT 1 FROM workflows WHERE reference = ? COLLATE NOCASE").get(ref)) {
       ref = `${wf.reference}-COPIE-${n++}`;
     }
     const actor = (req as { user?: { email: string } }).user!;
@@ -55,9 +58,11 @@ export function duplicateRouter(db: Database.Database): Router {
     const tx = db.transaction(() => {
       const info = db
         .prepare(
-          "INSERT INTO workflows (title, reference, description, category, family) VALUES (?, ?, ?, ?, ?)"
+          "INSERT INTO workflows (title, reference, description, category, family, category_id, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?)"
         )
-        .run(`${wf.title} (copie)`, ref, wf.description, wf.category, wf.family);
+        // C-94 : la copie garde l'emplacement arborescent et le document
+        // parent — c'est une variante du même document.
+        .run(`${wf.title} (copie)`, ref, wf.description, wf.category, wf.family, wf.category_id ?? null, wf.parent_id ?? null);
       const newId = Number(info.lastInsertRowid);
       const steps = db
         .prepare("SELECT * FROM steps WHERE workflow_id = ? ORDER BY position")

@@ -1,10 +1,10 @@
 # Modop — Roadmap
 
-*Dernière mise à jour : après C-80 — **cycle de retour terrain clos (C-70 → C-80) et fusionné sur main** : refonte UI (Tailwind v4, palette, barre d'outils basse, Lucide), rognage en place avec retour arrière, paramètres applicatifs, lecture = dernier publié, outil texte fidèle. **Backlog prioritaire** : undo/redo global, **templates de documents** (mode de réaction, tableau, enregistrements, FIT, fiches d'aspect), vidéo liée au MO, texte riche. Vague 10 (sécurité) en standby. Vague 9 terminée code + ops ; production sur `beta`.*
+*Dernière mise à jour : après C-88 — **cycle de retour terrain clos (C-70 → C-80, fusionné sur main) + correctifs GED/lecture C-81 → C-88** : export en entête du lecteur, fidélité du composite docx, alerte « à revoir » expliquée avec lien, date de revue/responsable portés par les versions publiées, recherche de responsable accessible aux auteurs, délai de revue par défaut paramétrable (30 j), champs date/responsable robustes dès la création, numéro unique vérifié en direct (casse ignorée) + Familles en liste de recherche. **Backlog prioritaire** : undo/redo global, **templates de documents** (mode de réaction, tableau, enregistrements, FIT, fiches d'aspect), vidéo liée au MO, texte riche. Vague 10 (sécurité) en standby. Vague 9 terminée code + ops ; production sur `beta`. **Ajout (26 oct. 2026) : vague 11 « preuve de formation » (quiz de compréhension pré/post) proposée — voir § Vague 11.*** **Ajout (26 oct. 2026) : § Conformité & traçabilité contractuelle — suivi des versions des CGV (art. 19) + liaison licence ↔ version.** **Porte de déploiement (26 oct. 2026)** ajoutée en Vague 9 #7 : `update.sh` refuse un SHA rouge / en cours / sans run (livré C-89, 15 nov. 2026) — constat : un déploiement a eu lieu alors que la CI était rouge (échec audit undici).*** **Ajout (16 nov. 2026) : C-90/C-91 — serveur MCP natif sur `/mcp` (24 outils IA + instructions serveur), premier pas de la Vision long terme « API publique » ; doc `docs/connecteur-mcp.md`. Nouvel item backlog : texte des étapes en dessous des images.** **Ajout (16 nov. 2026) : Vague 12 « corrections retour terrain » (texte des étapes sous les images en tête, fidélité docx, édition) + Vague 13 « API publique, exports multi-formats & accès IA » (spéc `docs/spec-api-ia.md`). O2 retiré : la production reste sur `beta` jusqu'à une prod réelle stable.** **Livré (16 nov. 2026) : C-93 — texte des étapes sous les images (Vague 12 #1) ; C-94 — arborescence documentaire paramétrable (1 à X niveaux, titres renommables, slug immuable) + documents parents (Vague 12 #11-12 / Vague 13 #1).** **Livré aussi (16 nov. 2026) : C-92/C-95 — annotations photo portées par les versions publiées et rendues (lecture, guidé, éditeur, export docx) + formes basses non tronquées (Vague 12 #2-4).** **Livré aussi (16 nov. 2026) : C-96 — retours terrain ouverts visibles en édition (badges global + par étape vers la page de traitement), commentaire de version vidé après publication, commentaires d'auteurs par étape — jamais publiés (Vague 12 #5-7).** **Livré (16 nov. 2026) : C-97 — indications métiers paramétrables (page Paramètres + flyout éditeur dynamique + résolution des pictos API/MCP) et reset d'un brouillon même sans version publiée (V12 #8-9). La Vague 12 est entièrement soldée.** **Livré (16 nov. 2026) : C-98 — chemins arborescents exposés en API (category_path sur workflow, liste, catégories), exports Markdown et JSON canonique (?format=md|json, ancres d'étapes MO-xxx/etapes/n), champ image_description + édition alt/description après upload (PUT /api/photos/:id/meta) + warning non bloquant à la publication (V13 #1/#2/#3/#5).** **Livré aussi (16 nov. 2026) : C-99 — renommage `image_description` (le nom décrit la donnée, pas un consommateur), vignettes cliquables par étape pour éditer les descriptions des photos, correction du numéro de version dans la confirmation de publication.** **Livré aussi (16 nov. 2026) : C-100 — montées de versions sécurité des dépendances (npm audit fix, transitifs minimatch/eslint, 9→0 sur beta) ; main réaligné sur beta (31 commits C-81→C-100 fusionnés — les 24 high Dependabot venaient du retard de main, déjà corrigés sur beta).**
 
-L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archives/roadmap-v1-a-v6bis.md](archives/roadmap-v1-a-v6bis.md). La série de correctifs UI/UX (C-01 → C-51) est journalisée dans [correctifs.md](correctifs.md).
+L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archives/roadmap-v1-a-v6bis.md](archives/roadmap-v1-a-v6bis.md). La série de correctifs UI/UX (C-01 → C-88) est journalisée dans [correctifs.md](correctifs.md).
 
-## ✅ Implémenté (v0 → v6bis + correctifs C-01..C-51)
+## ✅ Implémenté (v0 → v6bis + correctifs C-01..C-91)
 
 - **Éditeur complet** : canevas par étape (photos libres, flèches/zones/textes clic-clic, corbeille de drag), étape active dynamique, autosave des métadonnées, uploads galerie **ou appareil photo**, barre d'outils sticky avec labels, pictos couleur+texte, familles/types.
 - **Publication versionnée** : V1 → Vn immuable (snapshot complet : canevas + mise en page), changelog à la publication, restauration de version, duplication.
@@ -17,7 +17,8 @@ L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archi
 - **Suppression MO** : admin uniquement, double confirmation, case décochée par défaut.
 - **Sécurité** : anti-CSRF (+ allowlist `MODOP_ALLOWED_HOSTS`), magic numbers, rate limits (login, feedback), révocation au changement de rôle, en-têtes durcis, audit.
 - **Ops** : mise à jour/retour arrière depuis l'interface (admin), journal en direct, tests rationalisés (~9 s serveur + ~16 s front).
-- **Refonte UI (C-64)** : Tailwind v4 + design tokens de la palette officielle (bleu-gris/orange, clair + sombre) + composants type shadcn faits maison (`web/src/components/ui/`) ; toutes les pages migrées vers les classes/utilitaires, comportements, aria et invariants conservés ; guide de référence `docs/Guide interface utilisateur.md`, palette `docs/palette-couleurs.md`.
+- **Connecteur MCP (C-90/C-91)** : serveur MCP natif sur `/mcp` — 24 outils IA (workflows, étapes, photos, versions, publication, export docx, retours terrain), Bearer `MODOP_MCP_TOKEN` + compte service `svc-mcp` (rôle author), appels API en loopback (validations, rate limits et audit identiques), instructions serveur à l'initialize ; doc `docs/connecteur-mcp.md`.
+- **Refonte UI (C-64)** : Tailwind v4 + design tokens de la palette officielle (bleu-gris/orange, clair + sombre) + composants type shadcn faits maison (`web/src/components/ui/`) ; toutes les pages migrées vers les classes/utilitaires, comportements, aria et invariants conservés ; guide de référence `docs/guide-interface-utilisateur.md`, palette `web/src/styles.css`.
 
 ## 🚧 Restant à implémenter
 
@@ -52,11 +53,12 @@ Automatisation des portes qualité et cycle de déploiement — revue externe du
 | 1 | **CI GitHub Actions** sur push/PR `beta` et `main` : jobs `server` (typecheck + build + tests runtime) et `web` (build + tests front), badge de statut dans le README | 🔴 | ✅ livré (C-57) — `npm ci` racine + scripts par workspace, portes lint/typecheck/build/tests des deux côtés, badge README |
 | 2 | **Lint et formatage automatisés** : ESLint (TS strict) + Prettier sur `server` et `web`, 4ᵉ porte qualité en CI, reformatage ponctuel en un commit dédié | 🔴 | ✅ livré (C-57) — lint vert sur `server` et `web` en CI ; Prettier configuré (`.prettierrc` racine, scripts `format`) ; reformatage ponctuel du code existant non exécuté (à faire en commit dédié si souhaité) |
 | 3 | **Supply-chain** : Dependabot (ou Renovate) + porte `npm audit --omit=dev --audit-level=high` en CI ; statuer sur `--ignore-scripts` pour `npm ci` (esbuild, better-sqlite3) | 🟠 | ✅ livré (C-56 + C-57) — Dependabot actif, job `audit` en CI ; décision : **scripts d'install conservés** (better-sqlite3/esbuild en ont besoin — voir durcissement-securite.md § 5) |
-| 4 | **Branche de déploiement paramétrable** : `MODOP_DEPLOY_BRANCH` (défaut `beta` rétro-compatible pour l'homelab), production sur `main` ; à terme CT de recette sur `beta` + CT de prod sur `main` | 🟠 | ✅ livré (C-57) — env > `.deploy-branch` > `beta` ; update.sh + proxmox-install.sh adaptés aux workspaces au passage ; **décision propriétaire (2026-10-18) : production maintenue sur `beta` pour le moment** |
+| 4 | **Branche de déploiement paramétrable** : `MODOP_DEPLOY_BRANCH` (défaut `beta` rétro-compatible pour l'homelab), production sur `main` ; à terme CT de recette sur `beta` + CT de prod sur `main` | 🟠 | ✅ livré (C-57) — env > `.deploy-branch` > `beta` ; update.sh + proxmox-install.sh adaptés aux workspaces au passage ; **décision propriétaire (2026-10-18) : production maintenue sur `beta`** ; **O2 retiré (16 nov. 2026) : pas de bascule `main` programmée — uniquement à une prod réelle stable** |
 | 5 | **Observabilité minimale** : supervision du healthcheck (ex. Uptime Kuma auto-hébergé sur le Proxmox) avec notification ; optionnel : endpoint `/metrics` | 🟡 | ✅ livré et **déployé** (C-62) — Uptime Kuma en production sur le Proxmox, moniteur `GET /api/health`, état visible depuis Home Assistant ; extensions possibles (non retenues pour l'instant) : moniteur push « sauvegarde/déploiement OK », expiration du certificat du tunnel, endpoint `/metrics` |
 | 6 | **Sauvegardes SQLite cohérentes** : remplacer la copie de fichier par `VACUUM INTO` ou `.backup()` (better-sqlite3) dans `update.sh` ; test de restauration automatisé (`PRAGMA integrity_check`) | 🟡 | ✅ livré (C-57) — `server/scripts/backup-db.mjs` (VACUUM INTO + integrity_check de la copie, contrôle aussi après restauration/rollback), 3 tests runtime (`server/test/backup-restore.test.ts`) |
+| 7 | **Porte de déploiement** : `update.sh` interroge le statut CI du SHA à déployer (check-runs via l'API GitHub) et **refuse un SHA rouge** ; override manuel explicite (`--force`) consigné dans le journal | 🔴 | ✅ livré (C-89, 15 nov. 2026) — vérifié AVANT tout arrêt : rouge / en cours / sans run / API injoignable = refus, matrice testée en réel (vert cf7858b, rouge 01756d8, --force) ; l'activation de la prod sur `main` reste une décision propriétaire |
 
-Critères d'acceptation (issue #8) : un push cassant typecheck/build/tests refusé par le CI (✅ CI fonctionnelle) ; lint vert sur `server` et `web` (✅) ; premières PR Dependabot reçues (⏳ côté GitHub) ; déploiement de production visant `main` (✅ `MODOP_DEPLOY_BRANCH` — ⏳ activation différée : production maintenue sur `beta`, décision propriétaire) ; healthcheck supervisé avec alerte (✅ Uptime Kuma déployé, supervisé depuis Home Assistant) ; une sauvegarde restaure une base `integrity_check = ok` (✅ testé en runtime).
+Critères d'acceptation (issue #8) : un push cassant typecheck/build/tests refusé par le CI (✅ CI fonctionnelle) ; lint vert sur `server` et `web` (✅) ; premières PR Dependabot reçues (⏳ côté GitHub) ; déploiement de production visant `main` (`MODOP_DEPLOY_BRANCH` — clos le 16 nov. 2026 : prod durablement sur `beta`, O2 retiré ; bascule `main` uniquement à prod réelle stable) ; healthcheck supervisé avec alerte (✅ Uptime Kuma déployé, supervisé depuis Home Assistant) ; une sauvegarde restaure une base `integrity_check = ok` (✅ testé en runtime).; `update.sh` refuse de déployer un SHA dont la CI est rouge, override `--force` consigné (✅ C-89, 15 nov. 2026).
 
 ### Palette d'outils d'édition — déploiement incrémental ([spec-palette-outils.md](spec-palette-outils.md))
 
@@ -78,7 +80,7 @@ Architecture livrée (C-67) : **registre de commandes modulaire** (`web/src/edit
 
 ### Vague 10 — Palier sécurité entreprise (issue #9) — ⏸️ **en standby**
 
-*Décision propriétaire (2026-10-18) : pas de besoin pour le moment — priorité au fonctionnel et au mode édition. Contenu conservé pour relance ultérieure. Rappel en attendant : l'UI de login n'a pas de champ `totp`, **`MODOP_TOTP_SECRET` reste désactivé**.*
+*Décision propriétaire (2026-10-18) : pas de besoin pour le moment — priorité au fonctionnel et au mode édition. Contenu conservé pour relance ultérieure. Rappel en attendant : l'UI de login n'a pas de champ `totp`, **`MODOP_TOTP_SECRET` reste désactivé`***
 
 | # | Action | Priorité | État |
 |---|---|---|---|
@@ -89,10 +91,63 @@ Architecture livrée (C-67) : **registre de commandes modulaire** (`web/src/edit
 
 Critères d'acceptation (issue #9) : un compte admin sans code TOTP valide ne se connecte pas (replay impossible) ; la base est illisible sans la clé ; sauvegardes chiffrées et restauration testée sur CT vierge ; rapport ZAP/Nuclei archivé et constats classés ; `plan-de-reprise.md` + exercice chronométré.
 
+### Vague 11 — Preuve de formation & habilitation (proposition — ajoutée le 26 oct. 2026)
+
+*Origine : pattern pédagogique « pré-quiz → contenu → knowledge checks → post-quiz » observé dans [microsoft/Web-Dev-For-Beginners](https://github.com/microsoft/Web-Dev-For-Beginners) lors d'une analyse du top 200 GitHub (26 oct. 2026). Objectif : faire passer Modop de la **consultation** de MO à la **preuve de formation** — argument habilitation / ISO 9001, et mesure concrète pour le dossier de création de poste (taux de réussite, temps d'habilitation). Réutilise l'existant : rôles, stats admin, journal d'audit, snapshot versionné. À spécifier avant implémentation (contrat figé `shared/`).*
+
+| # | Fonctionnalité | Pistes |
+|---|---------------|-------|
+| 1 | **Quiz de prérequis (pré-lecture)** | questions rattachées au MO, **versionnées avec le snapshot** à la publication (Vn immuable = quiz immuable) ; optionnel par MO |
+| 2 | **Quiz de compréhension (post-lecture)** | global ou par étape, correction immédiate, seuil de réussite paramétrable ; une nouvelle version publiée impose de re-valider l'acquis |
+| 3 | **Traçabilité & audit** | tentatives (utilisateur, date, score, version du MO) en SQLite, jamais modifiables côté lecteur ; export admin pour audit habilitation |
+| 4 | **Stats admin** | taux de réussite par MO / par opérateur / par version, temps d'habilitation — alimente le tableau de bord existant |
+| 5 | **Rédaction des questions** | côté éditeur (author), par étape ou par MO ; anti-triche minimal : ordre aléatoire, tentatives limitées par défaut |
+
+Critères d'acceptation (à affiner) : un MO avec quiz actif conserve les scores par version ; une tentative enregistrée n'est jamais modifiable côté lecteur ; l'admin peut exporter l'historique des tentatives par opérateur ; la publication d'une nouvelle version réinitialise l'acquis à re-valider.
+
+### Vague 12 — Corrections retour terrain : GED, docx & édition (ajoutée le 16 nov. 2026)
+
+*Portés depuis vibe_docs « Corrections Modop » (28 oct. 2026) + demande propriétaire du 16 nov. Réordonnés par priorité ; les doublons déjà en Vague 8 sont renvoyés en fin de table.*
+
+| # | Correction | Notes |
+|---|---|---|
+| 1 | **Texte des étapes en dessous des images** | ✅ livré C-93 (16 nov. 2026) — lecture, guidé, édition |
+| 2 | Docx : images et formes légèrement décalées | ✅ livré C-92 + C-95 (16 nov. 2026) — annotations photo portées par le snapshot et rendues (lecture, guidé, éditeur, docx) |
+| 3 | Docx : mauvaise gestion des photos et formes (position relative) | ✅ livré C-95 — dessin factorisé photo/canevas dans le composite docx |
+| 4 | Docx : formes plus basses que l'image tronquées en lecture | ✅ livré C-95 — la hauteur du canevas de lecture inclut les formes |
+| 5 | Remontées terrain non visibles en mode édition (indiquer que des corrections sont à faire) | ✅ livré C-96 (16 nov. 2026) — badge global + badge ⚑ par étape, lien vers la page de traitement |
+| 6 | Si pas de commentaire de version, le commentaire précédent est repris | ✅ livré C-96 (16 nov. 2026) — champ vidé après chaque publication |
+| 7 | Section de commentaires réservée aux auteurs en mode édition, à chaque étape | ✅ livré C-96 (16 nov. 2026) — table step_comments, composant repliable par étape, jamais publiés ; le workflow de validation reste Vague 7 #1 |
+| 8 | Paramétrage des indications métiers | ✅ livré C-97 (16 nov. 2026) — liste paramétrable en page Paramètres (admin), flyout éditeur dynamique, pictos posés par l'API/MCP résolus en objets auto-porteurs |
+| 9 | Pouvoir abandonner un brouillon introuvable | ✅ livré C-97 (16 nov. 2026) — POST /api/workflows/:id/reset-draft (V0 = purge complète, publié = retour à Vn) ; pictos/canvas corrompus ne 500 plus |
+| 10 | Nouvelle image par drag & drop ou presse-papier | repris en Vague 8 #1 |
+| 11 | Arborescence documentaire paramétrable | ✅ livré C-94 (16 nov. 2026) — voir Vague 13 #1 |
+| 12 | Gestion de documents parents | ✅ livré C-94 (16 nov. 2026) — parent affiché au lecteur + « Documents liés » |
+
+### Vague 13 — API publique, exports multi-formats & accès IA (proposition — ajoutée le 16 nov. 2026)
+
+*Spécification complète : [spec-api-ia.md](spec-api-ia.md) — arborescence, étape = chunk + ancre profonde, corpus + manifest (ré-embedding incrémental), tokens API à périmètre. La MCP (C-90) est la vitrine IA ; la REST publique sera la vitrine GMAO/intégrateurs. Chaque brique est autonome et livrable indépendamment.*
+
+| # | Fonctionnalité | Notes |
+|---|---|---|
+| 1 | **Arborescence documentaire** Famille > Sous-famille > Type | ✅ livré C-94 + C-98 (16 nov. 2026) : catégories imbriquées 1 à X niveaux (titres renommables, slug immuable), rattachement MO, filtre par sous-arbre, page admin `/categories` ; chemins `category_path` exposés en API (workflow, liste, catégories) — calcul à la volée, jamais stockés |
+| 2 | **Export Markdown** (`?format=md`) | ✅ livré C-98 (16 nov. 2026) — YAML front matter + étapes + ancres `MO-xxx/etapes/n` + descriptions des photos |
+| 3 | **Export JSON canonique** (`?format=json`) | ✅ livré C-98 (16 nov. 2026) — snapshot exact + bloc meta (GED, chemin, ancres) — zéro perte |
+| 4 | **Export PDF** (`?format=pdf`) | rendu du composite lecteur existant |
+| 5 | **Description détaillée des images** | ✅ livré C-98 (16 nov. 2026) — champ `image_description` (upload, `PUT /api/photos/:id/meta`, MCP) ; warning non bloquant à la publication + panneau d'édition dans l'éditeur ; C-99 : renommé `image_description`, vignettes cliquables par étape |
+| 6 | **Outils MCP lecture IA** | `get_workflow_markdown` (Markdown direct — économie de tokens) + `export_corpus` |
+| 7 | **Corpus + manifest** | zip md+json des MO publiés modifiés depuis `?since=` — aucune base vectorielle dans modop v1 |
+| 8 | **Tokens API publics à périmètre** | read-only par défaut, rate limit, ETag — pattern `svc-mcp` ; activation seulement à prod réelle stable (O2 retiré) |
+
+### Conformité & traçabilité contractuelle (ajouté le 26 oct. 2026)
+
+- [ ] **Suivi des versions des CGV (art. 19) + liaison licence ↔ version** : si Modop est un jour distribué commercialement (via Néliora), chaque révision des CGV doit être versionnée, datée et archivée, et chaque licence/contrat enregistré avec **la version des CGV acceptée + la date de licence** — même mécanique que meal_plan. En interne dès maintenant : versionner les documents contractuels associés aux déploiements clients (conditions d'accès, charte) et conserver la date d'acceptation.
+- [ ] **Suspension / réactivation d'une licence ou d'un accès** : action admin (raison tracée, date) — cas d'usage : litige, départ d'un opérateur, incident de sécurité, test ; l'accès suspendu est bloqué sans suppression des données ; toute suspension/réactivation consignée dans le journal d'audit existant. Ajouté le 26 oct. 2026.
+
 ### Vision long terme
 
 - Multi-langue (interface + contenus)
-- API publique (intégrations GMAO)
+- API publique (intégrations GMAO) — **premier pas livré (C-90)** : serveur MCP natif sur `/mcp`, 24 outils, doc `docs/connecteur-mcp.md` ; **plan complet : Vague 13 + [spec-api-ia.md](spec-api-ia.md)**
 - Statistiques d'usage fines par MO
 
 ## 🧭 Principes de développement

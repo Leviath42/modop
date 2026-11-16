@@ -41,6 +41,40 @@ test("paramètres : défauts, lecture authentifiée", async () => {
   assert.equal(got.json.readers_see_drafts, false, "défaut : lecteurs ne voient pas les brouillons");
   assert.equal(got.json.no_review_date_is_overdue, true, "défaut : sans date = à revoir");
   assert.equal(got.json.default_stroke_width, 5, "défaut : épaisseur 5");
+  // C-86 : délai de revue par défaut — 30 jours
+  assert.equal(got.json.default_review_days, 30, "défaut : délai de revue 30 jours");
+});
+
+test("C-86 : délai de revue par défaut — PUT admin, bornes, persistance", async () => {
+  const forbidden = await call("PUT", "/api/settings", { default_review_days: 60 }, author);
+  assert.equal(forbidden.status, 403, "un auteur ne peut pas modifier les paramètres");
+  const put = await call("PUT", "/api/settings", { default_review_days: 60 }, admin);
+  assert.equal(put.status, 200);
+  assert.equal(put.json.default_review_days, 60, "délai persisté");
+  const bad = await call("PUT", "/api/settings", { default_review_days: 0 }, admin);
+  assert.equal(bad.json.default_review_days, 60, "délai hors bornes (0) ignoré");
+  const bad2 = await call("PUT", "/api/settings", { default_review_days: 99999 }, admin);
+  assert.equal(bad2.json.default_review_days, 60, "délai hors bornes (99999) ignoré");
+  const frac = await call("PUT", "/api/settings", { default_review_days: 45.7 }, admin);
+  assert.equal(frac.json.default_review_days, 46, "délai arrondi à l'entier");
+  const back = await call("PUT", "/api/settings", { default_review_days: 30 }, admin);
+  assert.equal(back.json.default_review_days, 30, "retour au défaut");
+});
+
+// C-85 : candidats responsables — comptes ACTIFS, accessibles aux auteurs
+// (l'éditeur fait sa recherche par mot-clé dessus) ; lecteurs et anonymes refusés.
+test("C-85 : GET /api/users — comptes actifs pour les auteurs", async () => {
+  db.prepare("INSERT INTO users (email, password_hash, role, first_name, last_name, active) VALUES (?, ?, 'reader', 'Jeanne', 'Martin', 1)").run("jeanne@modop.local", bcrypt.hashSync("x".repeat(10), 4));
+  db.prepare("INSERT INTO users (email, password_hash, role, first_name, last_name, active) VALUES (?, ?, 'reader', 'Paul', 'Hors', 0)").run("paul@modop.local", bcrypt.hashSync("x".repeat(10), 4));
+  const anon = await call("GET", "/api/users");
+  assert.equal(anon.status, 401, "anonyme refusé");
+  const got = await call("GET", "/api/users", undefined, author);
+  assert.equal(got.status, 200, "un auteur liste les candidats responsables");
+  const emails = got.json.map((u: { email: string }) => u.email);
+  assert.ok(emails.includes("jeanne@modop.local"), "compte actif présent");
+  assert.ok(!emails.includes("paul@modop.local"), "compte désactivé absent");
+  const jeanne = got.json.find((u: { email: string }) => u.email === "jeanne@modop.local");
+  assert.equal([jeanne.first_name, jeanne.last_name].filter(Boolean).join(" "), "Jeanne Martin", "Prénom/Nom exposés pour la recherche");
 });
 
 test("paramètres : PUT admin seul, persistance", async () => {

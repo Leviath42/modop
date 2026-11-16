@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { api, ApiError, type Workflow } from "../api";
+import { api, ApiError, type AppSettings, type Category, type Workflow } from "../api";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
 import { Badge } from "../components/ui/badge";
@@ -10,6 +10,7 @@ import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Input, Label, Select } from "../components/ui/input";
 import { cn } from "../lib/utils";
+import { buildTree, descendantIds, flattenTree } from "../lib/categories-tree";
 
 export default function ListPage() {
   const { user } = useAuth();
@@ -31,6 +32,11 @@ export default function ListPage() {
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [family, setFamily] = useState("");
   const [families, setFamilies] = useState<string[]>([]);
+  // C-94 : filtre par arborescence (côté client, sous-arbre complet) +
+  // badge « ↳ parent » sur les cartes (fetch non filtré).
+  const [cats, setCats] = useState<Category[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [parentMap, setParentMap] = useState<Map<number, Workflow>>(new Map());
   const [showFilters, setShowFilters] = useState(false);
   // C-44 : groupes repliables (état Publié/Brouillon et familles) — l'état
   // de repli est persisté en localStorage par MO et par groupe.
@@ -52,7 +58,7 @@ export default function ListPage() {
   const [loading, setLoading] = useState(true);
   // C-72 (#4/#5) : paramètres applicatifs (sans date = à revoir ;
   // brouillons visibles par les lecteurs).
-  const [settings, setSettings] = useState<{ readers_see_drafts: boolean; no_review_date_is_overdue: boolean; default_stroke_width: number }>({ readers_see_drafts: false, no_review_date_is_overdue: true, default_stroke_width: 5 });
+  const [settings, setSettings] = useState<AppSettings>({ readers_see_drafts: false, no_review_date_is_overdue: true, default_stroke_width: 5, default_review_days: 30 });
   useEffect(() => {
     api.getSettings().then(setSettings).catch(() => { /* défauts conservés */ });
   }, []);
@@ -76,17 +82,23 @@ export default function ListPage() {
       .then((wfs) => {
         const set = new Set(wfs.map((w) => w.family).filter(Boolean));
         setFamilies([...set].sort());
+        const pm = new Map<number, Workflow>();
+        for (const p of wfs) for (const w of wfs) if (w.parent_id === p.id) pm.set(w.id, p);
+        setParentMap(pm);
       })
       .catch(() => { /* filtre famille optionnel */ });
+    api.listCategories().then((list) => { if (Array.isArray(list)) setCats(list); }).catch(() => { /* filtre optionnel */ });
   }, []);
 
-  const activeFilters = [state, family, overdueOnly ? "1" : "", sort].filter(Boolean).length;
+  const activeFilters = [state, family, categoryFilter, overdueOnly ? "1" : "", sort].filter(Boolean).length;
   // Alerte « à revoir » pour les auteurs/admins : documents dont la date de
-  // revue est dépassée (bandeau une fois, action directe vers le filtre).
+  // revue est dépassée — C-83 : chaque document est listé avec SA raison
+  // (date dépassée ou absence de date) et un lien qui l'ouvre.
   const today = new Date().toISOString().slice(0, 10);
-  const overdueCount = workflows.filter((w) =>
+  const overdueDocs = workflows.filter((w) =>
     (w.review_due ? w.review_due < today : settings.no_review_date_is_overdue)
-  ).length;
+  );
+  const overdueCount = overdueDocs.length;
 
   return (
     <>
@@ -138,6 +150,17 @@ export default function ListPage() {
                   {families.map((f) => <option key={f} value={f}>{f}</option>)}
                 </Select>
               </div>
+              {cats.length > 0 && (
+                <div className="grid min-w-0 gap-1.5">
+                  <Label htmlFor="mo-filter-cat" className="text-muted-foreground">Arborescence</Label>
+                  <Select id="mo-filter-cat" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} aria-label="Filtrer par arborescence" className="w-auto max-w-[40vw]">
+                    <option value="">Toutes</option>
+                    {flattenTree(buildTree(cats)).map((c) => (
+                      <option key={c.id} value={String(c.id)}>{" ".repeat(c.depth * 2)}{c.name}</option>
+                    ))}
+                  </Select>
+                </div>
+              )}
               <div className="grid gap-1.5">
                 <Label htmlFor="mo-sort" className="text-muted-foreground">Trier par</Label>
                 <Select id="mo-sort" value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Trier" className="w-auto">
@@ -157,7 +180,7 @@ export default function ListPage() {
                   variant="ghost"
                   size="sm"
                   className="ml-auto"
-                  onClick={() => { setState(""); setFamily(""); setOverdueOnly(false); setSort(""); }}
+                  onClick={() => { setState(""); setFamily(""); setCategoryFilter(""); setOverdueOnly(false); setSort(""); }}
                 >Effacer</Button>
               )}
             </div>
@@ -166,6 +189,23 @@ export default function ListPage() {
         {error && <p role="alert" className="text-error">{error}</p>}
         {!loading && user && user.role !== "reader" && overdueCount > 0 && (
           <Alert variant="warn" title={`${overdueCount} mode${overdueCount > 1 ? "s" : ""} opératoire${overdueCount > 1 ? "s" : ""} à revoir`}>
+            {/* C-83 : la raison de chaque signalement + un lien qui ouvre le
+                document concerné (détail de la revue dans le lecteur). */}
+            <ul className="mb-2 grid gap-1">
+              {overdueDocs.slice(0, 5).map((w) => (
+                <li key={w.id} className="flex min-w-0 flex-wrap items-center gap-1.5">
+                  <Link to={`/workflow/${w.id}/read`} title={w.title} className="min-w-0 truncate text-sm font-semibold text-link no-underline">{w.title}</Link>
+                  <span className="text-xs text-muted-foreground">
+                    {w.review_due
+                      ? `revue dépassée depuis le ${w.review_due.split("-").reverse().join("/")}`
+                      : "aucune date de revue"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {overdueCount > 5 && (
+              <p className="m-0 mb-2 text-xs text-muted-foreground">+ {overdueCount - 5} autre{overdueCount - 5 > 1 ? "s" : ""}…</p>
+            )}
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-muted-foreground">Des documents ont dépassé leur date de revue.</span>
               <Button size="sm" variant="outline" onClick={() => { setOverdueOnly(true); setSearch(""); }}>Voir à revoir</Button>
@@ -180,7 +220,12 @@ export default function ListPage() {
           (() => {
             // #9 : les lecteurs ne voient pas les brouillons (paramètre
             // serveur optionnel à venir — filtre front pour l'instant).
-            const visible = user?.role === "reader" && !settings.readers_see_drafts ? workflows.filter((w) => w.state !== "draft") : workflows;
+            // C-94 : filtre arborescence — sous-arbre complet (descendants inclus).
+            const catSubtree = categoryFilter ? descendantIds(cats, Number(categoryFilter)) : null;
+            const selectedCat = categoryFilter ? Number(categoryFilter) : null;
+            const inTree = (w: Workflow) => !catSubtree || (w.category_id != null && (w.category_id === selectedCat || catSubtree.has(w.category_id)));
+            const scoped = workflows.filter(inTree);
+            const visible = user?.role === "reader" && !settings.readers_see_drafts ? scoped.filter((w) => w.state !== "draft") : scoped;
             // C-43 : regroupement — état (publiés d'abord) puis famille
             const groups = new Map<string, typeof workflows>();
             for (const st of ["published", "draft"]) {
@@ -200,6 +245,9 @@ export default function ListPage() {
                       <Link to={`/workflow/${wf.id}/edit`} aria-label={`Modifier ${wf.title}`} title="Modifier" className="shrink-0 no-underline"><Pencil size={14} aria-hidden="true" /></Link>
                     )}
                   </div>
+                  {wf.parent_id && parentMap.get(wf.parent_id) && (
+                    <p className="m-0 text-xs text-muted-foreground">↳ {parentMap.get(wf.parent_id)!.title}</p>
+                  )}
                 </Card>
               </li>
             );
@@ -209,7 +257,7 @@ export default function ListPage() {
                 {[...groups.entries()].map(([key, items]) => {
                   const [st, fam] = key.split("|");
                   const stateLabel = st === "published" ? "Publié" : "Brouillon";
-                  const stateCount = workflows.filter((w) => w.state === st).length;
+                  const stateCount = scoped.filter((w) => w.state === st).length;
                   const stateCollapsed = collapsed.has(`state:${st}`);
                   const famCollapsed = collapsed.has(`fam:${key}`);
                   const stateHeader = st !== lastState ? (

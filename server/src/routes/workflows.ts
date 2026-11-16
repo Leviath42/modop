@@ -1,7 +1,9 @@
 import { Router } from "express";
 import type Database from "better-sqlite3";
+import { categoryPaths } from "../lib/category-path.js";
 import { requireAuth } from "../auth/middleware.js";
 import { auditLog } from "../auth/audit.js";
+import { getIndications } from "./settings.js";
 
 export interface StepRow {
   id: number;
@@ -15,28 +17,72 @@ export interface StepRow {
 
 // Contrat de l’API : pictos est un tableau (comme GET /api/workflows/:id),
 // jamais la chaîne JSON brute de la colonne steps.pictos.
-function pictosArray(row: unknown): Omit<StepRow, "pictos"> & { pictos: string[] } {
+// C-97 (V12 #9) : pictos/canvas corrompus ne doivent plus faire échouer le
+// chargement d'un brouillon (500) — la porte de sortie (reset) reste
+// atteignable. Liste vide au lieu de l'exception.
+function safeJsonArray(raw: string | null | undefined): unknown[] {
+  try {
+    const parsed = JSON.parse(raw ?? "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function pictosArray(row: unknown): Omit<StepRow, "pictos"> & { pictos: unknown[] } {
   const step = row as StepRow;
-  return { ...step, pictos: JSON.parse(step.pictos) };
+  return { ...step, pictos: safeJsonArray(step.pictos) };
 }
 
 export function workflowRouter(db: Database.Database): Router {
   const r = Router();
 
   r.post("/", requireAuth("author"), (req, res) => {
-    const { title, reference, description, category, family } = req.body ?? {};
+    const { title, reference, description, category, family, review_due, owner_email, category_id, parent_id } = req.body ?? {};
     if (typeof title !== "string" || !title.trim() || typeof reference !== "string" || !reference.trim()) {
       res.status(422).json({ error: "validation", message: "title et reference requis" });
       return;
     }
-    const exists = db.prepare("SELECT 1 FROM workflows WHERE reference = ?").get(reference.trim());
+    // C-87 : la création accepte la date de revue et le responsable (mêmes
+    // règles que le PUT) — les valeurs saisies en mode création étaient
+    // perdues au passage en édition.
+    const dateOk = (v: unknown): boolean =>
+      v === undefined || v === null || v === "" || (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v));
+    if (!dateOk(review_due)) {
+      res.status(422).json({ error: "validation", message: "review_due : date YYYY-MM-DD, vide ou null" });
+      return;
+    }
+    // C-88 : unicité INSENSIBLE À LA CASSE — « MO-001 » et « mo-001 » sont
+    // le même numéro (la contrainte SQL UNIQUE seule ne voit pas la casse).
+    const exists = db.prepare("SELECT 1 FROM workflows WHERE reference = ? COLLATE NOCASE").get(reference.trim());
     if (exists) {
       res.status(422).json({ error: "validation", message: "référence déjà utilisée" });
       return;
     }
+    // C-94 : rattachement arborescent + document parent, validés avant écriture.
+    const catId = category_id == null ? null : Number(category_id);
+    if (catId !== null && !db.prepare("SELECT 1 FROM categories WHERE id = ?").get(catId)) {
+      res.status(422).json({ error: "validation", message: "catégorie introuvable" });
+      return;
+    }
+    const parentWfId = parent_id == null ? null : Number(parent_id);
+    if (parentWfId !== null && !db.prepare("SELECT 1 FROM workflows WHERE id = ?").get(parentWfId)) {
+      res.status(422).json({ error: "validation", message: "document parent introuvable" });
+      return;
+    }
     const info = db
-      .prepare("INSERT INTO workflows (title, reference, description, category, family) VALUES (?, ?, ?, ?, ?)")
-      .run(title.trim(), reference.trim(), description ?? "", category ?? "", family ?? "");
+      .prepare("INSERT INTO workflows (title, reference, description, category, family, review_due, owner_email, category_id, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .run(
+        title.trim(),
+        reference.trim(),
+        description ?? "",
+        category ?? "",
+        family ?? "",
+        review_due === "" || review_due == null ? null : (review_due as string),
+        typeof owner_email === "string" ? owner_email.trim() : "",
+        catId,
+        parentWfId
+      );
     auditLog(db, (req as { user?: { email: string } }).user?.email ?? "?", "create_workflow", `workflow:${info.lastInsertRowid}`, reference.trim());
     const wf = db.prepare("SELECT * FROM workflows WHERE id = ?").get(info.lastInsertRowid);
     res.status(201).json(wf);
@@ -44,11 +90,18 @@ export function workflowRouter(db: Database.Database): Router {
 
   r.get("/:id", requireAuth("reader"), (req, res) => {
     const wf = db.prepare("SELECT * FROM workflows WHERE id = ?")
-      .get(req.params.id) as { id: number } | undefined;
+      .get(req.params.id) as { id: number; owner_email?: string } | undefined;
     if (!wf) {
       res.status(404).json({ error: "not_found", message: "mode opératoire introuvable" });
       return;
     }
+    // C-84 : nom lisible du responsable (Prénom Nom) quand le compte existe.
+    const ownerRow = wf.owner_email
+      ? (db.prepare("SELECT first_name, last_name FROM users WHERE email = ?").get(wf.owner_email) as
+        | { first_name: string; last_name: string }
+        | undefined)
+      : undefined;
+    const ownerName = ownerRow ? [ownerRow.first_name, ownerRow.last_name].filter(Boolean).join(" ") || wf.owner_email : "";
     const steps = db
       .prepare("SELECT * FROM steps WHERE workflow_id = ? ORDER BY position")
       .all(wf.id) as StepRow[];
@@ -68,12 +121,16 @@ export function workflowRouter(db: Database.Database): Router {
       );
     }
     auditLog(db, (req as { user?: { email: string } }).user?.email ?? "?", "view_workflow", `workflow:${wf.id}`);
+    // C-98 (V13 #1) : chemin arborescent de la catégorie, résolu à la volée.
+    const categoryPath = categoryPaths(db).get((wf as unknown as { category_id?: number | null }).category_id ?? 0) ?? "";
     res.json({
       ...wf,
+      category_path: categoryPath,
+      owner_name: ownerName,
       steps: steps.map((s) => ({
         ...s,
-        pictos: JSON.parse(s.pictos),
-        canvas: JSON.parse(s.canvas ?? "[]"),
+        pictos: safeJsonArray(s.pictos),
+        canvas: safeJsonArray(s.canvas),
         photos: photosByStep.get(s.id),
       })),
     });
@@ -85,7 +142,7 @@ export function workflowRouter(db: Database.Database): Router {
       res.status(404).json({ error: "not_found", message: "mode opératoire introuvable" });
       return;
     }
-    const { title, description, category, family, review_due, owner_email } = req.body ?? {};
+    const { title, description, category, family, review_due, owner_email, category_id, parent_id } = req.body ?? {};
     if (title !== undefined && (typeof title !== "string" || !title.trim())) {
       res.status(422).json({ error: "validation", message: "title invalide" });
       return;
@@ -115,6 +172,43 @@ export function workflowRouter(db: Database.Database): Router {
       typeof owner_email === "string" ? owner_email.trim() : null,
       wf.id
     );
+    // C-94 : rattachement arborescent + document parent — sémantique
+    // explicite : champ absent = inchangé, null = détaché.
+    if (category_id !== undefined) {
+      const v = category_id == null ? null : Number(category_id);
+      if (v !== null && !db.prepare("SELECT 1 FROM categories WHERE id = ?").get(v)) {
+        res.status(422).json({ error: "validation", message: "catégorie introuvable" });
+        return;
+      }
+      db.prepare("UPDATE workflows SET category_id = ? WHERE id = ?").run(v, wf.id);
+    }
+    if (parent_id !== undefined) {
+      const v = parent_id == null ? null : Number(parent_id);
+      if (v !== null) {
+        if (v === wf.id) {
+          res.status(422).json({ error: "validation", message: "un document ne peut pas être son propre parent" });
+          return;
+        }
+        if (!db.prepare("SELECT 1 FROM workflows WHERE id = ?").get(v)) {
+          res.status(422).json({ error: "validation", message: "document parent introuvable" });
+          return;
+        }
+        // Pas de liaison circulaire : en remontant la chaîne des parents,
+        // on ne doit jamais retomber sur ce document.
+        let cur: number | null = v;
+        for (let hops = 0; cur !== null && hops < 50; hops++) {
+          if (cur === wf.id) {
+            res.status(422).json({ error: "validation", message: "liaison circulaire interdite" });
+            return;
+          }
+          const row = db.prepare("SELECT parent_id FROM workflows WHERE id = ?").get(cur) as
+            | { parent_id: number | null }
+            | undefined;
+          cur = row?.parent_id ?? null;
+        }
+      }
+      db.prepare("UPDATE workflows SET parent_id = ? WHERE id = ?").run(v, wf.id);
+    }
     res.json(db.prepare("SELECT * FROM workflows WHERE id = ?").get(wf.id));
   });
 
@@ -281,6 +375,28 @@ export function workflowRouter(db: Database.Database): Router {
   return r;
 }
 
+// C-97 (V12 #8) : résolution des pictos — l'API et le MCP peuvent passer des
+// kinds ("attention") comme des objets complets ; on stocke toujours des
+// objets auto-porteurs {kind,label,color} résolus via la liste active.
+function resolvePictos(db: Database.Database, pictos: unknown[]): unknown[] {
+  const active = new Map(getIndications(db).map((i) => [i.kind, i]));
+  return pictos.map((p) => {
+    if (typeof p === "string") {
+      const found = active.get(p);
+      return found ?? { kind: p, label: p, color: "#5b7285" };
+    }
+    if (p && typeof p === "object" && "kind" in (p as Record<string, unknown>)) {
+      const o = p as { kind?: unknown; label?: unknown; color?: unknown };
+      const kind = typeof o.kind === "string" ? o.kind : "";
+      const found = active.get(kind);
+      const label = typeof o.label === "string" && o.label.trim() ? o.label.trim() : (found?.label ?? kind);
+      const color = typeof o.color === "string" && /^#[0-9a-fA-F]{6}$/.test(o.color) ? o.color.toLowerCase() : (found?.color ?? "#5b7285");
+      return { kind, label, color };
+    }
+    return p;
+  });
+}
+
 export function stepRouter(db: Database.Database): Router {
   const r = Router();
 
@@ -309,7 +425,7 @@ export function stepRouter(db: Database.Database): Router {
     ).run(
       title?.trim() ?? null,
       body ?? null,
-      pictos !== undefined ? JSON.stringify(pictos) : null,
+      pictos !== undefined ? JSON.stringify(resolvePictos(db, pictos)) : null,
       step.id
     );
     res.json(pictosArray(db.prepare("SELECT * FROM steps WHERE id = ?").get(step.id)));

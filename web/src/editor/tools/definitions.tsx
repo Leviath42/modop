@@ -199,7 +199,8 @@ const indications: CommandDefinition = {
     const st = ctx.steps.find((s) => s.id === (ctx.activeStepId ?? ctx.steps[0]?.id));
     return (
       <div role="menu" aria-label="Indications" className="grid min-w-48 gap-1">
-        {PICTO_PRESETS.map((preset) => {
+        {/* C-97 : liste active (paramétrable), seed en dur en fallback */}
+        {(ctx.indications.length > 0 ? ctx.indications : PICTO_PRESETS).map((preset) => {
           const on = st ? st.pictos.some((x) => x.kind === preset.kind) : false;
           return (
             <button

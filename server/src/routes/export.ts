@@ -9,11 +9,14 @@ import {
 import { requireAuth } from "../auth/middleware.js";
 import { auditLog } from "../auth/audit.js";
 import { composeStepCanvas } from "../render/canvas-composite.js";
+import { categoryPaths } from "../lib/category-path.js";
 
 interface SnapshotPicto { kind: string; label: string; color: string }
 interface SnapshotPhoto {
   filename: string;
   alt: string;
+  image_description?: string;
+  annotations?: CompositeShape[];
   display_x?: number | null;
   display_y?: number | null;
   display_w?: number | null;
@@ -62,9 +65,101 @@ export function exportRouter(db: Database.Database): Router {
       return;
     }
     const snap = JSON.parse(version.snapshot) as {
-      workflow: { title: string; reference: string; description: string; category: string; family?: string };
+      workflow: { title: string; reference: string; description: string; category: string; family?: string; review_due?: string | null; owner_email?: string };
       steps: SnapshotStep[];
     };
+    // C-84 : date de revue et responsables PORTÉS PAR LE SNAPSHOT — l'export
+    // d'une version ancienne montre les valeurs figées à sa publication,
+    // pas celles du brouillon courant (qui « sautaient » d'une version à
+    // l'autre). Le responsable s'affiche en « Prénom Nom » quand le compte
+    // existe encore.
+    const ownerEmail = snap.workflow.owner_email ?? "";
+    const ownerRow = ownerEmail
+      ? (db.prepare("SELECT first_name, last_name FROM users WHERE email = ?").get(ownerEmail) as
+        | { first_name: string; last_name: string }
+        | undefined)
+      : undefined;
+    const ownerLabel = ownerRow
+      ? [ownerRow.first_name, ownerRow.last_name].filter(Boolean).join(" ") || ownerEmail
+      : ownerEmail;
+    const reviewDue = snap.workflow.review_due ?? null;
+
+    // C-98 (V13 #2/#3) : exports Markdown et JSON canonique, en plus du
+    // docx historique. Même route, même version (?version=n), reader+.
+    // JSON = canon : snapshot EXACT de la version publiée (zéro perte)
+    // + bloc meta (GED, chemin arborescent, ancres d'étapes). Markdown =
+    // rendu texte stable pour relecture, archivage et outillage IA.
+    const fmt = typeof req.query.format === "string" ? req.query.format : "docx";
+    if (fmt === "md" || fmt === "json") {
+      const categoryPath = categoryPaths(db).get((snap.workflow as unknown as { category_id?: number | null }).category_id ?? 0) ?? "";
+      const stepAnchor = (pos: number) => `${snap.workflow.reference}/etapes/${pos + 1}`;
+      const meta = {
+        reference: snap.workflow.reference,
+        title: snap.workflow.title,
+        version: version.number,
+        published_at: version.published_at,
+        author: version.author_email,
+        changelog: version.changelog ?? "",
+        type: snap.workflow.category,
+        category_path: categoryPath,
+        family: snap.workflow.family ?? "",
+        description: snap.workflow.description,
+        review_due: reviewDue,
+        owner_email: ownerEmail,
+        owner_name: ownerLabel,
+        anchors: snap.steps.map((s) => ({ position: s.position + 1, title: s.title, anchor: stepAnchor(s.position) })),
+      };
+      if (fmt === "json") {
+        auditLog(db, (req as { user?: { email: string } }).user?.email ?? "?", "export_json", `workflow:${wf.id}`, `V${version.number}`);
+        res.setHeader("content-type", "application/json; charset=utf-8");
+        res.setHeader("content-disposition", `attachment; filename="${snap.workflow.reference}-V${version.number}.json"`);
+        res.json({ meta, snapshot: snap });
+        return;
+      }
+      const fm = (v: string | null | undefined) => (v ?? "").replace(/\r?\n/g, " ").trim();
+      const md: string[] = [
+        "---",
+        `reference: ${snap.workflow.reference}`,
+        `titre: ${fm(snap.workflow.title)}`,
+        `version: ${version.number}`,
+        `chemin: ${categoryPath || "(racine)"}`,
+        `famille: ${fm(snap.workflow.family)}`,
+        `type: ${fm(snap.workflow.category)}`,
+        `description: ${fm(snap.workflow.description)}`,
+        `responsable: ${fm(ownerLabel)}`,
+        `a_revoir_le: ${fm(reviewDue)}`,
+        `publiee_le: ${version.published_at}`,
+        `auteur: ${version.author_email}`,
+        "---",
+        "",
+        `# ${snap.workflow.title}`,
+        "",
+      ];
+      if (version.changelog) md.push(`> **Modifications de cette version :** ${fm(version.changelog)}`, "");
+      if (snap.workflow.description) md.push(fm(snap.workflow.description), "");
+      for (const step of snap.steps) {
+        md.push(`## Étape ${step.position + 1} — ${step.title}`, "", `> Ancre : ${stepAnchor(step.position)}`, "");
+        if (step.body) md.push(step.body, "");
+        const pictos = step.pictos ?? [];
+        if (pictos.length) {
+          for (const p of pictos) md.push(`- ⚠ ${typeof p === "string" ? p : p.label}`);
+          md.push("");
+        }
+        for (const ph of step.photos ?? []) {
+          md.push(`![${ph.alt || ph.filename}](/photos/${ph.filename})`);
+          const ai = (ph.image_description ?? "").trim();
+          if (ai) md.push("", `*Description : ${ai}*`);
+          md.push("");
+        }
+        const shapes = step.canvas ?? [];
+        if (shapes.length) md.push(`_(canevas : ${shapes.length} forme(s), non représentables en Markdown — voir le docx)_`, "");
+      }
+      auditLog(db, (req as { user?: { email: string } }).user?.email ?? "?", "export_md", `workflow:${wf.id}`, `V${version.number}`);
+      res.setHeader("content-type", "text/markdown; charset=utf-8");
+      res.setHeader("content-disposition", `attachment; filename="${snap.workflow.reference}-V${version.number}.md"`);
+      res.send(md.join("\n"));
+      return;
+    }
 
     // ---------- styles ----------
     const ACCENT = "1F4E9C";
@@ -100,7 +195,14 @@ export function exportRouter(db: Database.Database): Router {
             children: [
               metaCell("Famille", snap.workflow.family ?? "—", ACCENT),
               metaCell("Type", snap.workflow.category || "—", ACCENT),
-              metaCell("Responsable", wf.owner_email || "—", ACCENT),
+              metaCell("Responsable", ownerLabel || "—", ACCENT),
+            ],
+          }),
+          new TableRow({
+            children: [
+              metaCell("À revoir le", reviewDue ?? "—", ACCENT),
+              metaCell("", "", ACCENT),
+              metaCell("", "", ACCENT),
             ],
           }),
         ],
@@ -157,6 +259,8 @@ export function exportRouter(db: Database.Database): Router {
         photosDir(),
         (step.photos ?? []).map((p) => ({
           filename: p.filename,
+          // C-95 : les annotations photo suivent la photo dans le docx
+          annotations: p.annotations ?? [],
           display_x: p.display_x,
           display_y: p.display_y,
           display_w: p.display_w,

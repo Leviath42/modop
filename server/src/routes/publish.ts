@@ -10,7 +10,7 @@ interface SnapshotStep {
   body: string;
   pictos: string[];
   canvas: unknown[];
-  photos: { id: number; filename: string; alt: string; display_size?: string; display_align?: string; display_x?: number | null; display_y?: number | null; display_w?: number | null }[];
+  photos: { id: number; filename: string; alt: string; annotations: unknown[]; display_size?: string; display_align?: string; display_x?: number | null; display_y?: number | null; display_w?: number | null }[];
 }
 
 export function publishRouter(db: Database.Database): Router {
@@ -50,9 +50,22 @@ export function publishRouter(db: Database.Database): Router {
         body: s.body,
         pictos: JSON.parse(s.pictos),
         canvas: JSON.parse(s.canvas ?? "[]"),
-        photos: db.prepare("SELECT id, filename, alt, display_size, display_align, display_x, display_y, display_w FROM photos WHERE step_id = ?").all(s.id),
+        // C-92 : les annotations photo (formes posées sur chaque photo,
+        // p.ex. via le MCP annotate_photo) font partie du document publié —
+        // sans elles la version publiée les perdait et un restore les effaçait.
+        photos: (db.prepare("SELECT id, filename, alt, image_description, annotations, display_size, display_align, display_x, display_y, display_w FROM photos WHERE step_id = ?").all(s.id) as { annotations: string | null }[]).map((ph) => ({ ...ph, annotations: JSON.parse(ph.annotations ?? "[]") })),
       })) as SnapshotStep[],
     };
+    // C-98/C-99 (V13 #5) : avertissements NON BLOQUANTS — chaque photo
+    // publiée sans description détaillée est listée (les exports md/json,
+    // la recherche et les outils d'analyse s'appuient sur ce champ). La
+    // publication passe quand même.
+    const warnings = snapshot.steps.flatMap((s) => {
+      const phs = (s as unknown as { photos?: { alt: string; filename: string; image_description?: string }[] }).photos ?? [];
+      return phs
+        .filter((ph) => !(ph.image_description ?? "").trim())
+        .map((ph) => `étape ${s.position + 1} — photo « ${ph.alt || ph.filename} » sans description d'image`);
+    });
     const changelog = typeof (req.body as { changelog?: unknown })?.changelog === "string"
       ? ((req.body as { changelog: string }).changelog).slice(0, 2000)
       : "";
@@ -67,7 +80,7 @@ export function publishRouter(db: Database.Database): Router {
     });
     tx();
     auditLog(db, user.email, "publish", `workflow:${wf.id}`, `V${number}`);
-    res.json({ number });
+    res.json({ number, warnings });
   });
 
   // F2 : consultation d'une version publiée précise, rendue depuis le
@@ -88,9 +101,19 @@ export function publishRouter(db: Database.Database): Router {
       return;
     }
     const snap = JSON.parse(version.snapshot) as {
-      workflow: { title: string; reference: string; description: string; category: string; family?: string };
+      workflow: { title: string; reference: string; description: string; category: string; family?: string; review_due?: string | null; owner_email?: string; category_id?: number | null; parent_id?: number | null };
       steps: { id: number; position: number; title: string; body: string; pictos: unknown[]; canvas?: unknown[]; photos: unknown[] }[];
     };
+    // C-84 : date de revue et responsable PORTÉS PAR LE SNAPSHOT — la vue
+    // publiée affiche les valeurs figées à la publication (et non celles,
+    // éventuellement déjà mises à jour, du brouillon courant).
+    const ownerEmail = snap.workflow.owner_email ?? "";
+    const owner = ownerEmail
+      ? (db.prepare("SELECT first_name, last_name FROM users WHERE email = ?").get(ownerEmail) as
+        | { first_name: string; last_name: string }
+        | undefined)
+      : undefined;
+    const ownerName = owner ? [owner.first_name, owner.last_name].filter(Boolean).join(" ") || ownerEmail : "";
     res.json({
       id: wf.id,
       title: snap.workflow.title,
@@ -98,8 +121,15 @@ export function publishRouter(db: Database.Database): Router {
       description: snap.workflow.description,
       category: snap.workflow.category,
       family: snap.workflow.family ?? "",
+      // C-94 : rattachements portés par le snapshot (null pour les
+      // snapshots antérieurs à C-94).
+      category_id: snap.workflow.category_id ?? null,
+      parent_id: snap.workflow.parent_id ?? null,
       state: "published",
       current_version: version.number,
+      review_due: snap.workflow.review_due ?? null,
+      owner_email: ownerEmail,
+      owner_name: ownerName,
       steps: snap.steps.map((s) => ({
         id: s.id,
         workflow_id: wf.id,

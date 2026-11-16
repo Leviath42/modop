@@ -1,17 +1,21 @@
 import StepCanvas, { COLORS } from "../step-canvas";
+import { PhotoMeta } from "../photo-meta";
+import StepComments from "../step-comments";
 import type { Shape } from "../annotated-photo";
 import { Camera, ChevronDown, ChevronRight, FoldVertical, GripVertical, Image as ImageIcon, Trash2, TriangleAlert, UnfoldVertical } from "lucide-react";
 import { EditorBottomBar } from "../editor/bottom-bar";
 import type { PictoPreset, ToolContext } from "../editor/tools/registry";
+import { PICTO_PRESETS } from "../editor/tools/registry";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { api, ApiError, type Photo, type Step, type WorkflowDetail } from "../api";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { api, ApiError, type AppSettings, type Category, type Photo, type Step, type Workflow, type WorkflowDetail } from "../api";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Alert, Modal } from "../components/ui/dialog";
 import { Input, Label, Select, Textarea } from "../components/ui/input";
+import { buildTree, flattenTree } from "../lib/categories-tree";
 import { cn } from "../lib/utils";
 
 import type { Picto } from "../api";
@@ -38,6 +42,7 @@ export async function compressImage(file: File, maxSize = 1280, quality = 0.82):
 
 export default function EditorPage() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [wf, setWf] = useState<WorkflowDetail | null>(null);
@@ -59,6 +64,10 @@ export default function EditorPage() {
   const [cropTick, setCropTick] = useState(0);
   const cropUndoStackRef = useRef<{ photoId: number; prevFilename: string }[]>([]);
   const [cropUndoCount, setCropUndoCount] = useState(0);
+  // C-98 (V13 #5) : avertissements de publication (photos sans description IA).
+  const [publishWarnings, setPublishWarnings] = useState<{ number: number; warnings: string[] } | null>(null);
+  // C-99 : photo ouverte dans le panneau d'édition (vignettes sous le canevas)
+  const [metaSel, setMetaSel] = useState<{ stepId: number; photoId: number } | null>(null);
   const canvasDeleteRef = useRef<(() => void) | null>(null);
   const [openSteps, setOpenSteps] = useState<Set<number>>(new Set());
   const [showMeta, setShowMeta] = useState(false);
@@ -71,6 +80,9 @@ export default function EditorPage() {
   // C-71 (#4) : abandon du brouillon -> restauration de la dernière publiée
   const [confirmRevert, setConfirmRevert] = useState(false);
   const [reviewDue, setReviewDue] = useState("");
+  // C-86 : le préremplissage ne doit jamais écraser une saisie manuelle
+  // (date posée ou champ volontairement vidé).
+  const [reviewTouched, setReviewTouched] = useState(false);
   const [ownerEmail, setOwnerEmail] = useState("");
   // C-72 (#3) : le champ AFFICHE « Prénom Nom », la donnée stockée reste
   // l'email. Un responsable inconnu est interdit : la saisie libre filtre,
@@ -80,6 +92,12 @@ export default function EditorPage() {
   // datalists natifs ne montraient pas les Prénom/Nom de façon fiable).
   const [ownerOpen, setOwnerOpen] = useState(false);
   const [changelog, setChangelog] = useState("");
+  // C-97 (V12 #8) : indications métiers actives — chargées au montage, seed en
+  // dur le temps du chargement (ou si l'appel échoue, mode hors-ligne).
+  const [indications, setIndications] = useState<PictoPreset[]>(PICTO_PRESETS);
+  // C-96 (V12 #5) : retours terrain ouverts visibles en édition — badge
+  // global + badge par étape, lien vers la page de traitement.
+  const [openFeedbacks, setOpenFeedbacks] = useState<{ id: number; step_id: number }[]>([]);
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(false);
   const [confirmDeleteDoc2, setConfirmDeleteDoc2] = useState(false);
   const [deleteAck, setDeleteAck] = useState(false); // C-46 : case décochée par défaut
@@ -90,20 +108,83 @@ export default function EditorPage() {
   const cameraRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const isNew = id === "new";
-  // C-74 : épaisseur par défaut depuis les paramètres admin.
-  useEffect(() => {
-    api.getSettings().then((s) => setInsertWidth(s.default_stroke_width)).catch(() => { /* défaut 5 conservé */ });
-  }, []);
-  // C-45 : liste des comptes actifs pour le sélecteur de responsable
-  const [accounts, setAccounts] = useState<{ id: number; email: string; first_name?: string; last_name?: string; role: string }[]>([]);
   useEffect(() => {
     if (isNew) return;
-    fetch("/api/admin/users")
+    api.listFeedback(Number(id))
+      .then((fbs) => setOpenFeedbacks(fbs.filter((f) => f.status === "open").map((f) => ({ id: f.id, step_id: f.step_id }))))
+      .catch(() => setOpenFeedbacks([]));
+  }, [id, isNew]);
+  useEffect(() => {
+    api.getIndications()
+      .then((list) => { if (list.length > 0) setIndications(list); })
+      .catch(() => { /* seed conservé */ });
+  }, []);
+  // C-88 : unicité du numéro — vérification EN DIRECT en création (le
+  // serveur reste le garde-fou final, insensible à la casse).
+  const [refTaken, setRefTaken] = useState(false);
+  const refCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!isNew) return;
+    const v = reference.trim();
+    if (!v) { setRefTaken(false); return; }
+    if (refCheckTimer.current) clearTimeout(refCheckTimer.current);
+    refCheckTimer.current = setTimeout(() => {
+      api.listWorkflows({ reference: v })
+        .then((wfs) => setRefTaken(wfs.some((w) => w.reference.toLowerCase() === v.toLowerCase())))
+        .catch(() => setRefTaken(false));
+    }, 400);
+    return () => { if (refCheckTimer.current) clearTimeout(refCheckTimer.current); };
+  }, [reference, isNew]);
+  // C-88 : Famille = liste de recherche — suggestions des familles
+  // existantes (la saisie libre reste possible pour en créer une nouvelle).
+  const [families, setFamilies] = useState<string[]>([]);
+  const [familyOpen, setFamilyOpen] = useState(false);
+  // C-94 : rattachement arborescence + document parent.
+  const [cats, setCats] = useState<Category[]>([]);
+  const [categoryId, setCategoryId] = useState("");
+  const [parentIdDoc, setParentIdDoc] = useState("");
+  const [otherDocs, setOtherDocs] = useState<Workflow[]>([]);
+  useEffect(() => {
+    api.listWorkflows()
+      .then((wfs) => setFamilies([...new Set(wfs.map((w) => w.family).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"))))
+      .catch(() => { /* suggestions indisponibles : saisie libre conservée */ });
+  }, []);
+  const familySuggestions = useMemo(() => {
+    const q = family.trim().toLowerCase();
+    const list = q ? families.filter((f) => f.toLowerCase().includes(q)) : families;
+    return list.slice(0, 8);
+  }, [family, families]);
+  // C-74 : épaisseur par défaut depuis les paramètres admin.
+  // C-86 : le délai de revue par défaut arrive avec (préremplissage).
+  const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
+  useEffect(() => {
+    api.getSettings().then((s) => { setInsertWidth(s.default_stroke_width); setAppSettings(s); }).catch(() => { /* défauts conservés */ });
+  }, []);
+  // C-83 : lien « Mettre à jour la revue » depuis le lecteur — les détails
+  // s'ouvrent directement sur le champ de date de revue.
+  useEffect(() => {
+    if (searchParams.get("revue") === "1") setShowMeta(true);
+  }, [searchParams]);
+  // C-45 : liste des comptes actifs pour le sélecteur de responsable.
+  // C-85 : /api/users (author+) — l'ancien /api/admin/users renvoyait 403
+  // aux auteurs : aucune suggestion de responsable ne s'affichait.
+  // C-87 : chargée DÈS LA CRÉATION — le champ responsable est une recherche
+  // aussi en mode création (avant : suggestions vides jusqu'au premier
+  // chargement en édition).
+  const [accounts, setAccounts] = useState<{ id: number; email: string; first_name?: string; last_name?: string; role: string }[]>([]);
+  useEffect(() => {
+    fetch("/api/users")
       .then((r) => (r.ok ? r.json() : []))
-      .then((list: { id: number; email: string; first_name: string; last_name: string; role: string; active: number }[]) =>
-        setAccounts(list.filter((u) => u.active === 1)))
+      .then((list: { id: number; email: string; first_name: string; last_name: string; role: string }[]) => {
+        if (Array.isArray(list)) setAccounts(list);
+      })
       .catch(() => setAccounts([]));
-  }, [isNew]);
+  }, []);
+  // C-94 : catégories (arborescence) + autres documents (parent possible).
+  useEffect(() => {
+    api.listCategories().then((list) => { if (Array.isArray(list)) setCats(list); }).catch(() => setCats([]));
+    api.listWorkflows().then((wfs) => setOtherDocs(Array.isArray(wfs) ? wfs : [])).catch(() => setOtherDocs([]));
+  }, []);
 
   useEffect(() => {
     if (isNew) return;
@@ -113,6 +194,7 @@ export default function EditorPage() {
         setTitle(w.title); setReference(w.reference);
         setCategory(w.category); setFamily(w.family ?? ""); setDescription(w.description);
         setReviewDue(w.review_due ?? ""); setOwnerEmail(w.owner_email ?? "");
+        setCategoryId(w.category_id ? String(w.category_id) : ""); setParentIdDoc(w.parent_id ? String(w.parent_id) : "");
       })
       .catch((e) => setError(e instanceof ApiError ? e.message : "Erreur de chargement"));
   }, [id, isNew]);
@@ -120,6 +202,20 @@ export default function EditorPage() {
   useEffect(() => {
     if (user?.role === "reader") navigate("/", { replace: true });
   }, [user, navigate]);
+  // C-86 : préremplissage de la date de revue — un MO sans date « À revoir
+  // le » reçoit aujourd'hui + default_review_days (paramètre admin, 30 j
+  // par défaut). Valeur affichée seulement : elle sera persistée à la
+  // prochaine sauvegarde des métadonnées ou à la publication.
+  // C-87 : actif AUSSI EN CRÉATION (avant : champ vide au premier affichage).
+  useEffect(() => {
+    if (reviewTouched || !appSettings || reviewDue) return;
+    if (!isNew && !wf) return;
+    const days = typeof appSettings.default_review_days === "number" && appSettings.default_review_days >= 1
+      ? appSettings.default_review_days
+      : 30;
+    const d = new Date(Date.now() + days * 86400000);
+    setReviewDue(d.toISOString().slice(0, 10));
+  }, [wf, isNew, reviewTouched, appSettings, reviewDue]);
   // B-A2 : autosave des métadonnées (RF-16) — 800 ms après la dernière
   // frappe ; bandeau "Enregistrement…" pendant la requête, restauration de
   // l'indicateur si elle échoue.
@@ -128,19 +224,39 @@ export default function EditorPage() {
     if (isNew || !wfId || metaSaved) return;
     const t = setTimeout(async () => {
       try {
-        await api.updateWorkflow(wfId, { title, category, family, description, review_due: reviewDue || null, owner_email: ownerEmail || null });
+        await api.updateWorkflow(wfId, { title, category, family, description, review_due: reviewDue || null, owner_email: ownerEmail || null, category_id: categoryId ? Number(categoryId) : null, parent_id: parentIdDoc ? Number(parentIdDoc) : null });
         setMetaSaved(true);
       } catch {
         /* l'indicateur reste "à enregistrer" ; la publication retentera */
       }
     }, 800);
     return () => clearTimeout(t);
-  }, [wfId, isNew, metaSaved, title, category, family, description, reviewDue, ownerEmail]);
+  }, [wfId, isNew, metaSaved, title, category, family, description, reviewDue, ownerEmail, categoryId, parentIdDoc]);
 
   async function createWorkflow() {
     setError(null);
     try {
-      const created = await api.createWorkflow({ title: title.trim(), reference: reference.trim(), category, family, description });
+      // C-87 : la date de revue et le responsable saisis en CRÉATION sont
+      // transmis au POST (avant : perdus au passage en édition, les champs
+      // se vidaient au rechargement).
+      const created = await api.createWorkflow({
+        title: title.trim(),
+        reference: reference.trim(),
+        category,
+        family,
+        description,
+        review_due: reviewDue || null,
+        owner_email: ownerEmail || null,
+        category_id: categoryId ? Number(categoryId) : null,
+        parent_id: parentIdDoc ? Number(parentIdDoc) : null,
+      });
+      // pas d'autosave fantôme : les valeurs viennent d'être enregistrées,
+      // le rechargement en édition resynchronisera l'état.
+      setMetaSaved(true);
+      // C-87 : le panneau de détails reste OUVERT après la création — les
+      // champs date/responsable viennent d'être remplis, ils ne doivent pas
+      // disparaître derrière le bouton « Détails » au passage en édition.
+      setShowMeta(true);
       navigate(`/workflow/${created.id}/edit`, { replace: true });
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Création impossible");
@@ -289,23 +405,31 @@ export default function EditorPage() {
   }, [ownerEmail, accounts]);
 
   const toolCtx: ToolContext = {
-    isNew, steps, activeStepId, insertTool, insertColor, insertWidth,
+    isNew, steps, activeStepId, insertTool, insertColor, insertWidth, indications,
     canvasSelection: canvasSel.photos.length + canvasSel.shapes.length,
     photoSelected: canvasSel.photos.length, canUndoCrop: cropUndoCount > 0,
     actions: { addStep, openPhotoSource, setInsertTool: selectInsertTool, setInsertColor, setInsertWidth, togglePreset, deleteActiveStep, deleteCanvasSelection, requestCrop: () => setCropTick((t) => t + 1), undoCrop: () => void undoCrop() },
   };
 
   async function revertDraft() {
-    if (!wf || !wf.current_version) return;
+    if (!wf) return;
     setError(null);
     try {
-      await api.restoreVersion(wf.id, wf.current_version);
+      // C-97 (V12 #9) : MO jamais publié → purge du brouillon (route dédiée,
+      // sert même si les étapes sont corrompues) ; sinon retour à la
+      // dernière version publiée (comportement historique).
+      if ((wf.current_version ?? 0) === 0) {
+        await api.resetDraft(wf.id);
+      } else {
+        await api.restoreVersion(wf.id, wf.current_version);
+      }
       const w = await api.getWorkflow(id!);
       setWf(w); setSteps(w.steps);
       setTitle(w.title); setReference(w.reference);
       setCategory(w.category); setFamily(w.family ?? ""); setDescription(w.description);
       setReviewDue(w.review_due ?? ""); setOwnerEmail(w.owner_email ?? "");
-      setNotice(`Brouillon abandonné — retour à V${w.current_version}`);
+      setCategoryId(w.category_id ? String(w.category_id) : ""); setParentIdDoc(w.parent_id ? String(w.parent_id) : "");
+      setNotice((wf.current_version ?? 0) === 0 ? `Brouillon réinitialisé — étapes et photos non publiées supprimées` : `Brouillon abandonné — retour à V${w.current_version}`);
       setTimeout(() => setNotice(null), 2500);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Restauration impossible");
@@ -349,7 +473,20 @@ export default function EditorPage() {
     setError(null);
     try {
       await api.updateWorkflow(wf.id, { title, category, family, description, review_due: reviewDue || null, owner_email: ownerEmail || null });
-      const { number } = await api.publishWorkflow(wf.id, changelog);
+      const { number, warnings } = await api.publishWorkflow(wf.id, changelog);
+      setChangelog(""); // C-96 (V12 #6) : jamais de commentaire hérité à la publication suivante
+      // C-99 : rafraîchir wf.state/current_version pour que le dialog de
+      // confirmation affiche le bon numéro à la publication suivante
+      // (avant : « Publier V1 ? » restait affiché après une première publication).
+      setWf((w) => (w ? { ...w, state: "published", current_version: number } : w));
+      // C-98/C-99 (V13 #5) : publication RÉUSSIE mais photos sans description
+      // d'image — on reste sur l'éditeur (non bloquant) pour les compléter.
+      if ((warnings ?? []).length > 0) {
+        setPublishWarnings({ number, warnings: warnings ?? [] });
+        setNotice(null);
+        return;
+      }
+      setPublishWarnings(null);
       setNotice(`Publié en V${number}`);
       setTimeout(() => setNotice(null), 2500);
       navigate(`/workflow/${wf.id}/read`);
@@ -364,6 +501,14 @@ export default function EditorPage() {
       <main className="mx-auto grid w-full min-w-0 max-w-[820px] gap-4 p-4 pb-28">
         {error && <Alert variant="error">{error}</Alert>}
         {notice && <Alert variant="ok">{notice}</Alert>}
+        {publishWarnings && (
+          <Alert variant="warn" title={`Publié en V${publishWarnings.number} — ${publishWarnings.warnings.length} photo(s) sans description d'image (non bloquant)`}>
+            <ul className="mb-2 list-disc pl-4">
+              {publishWarnings.warnings.map((w) => <li key={w}>{w}</li>)}
+            </ul>
+            Cliquez sur la vignette d'une photo sous le canevas de son étape pour compléter sa description (enregistrement automatique), puis republiez.
+          </Alert>
+        )}
 
         <section className="sticky top-[var(--nav-h,2.9rem)] z-30 grid min-w-0 gap-2 rounded-lg border border-border bg-surface px-3 py-2.5 shadow-md">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -374,14 +519,19 @@ export default function EditorPage() {
             {!isNew && !metaSaved && (
               <Badge variant="warn" role="status" className="font-semibold">Enregistrement…</Badge>
             )}
+            {!isNew && openFeedbacks.length > 0 && (
+              <Link to={`/workflow/${id}/feedbacks`} className="no-underline" title="Traiter les retours terrain">
+                <Badge variant="warn" role="status" className="font-semibold">{openFeedbacks.length} retour{openFeedbacks.length > 1 ? "s" : ""} terrain à traiter</Badge>
+              </Link>
+            )}
             {!isNew && (
               <Button onClick={() => setShowMeta((v) => !v)} aria-expanded={showMeta} variant="outline" size="sm">
                 {showMeta ? "Masquer les détails" : "Détails"}
               </Button>
             )}
-            {!isNew && wf?.state === "draft" && (wf.current_version ?? 0) > 0 && (
-              <Button onClick={() => setConfirmRevert(true)} variant="outline" size="sm" title="Abandonner le brouillon et revenir à la dernière version publiée" aria-label="Abandonner le brouillon">
-                Abandonner le brouillon
+            {!isNew && wf?.state === "draft" && (
+              <Button onClick={() => setConfirmRevert(true)} variant="outline" size="sm" title={(wf.current_version ?? 0) > 0 ? "Abandonner le brouillon et revenir à la dernière version publiée" : "Réinitialiser le brouillon : supprime les étapes et photos non publiées (aucune version publiée)"} aria-label="Abandonner le brouillon">
+                {(wf.current_version ?? 0) > 0 ? "Abandonner le brouillon" : "Réinitialiser le brouillon"}
               </Button>
             )}
             {!isNew && steps.length > 0 && (
@@ -396,24 +546,71 @@ export default function EditorPage() {
               <Input value={title} onChange={(e) => { setTitle(e.target.value); setMetaSaved(false); }} placeholder="Remplacement courroie" />
             </Label>
             {isNew ? (
+              // C-88 : le numéro est vérifié en direct — deux documents ne
+              // peuvent pas partager la même référence (casse ignorée).
               <Label className="grid min-w-0 gap-1 text-muted-foreground">Référence
-                <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="MO-001" />
+                <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="MO-001" aria-label="Référence du mode opératoire (unique)" />
+                {refTaken && (
+                  <p role="alert" className="m-0 text-xs font-semibold text-error">Cette référence est déjà utilisée par un autre document.</p>
+                )}
               </Label>
             ) : (
               <p className="m-0 text-muted-foreground"><code>{wf?.reference}</code> — {wf?.state === "published" ? `publié (V${wf.current_version})` : "brouillon"}</p>
             )}
-            <Label className="grid min-w-0 gap-1 text-muted-foreground">Famille
-              <Input value={family} onChange={(e) => { setFamily(e.target.value); setMetaSaved(false); }} placeholder="Mécanique / Électrique / Qualité…" />
-            </Label>
+            <div className="relative grid min-w-0 gap-1">
+              <Label htmlFor="wf-family" className="text-muted-foreground">Famille</Label>
+              <Input
+                id="wf-family"
+                value={family}
+                onChange={(e) => { setFamily(e.target.value); setMetaSaved(false); setFamilyOpen(true); }}
+                onFocus={() => setFamilyOpen(true)}
+                onBlur={() => setTimeout(() => setFamilyOpen(false), 150)}
+                placeholder="Mécanique / Électrique / Qualité… (recherche)"
+                aria-label="Famille — rechercher parmi les familles existantes"
+                autoComplete="off"
+              />
+              {familyOpen && familySuggestions.length > 0 && (
+                <div role="listbox" aria-label="Familles existantes" className="absolute top-full z-40 grid max-h-48 w-full min-w-0 gap-0.5 overflow-y-auto rounded-md border border-border bg-surface p-1 shadow-lg">
+                  {familySuggestions.map((f) => (
+                    <button key={f} type="button" role="option" aria-selected={f === family}
+                      onMouseDown={(e) => { e.preventDefault(); setFamily(f); setMetaSaved(false); setFamilyOpen(false); }}
+                      className="flex min-w-0 items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-muted">
+                      <span className="truncate font-medium">{f}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <Label className="grid min-w-0 gap-1 text-muted-foreground">Type
               <Input value={category} onChange={(e) => { setCategory(e.target.value); setMetaSaved(false); }} placeholder="Maintenance, Contrôle…" />
             </Label>
+            {cats.length > 0 && (
+              <Label className="grid min-w-0 gap-1 text-muted-foreground">Emplacement (arborescence)
+                <Select value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setMetaSaved(false); }} aria-label="Emplacement dans l'arborescence">
+                  <option value="">— Non classé —</option>
+                  {flattenTree(buildTree(cats)).map((r) => (
+                    <option key={r.id} value={String(r.id)}>{" ".repeat(r.depth * 2)}{r.name}</option>
+                  ))}
+                </Select>
+                {user?.role === "admin" && <Link to="/categories" className="text-xs text-link hover:underline">Gérer l'arborescence</Link>}
+              </Label>
+            )}
+            {!isNew && (
+              <Label className="grid min-w-0 gap-1 text-muted-foreground">Document parent
+                <Select value={parentIdDoc} onChange={(e) => { setParentIdDoc(e.target.value); setMetaSaved(false); }} aria-label="Document parent">
+                  <option value="">— Aucun —</option>
+                  {otherDocs.filter((d) => d.id !== wf?.id).map((d) => (
+                    <option key={d.id} value={String(d.id)}>{d.reference} — {d.title}</option>
+                  ))}
+                </Select>
+              </Label>
+            )}
             <Label className="grid min-w-0 gap-1 text-muted-foreground">Description
               <Textarea value={description} onChange={(e) => { setDescription(e.target.value); setMetaSaved(false); }} rows={2} className="min-h-0" />
             </Label>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-[auto_1fr]">
               <Label className="grid min-w-0 gap-1 text-muted-foreground">À revoir le
-                <Input type="date" value={reviewDue} onChange={(e) => { setReviewDue(e.target.value); setMetaSaved(false); }} />
+                <Input type="date" value={reviewDue} onChange={(e) => { setReviewDue(e.target.value); setReviewTouched(true); setMetaSaved(false); }} />
               </Label>
               <div className="relative grid min-w-0 gap-1">
                 <Label htmlFor="owner-email" className="text-muted-foreground">Responsable</Label>
@@ -463,7 +660,7 @@ export default function EditorPage() {
           </div>
           )}
           {isNew && (
-            <Button onClick={createWorkflow} disabled={!title.trim() || !reference.trim()}>
+            <Button onClick={createWorkflow} disabled={!title.trim() || !reference.trim() || refTaken}>
               Créer
             </Button>
           )}
@@ -591,30 +788,15 @@ export default function EditorPage() {
                     >
                       {openSteps.has(step.id) ? <ChevronDown size={16} aria-hidden="true" /> : <ChevronRight size={16} aria-hidden="true" />}
                     </Button>
-                    
+                    {openFeedbacks.filter((f) => f.step_id === step.id).length > 0 && (
+                      <Link to={`/workflow/${id}/feedbacks`} aria-label="Retours terrain à traiter sur cette étape" title="Retours terrain à traiter sur cette étape" className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md bg-warn-bg px-1.5 text-xs font-bold text-warn no-underline">
+                        ⚑ {openFeedbacks.filter((f) => f.step_id === step.id).length}
+                      </Link>
+                    )}
                   </div>
                   {openSteps.has(step.id) && (
                   <>
-                  <Textarea
-                    value={step.body}
-                    rows={2}
-                    placeholder="Description de l'opération…"
-                    onChange={(e) => { setActiveStepId(step.id); setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, body: e.target.value } : s))); }}
-                    onBlur={() => patchStep(step, { body: step.body })}
-                    className="min-h-0"
-                    aria-label={`Description étape ${i + 1}`}
-                  />
-                  {/* #12 : indications rendues à l'identique du mode lecture —
-                      effet immédiat visible pendant l'édition. */}
-                  {step.pictos.length > 0 && (
-                    <div className="grid gap-1.5">
-                      {step.pictos.map((p, k) => (
-                        <p key={k} className="m-0 flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-bold uppercase tracking-wide text-foreground" style={{ background: `${p.color}1f`, borderLeft: `5px solid ${p.color}` }}>
-                          <TriangleAlert size={16} aria-hidden="true" style={{ color: p.color }} /> {p.label}
-                        </p>
-                      ))}
-                    </div>
-                  )}
+
                   {uploadProgress?.stepId === step.id && (
                     <p role="status" className="m-0 text-sm text-muted-foreground">
                       Envoi des photos… {uploadProgress.done}/{uploadProgress.total}
@@ -651,6 +833,40 @@ export default function EditorPage() {
                       cropRequest={activeStepId === step.id ? cropTick : 0}
                       onPhotosChanged={async () => { const w = await api.getWorkflow(id!); setSteps(w.steps); }}
                     />
+                    {(step.photos ?? []).length > 0 && (() => {
+                      // C-99 : vignettes cliquables sous le canevas — la sélection
+                      // canevas seule ne suffisait pas (race avec activeStepId,
+                      // découverte de la sélection impossible pour l'utilisateur).
+                      const photos = step.photos ?? [];
+                      const sel = (activeStepId === step.id && canvasSel.photos.length === 1
+                        ? photos.find((ph) => ph.id === canvasSel.photos[0])
+                        : undefined
+                      ) ?? (metaSel?.stepId === step.id ? photos.find((ph) => ph.id === metaSel.photoId) : undefined);
+                      return (
+                        <div className="grid gap-1.5">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-xs text-muted-foreground">Photos de l'étape — cliquez pour éditer alt et description :</span>
+                            {photos.map((ph) => (
+                              <button
+                                key={ph.id}
+                                type="button"
+                                onClick={() => setMetaSel(sel?.id === ph.id ? null : { stepId: step.id, photoId: ph.id })}
+                                title={ph.alt || ph.filename}
+                                className={`h-14 overflow-hidden rounded-md border ${sel?.id === ph.id ? "border-2 border-foreground" : "border-border"}`}
+                              >
+                                <img src={"/photos/" + ph.filename} alt={ph.alt || ph.filename} className="h-full w-auto" />
+                              </button>
+                            ))}
+                          </div>
+                          {sel && (
+                            <PhotoMeta
+                              photo={sel}
+                              onSaved={(p) => setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, photos: (s.photos ?? []).map((ph) => (ph.id === p.id ? p : ph)) } : s)))}
+                            />
+                          )}
+                        </div>
+                      );
+                    })()}
                     <div>
                       <input
                         type="file"
@@ -678,6 +894,29 @@ export default function EditorPage() {
                       />
                     </div>
                   </div>
+                  {/* C-93 : images d'abord, texte de l'étape en dessous —
+                      même ordre que le mode lecture (Vague 12 #1). */}
+                  <Textarea
+                    value={step.body}
+                    rows={2}
+                    placeholder="Description de l'opération…"
+                    onChange={(e) => { setActiveStepId(step.id); setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, body: e.target.value } : s))); }}
+                    onBlur={() => patchStep(step, { body: step.body })}
+                    className="min-h-0"
+                    aria-label={`Description étape ${i + 1}`}
+                  />
+                  {/* #12 : indications rendues à l'identique du mode lecture —
+                      effet immédiat visible pendant l'édition. */}
+                  {step.pictos.length > 0 && (
+                    <div className="grid gap-1.5">
+                      {step.pictos.map((p, k) => (
+                        <p key={k} className="m-0 flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-bold uppercase tracking-wide text-foreground" style={{ background: `${p.color}1f`, borderLeft: `5px solid ${p.color}` }}>
+                          <TriangleAlert size={16} aria-hidden="true" style={{ color: p.color }} /> {p.label}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  <StepComments stepId={step.id} />
                   </>
                   )}
                 </li>
@@ -778,20 +1017,24 @@ export default function EditorPage() {
           </Label>
         </Modal>
       )}
-      {wf && wf.current_version != null && wf.current_version > 0 && (
+      {wf && (
         <Modal
           open={confirmRevert}
           onClose={() => setConfirmRevert(false)}
-          title="Abandonner le brouillon ?"
+          title={(wf.current_version ?? 0) > 0 ? "Abandonner le brouillon ?" : "Réinitialiser le brouillon ?"}
           footer={
             <>
               <Button variant="outline" onClick={() => setConfirmRevert(false)}>Annuler</Button>
-              <Button variant="destructive" onClick={() => { setConfirmRevert(false); void revertDraft(); }}>Revenir à V{wf.current_version}</Button>
+              <Button variant="destructive" onClick={() => { setConfirmRevert(false); void revertDraft(); }}>
+                {(wf.current_version ?? 0) > 0 ? `Revenir à V${wf.current_version}` : "Vider le brouillon"}
+              </Button>
             </>
           }
         >
           <p className="m-0 text-sm text-muted-foreground">
-            Le brouillon en cours sera remplacé par la dernière version publiée (V{wf.current_version}). Toutes les modifications non publiées seront perdues — cette action ne peut pas être annulée.
+            {(wf.current_version ?? 0) > 0
+              ? `Le brouillon en cours sera remplacé par la dernière version publiée (V${wf.current_version}). Toutes les modifications non publiées seront perdues — cette action ne peut pas être annulée.`
+              : "Aucune version n'a encore été publiée : toutes les étapes, photos et commentaires de rédaction du brouillon seront supprimés. Le mode opératoire reste, à neuf — cette action ne peut pas être annulée."}
           </p>
         </Modal>
       )}

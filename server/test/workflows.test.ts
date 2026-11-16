@@ -40,6 +40,57 @@ test("lecteur ne peut pas créer (403)", async () => {
   assert.equal(r.status, 403);
 });
 
+// C-87 : la création persiste la date de revue et le responsable saisis en
+// mode création (avant : perdus au passage en édition).
+test("C-87 : création avec review_due + owner_email, date invalide rejetée", async () => {
+  const bad = await call("POST", "/api/workflows", { title: "Date invalide", reference: "MO-C87X", review_due: "pas-une-date" }, author);
+  assert.equal(bad.status, 422);
+  const create = await call("POST", "/api/workflows", { title: "GED dès la création", reference: "MO-C87", review_due: "2030-06-15", owner_email: "resp@usine.fr" }, author);
+  assert.equal(create.status, 201);
+  assert.equal(create.json.review_due, "2030-06-15", "date de revue persistée à la création");
+  assert.equal(create.json.owner_email, "resp@usine.fr", "responsable persisté à la création");
+  const got = await call("GET", `/api/workflows/${create.json.id}`, undefined, author);
+  assert.equal(got.json.review_due, "2030-06-15", "relu : date de revue");
+  assert.equal(got.json.owner_email, "resp@usine.fr", "relu : responsable");
+  // valeurs absentes : null/vide, pas d'erreur
+  const bare = await call("POST", "/api/workflows", { title: "Sans GED", reference: "MO-C87B" }, author);
+  assert.equal(bare.status, 201);
+  assert.equal(bare.json.review_due, null);
+  assert.equal(bare.json.owner_email, "");
+});
+
+// C-88 : deux documents ne peuvent pas partager le même numéro — la casse
+// est ignorée (« MO-001 » ≡ « mo-001 »), et le filtre exact ?reference=
+// alimente la vérification en direct du formulaire de création.
+test("C-88 : référence unique insensible à la casse + filtre ?reference=", async () => {
+  const create = await call("POST", "/api/workflows", { title: "Original", reference: "MO-88" }, author);
+  assert.equal(create.status, 201);
+  const variant = await call("POST", "/api/workflows", { title: "Clone", reference: "mo-88" }, author);
+  assert.equal(variant.status, 422, "mo-88 doit être refusé (même numéro, casse différente)");
+  const spaced = await call("POST", "/api/workflows", { title: "Clone", reference: "  MO-88  " }, author);
+  assert.equal(spaced.status, 422, "espaces ignorés : même numéro refusé");
+  const unique = await call("POST", "/api/workflows", { title: "Autre", reference: "MO-89" }, author);
+  assert.equal(unique.status, 201);
+  // filtre exact (nocase) pour la vérification en direct
+  const found = await call("GET", "/api/workflows?reference=Mo-88", undefined, author);
+  assert.equal(found.json.length, 1, "trouvé quelle que soit la casse de la requête");
+  assert.equal(found.json[0].reference, "MO-88");
+  const none = await call("GET", "/api/workflows?reference=MO-999", undefined, author);
+  assert.equal(none.json.length, 0, "numéro libre : aucune réponse");
+});
+
+// C-88 : la duplication ne doit pas non plus entrer en collision par la
+// casse — le suffixe -COPIE saute au prochain libre si l'équivalent
+// (casse différente) existe déjà.
+test("C-88 : duplication — suffixe unique même en casse différente", async () => {
+  await call("POST", "/api/workflows", { title: "Garde-fou", reference: "mo-dup-copie" }, author);
+  const src = await call("POST", "/api/workflows", { title: "Source", reference: "MO-DUP" }, author);
+  assert.equal(src.status, 201);
+  const dup = await call("POST", `/api/workflows/${src.json.id}/duplicate`, undefined, author);
+  assert.equal(dup.status, 201);
+  assert.equal(dup.json.reference, "MO-DUP-COPIE-2", "« MO-DUP-COPIE » ≡ « mo-dup-copie » existant → -COPIE-2");
+});
+
 test("création + lecture avec étapes", async () => {
   const create = await call("POST", "/api/workflows", { title: "Remplacement courroie", reference: "MO-001", description: "Procédure complète", category: "Maintenance" }, author);
   assert.equal(create.status, 201);
@@ -100,9 +151,12 @@ test("mise à jour étape avec pictos", async () => {
   assert.deepEqual(s.pictos, [], "POST /steps renvoie pictos en tableau, pas en chaîne JSON");
   const up = await call("PUT", `/api/steps/${s.id}`, { pictos: ["epi", "attention"] }, author);
   assert.equal(up.status, 200);
-  assert.deepEqual(up.json.pictos, ["epi", "attention"], "PUT /steps renvoie pictos en tableau, pas en chaîne JSON");
+  // C-97 : les kinds sont résolus en objets auto-porteurs via la liste active.
+  const EPI = { kind: "epi", label: "EPI obligatoire", color: "#1f4e9c" };
+  const ATTENTION = { kind: "attention", label: "Attention", color: "#f5a623" };
+  assert.deepEqual(up.json.pictos, [EPI, ATTENTION], "PUT /steps renvoie les pictos résolus (objets, pas kinds)");
   const got = await call("GET", `/api/workflows/${id}`, undefined, author);
-  assert.deepEqual(got.json.steps[0].pictos, ["epi", "attention"]);
+  assert.deepEqual(got.json.steps[0].pictos, [EPI, ATTENTION]);
 });
 
 test("suppression du workflow en cascade (C-46 : admin uniquement)", async () => {

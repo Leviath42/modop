@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS photos (
   step_id INTEGER NOT NULL REFERENCES steps(id) ON DELETE CASCADE,
   filename TEXT NOT NULL,
   alt TEXT NOT NULL DEFAULT '',
+  image_description TEXT NOT NULL DEFAULT '',
   annotations TEXT NOT NULL DEFAULT '[]',
   display_size TEXT NOT NULL DEFAULT 'medium' CHECK (display_size IN ('small','medium','large','full')),
   display_align TEXT NOT NULL DEFAULT 'center' CHECK (display_align IN ('left','center','right')),
@@ -84,11 +85,37 @@ CREATE TABLE IF NOT EXISTS audit_log (
   detail TEXT NOT NULL DEFAULT '',
   at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- C-94 : arborescence documentaire paramétrable (1 à X niveaux, X borné à 20
+-- dans les routes) — chaque catégorie porte un titre libre et un slug immuable
+-- (chemins stables, spec-api-ia.md §1) ; les documents s'y rattachent.
+CREATE TABLE IF NOT EXISTS categories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  parent_id INTEGER REFERENCES categories(id) ON DELETE RESTRICT,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  position INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_parent_slug ON categories(COALESCE(parent_id, 0), slug);
+CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id, position);
+
 -- C-72 : paramètres applicatifs (key/value) — page Paramètres (admin).
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+-- C-96 (V12 #7) : commentaires de rédaction entre auteurs, par étape —
+-- jamais publiés (absents du snapshot/versions), jamais exposés aux
+-- lecteurs ni à l'export docx. Supprimés avec l'étape (CASCADE).
+CREATE TABLE IF NOT EXISTS step_comments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  step_id INTEGER NOT NULL REFERENCES steps(id) ON DELETE CASCADE,
+  by_email TEXT NOT NULL,
+  message TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_step_comments_step ON step_comments(step_id);
 CREATE INDEX IF NOT EXISTS idx_steps_workflow ON steps(workflow_id, position);
 CREATE INDEX IF NOT EXISTS idx_photos_step ON photos(step_id);
 CREATE INDEX IF NOT EXISTS idx_versions_workflow ON versions(workflow_id, number);
@@ -107,6 +134,7 @@ const COLUMN_MIGRATIONS: { table: string; column: string; ddl: string }[] = [
   { table: "sessions", column: "expires_at", ddl: "TEXT" },
   { table: "workflows", column: "family", ddl: "TEXT NOT NULL DEFAULT ''" },
   { table: "photos", column: "annotations", ddl: "TEXT NOT NULL DEFAULT '[]'" },
+  { table: "photos", column: "image_description", ddl: "TEXT NOT NULL DEFAULT ''" },
   { table: "photos", column: "display_size", ddl: "TEXT NOT NULL DEFAULT 'medium'" },
   { table: "photos", column: "display_align", ddl: "TEXT NOT NULL DEFAULT 'center'" },
   { table: "photos", column: "display_x", ddl: "REAL" },
@@ -116,6 +144,9 @@ const COLUMN_MIGRATIONS: { table: string; column: string; ddl: string }[] = [
   { table: "workflows", column: "review_due", ddl: "TEXT" },
   { table: "workflows", column: "owner_email", ddl: "TEXT NOT NULL DEFAULT ''" },
   { table: "versions", column: "changelog", ddl: "TEXT NOT NULL DEFAULT ''" },
+  // C-94 : rattachement arborescent + document parent (liaison documentaire).
+  { table: "workflows", column: "category_id", ddl: "INTEGER REFERENCES categories(id) ON DELETE SET NULL" },
+  { table: "workflows", column: "parent_id", ddl: "INTEGER REFERENCES workflows(id) ON DELETE SET NULL" },
 ];
 
 // Réparation des pictos corrompus par le bug de l’ancien éditeur : la réponse
@@ -175,6 +206,14 @@ function repairCorruptedPictos(db: Database.Database): void {
 }
 
 function migrate(db: Database.Database): void {
+  // C-99 : renommage ai_description -> image_description — le nom décrit la
+  // donnée (une description d'image), pas un consommateur (l'IA n'en sera
+  // qu'un lecteur). Colonne arrivée en C-98 et jamais saisie : aucun risque.
+  // SQLite >= 3.25 requis (RENAME COLUMN).
+  const photoCols = db.prepare("PRAGMA table_info(photos)").all() as { name: string }[];
+  if (photoCols.some((c) => c.name === "ai_description") && !photoCols.some((c) => c.name === "image_description")) {
+    db.exec("ALTER TABLE photos RENAME COLUMN ai_description TO image_description");
+  }
   for (const { table, column, ddl } of COLUMN_MIGRATIONS) {
     const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
     if (cols.length > 0 && !cols.some((c) => c.name === column)) {
@@ -216,6 +255,9 @@ function migrate(db: Database.Database): void {
 
   // Index dépendant des colonnes migrées (après ALTER TABLE).
   db.exec("CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at)");
+  // C-94 : index des rattachements arborescents et des documents parents.
+  db.exec("CREATE INDEX IF NOT EXISTS idx_workflows_category ON workflows(category_id)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_workflows_parent ON workflows(parent_id)");
   repairCorruptedPictos(db);
 }
 

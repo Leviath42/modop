@@ -56,7 +56,8 @@ test("publication après modification → V2, snapshot complet", async () => {
     (db.prepare("SELECT snapshot FROM versions WHERE workflow_id = ? AND number = 2").get(wf.json.id) as { snapshot: string }).snapshot
   );
   assert.equal(snap2.steps.length, 2);
-  assert.deepEqual(snap2.steps[1].pictos, ["epi"]);
+  // C-97 : les pictos passés en kinds sont stockés résolus (auto-porteurs).
+  assert.deepEqual(snap2.steps[1].pictos, [{ kind: "epi", label: "EPI obligatoire", color: "#1f4e9c" }]);
 });
 
 test("publier sans étape → 422", async () => {

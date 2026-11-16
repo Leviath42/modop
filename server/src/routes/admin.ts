@@ -145,3 +145,18 @@ export function adminRouter(db: Database.Database): Router {
 
   return r;
 }
+
+// C-85 : candidats responsables — comptes ACTIFS, accessibles aux auteurs
+// (author+) : le champ « Responsable » de l'éditeur fait une recherche par
+// mot-clé sur Prénom/Nom/email. L'ancien appel vers /api/admin/users
+// renvoyait 403 aux auteurs : aucune suggestion, et le champ se vidait.
+export function activeUsersRouter(db: Database.Database): Router {
+  const r = Router();
+  r.get("/", requireAuth("author"), (_req, res) => {
+    const rows = db
+      .prepare("SELECT id, email, first_name, last_name, role FROM users WHERE active = 1 ORDER BY email")
+      .all() as { id: number; email: string; first_name: string; last_name: string; role: string }[];
+    res.json(rows);
+  });
+  return r;
+}

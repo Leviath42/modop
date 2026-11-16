@@ -6,6 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type Database from "better-sqlite3";
 import { requireAuth } from "../auth/middleware.js";
+import { auditLog } from "../auth/audit.js";
 
 // Sniff du contenu réel (magic numbers) : le mimetype déclaratif de la
 // requête ne prouve rien. Retourne le type réel si le binaire est une
@@ -90,9 +91,14 @@ export function photoRouter(db: Database.Database): Router {
     const dir = photosDir();
     const filename = crypto.randomBytes(16).toString("hex") + ext;
     fs.writeFileSync(path.join(dir, filename), req.file.buffer);
+    // C-98/C-99 (V13 #5) : la description détaillée de l'image (plus riche
+    // que l'alt ; sert aux exports, à la recherche et aux outils d'analyse)
+    // se pose dès l'upload, comme l'alt. Renommée depuis « ai_description »
+    // (C-99) : le nom décrit la donnée, pas un consommateur.
+    const imageDescription = String((req.body as { image_description?: unknown })?.image_description ?? "").trim().slice(0, 1000);
     const info = db
-      .prepare("INSERT INTO photos (step_id, filename, alt) VALUES (?, ?, ?)")
-      .run(step.id, filename, (req.body?.alt as string) ?? "");
+      .prepare("INSERT INTO photos (step_id, filename, alt, image_description) VALUES (?, ?, ?, ?)")
+      .run(step.id, filename, (req.body?.alt as string) ?? "", imageDescription);
     const photo = db.prepare("SELECT * FROM photos WHERE id = ?").get(info.lastInsertRowid);
     db.prepare("UPDATE workflows SET updated_at = datetime('now') WHERE id = (SELECT workflow_id FROM steps WHERE id = ?)").run(step.id);
     res.status(201).json(photo);
@@ -192,6 +198,40 @@ export function staticPhotos(): express.RequestHandler {
     res.setHeader("content-type", mime[path.extname(filename)] ?? "application/octet-stream");
     res.sendFile(file);
   };
+}
+
+// C-98/C-99 (V13 #5) : édition après upload de l'alt et de la description détaillée.
+// Auparavant AUCUNE édition de l'alt n'existait post-upload : il fallait
+// supprimer et re-téléverser la photo. Author+, bornes alt 200 / IA 1000.
+export function photoMetaRouter(db: Database.Database): Router {
+  const r = Router();
+
+  r.put("/:id/meta", requireAuth("author"), (req, res) => {
+    const photo = db.prepare("SELECT id FROM photos WHERE id = ?").get(Number(req.params.id)) as
+      | { id: number }
+      | undefined;
+    if (!photo) {
+      res.status(404).json({ error: "not_found", message: "photo introuvable" });
+      return;
+    }
+    const body = req.body as { alt?: unknown; image_description?: unknown };
+    const patch: { alt?: string; image_description?: string } = {};
+    if (typeof body.alt === "string") patch.alt = body.alt.trim().slice(0, 200);
+    if (typeof body.image_description === "string") patch.image_description = body.image_description.trim().slice(0, 1000);
+    if (Object.keys(patch).length === 0) {
+      res.status(422).json({ error: "validation", message: "aucun champ modifiable fourni (alt, image_description)" });
+      return;
+    }
+    const sets = Object.keys(patch).map((k) => `${k} = ?`).join(", ");
+    db.prepare(`UPDATE photos SET ${sets} WHERE id = ?`).run(...Object.values(patch), photo.id);
+    db.prepare(
+      "UPDATE workflows SET updated_at = datetime('now') WHERE id = (SELECT workflow_id FROM steps WHERE id = (SELECT step_id FROM photos WHERE id = ?))"
+    ).run(photo.id);
+    auditLog(db, (req as { user?: { email: string } }).user?.email ?? "?", "photo_meta", `photo:${photo.id}`, Object.keys(patch).join(","));
+    res.json(db.prepare("SELECT * FROM photos WHERE id = ?").get(photo.id));
+  });
+
+  return r;
 }
 
 export function photoLayoutRouter(db: Database.Database): Router {

@@ -36,6 +36,296 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-100 — Montées de versions sécurité des dépendances + réalignement main (réalisé)
+
+**Problème** : Dependabot signalait 30 vulnérabilités sur la branche par défaut (24 high, 4 moderate, 2 low). Sur `beta` l'audit restait à 9 moderate (chaîne `minimatch` / `@eslint/*` / `typescript-eslint`, outillage dev uniquement) — l'écart venait de `main` resté 31 commits derrière (correctifs sécurité C-80+ jamais fusionnés, dont body-parser GHSA-27r3-jxmh-p828 déjà fixé sur `beta` en cf7858b).
+
+**Correctif** :
+1. `npm audit fix` — lock racine uniquement, dépendances transitives (aucun `package.json` modifié) : audits 0/0/0 sur root, server et web. Zéro impact runtime (outillage dev).
+2. **Réalignement de `main` sur `beta`** : fusion des 31 commits C-81→C-100 (fast-forward impossible — `main` portait la PR #1 cahier des charges + un ancien merge ; fusion propre, aucun conflit). Les 24 high Dependabot disparaissent : les correctifs étaient déjà livrés sur `beta`. `beta` reste la branche de production (O2 retiré), `main` redevient un miroir à jour.
+
+**Test** : aucun changement de code — gates complètes rejouées : build web + tests front + **164/164 tests serveur** + lint verts.
+
+**Fichiers** : `package-lock.json`.
+
+**État** : livré le 16 nov. 2026 — branche `beta` (déploiement CT 203) ; `main` réaligné le jour même.
+
+## C-99 — Renommage image_description, vignettes d'édition photo, fix dialog publication (réalisé)
+
+**Problème** (retour utilisateur post-C-98) : (a) le nom `ai_description` était trop spécifique — l'IA n'est qu'un lecteur parmi d'autres de ce champ (exports md/json, recherche, outils d'analyse) ; (b) après une publication réussie avec avertissements, recliquer sur « Publier » affichait encore « Publier V1 ? » — le state `wf` de l'éditeur n'était jamais rafraîchi ; (c) aucune voie d'édition découverte : le panneau alt/description ne s'ouvrait que via la sélection d'une photo sur le canevas, mécanisme indécouvrable.
+
+**Correctif** :
+1. **Renommage `ai_description` → `image_description`** partout : colonne `photos` (migration `ALTER TABLE photos RENAME COLUMN` au démarrage — zéro donnée au moment du renommage, champ jamais saisi en C-98), upload multipart, `PUT /api/photos/:id/meta`, snapshot publish + warnings (« sans description d'image »), export md (label `*Description : …*`), MCP (`upload_photo`, `set_photo_description`), front, docs. L'ancien nom n'est plus accepté.
+2. **Vignettes cliquables** : chaque étape avec photos affiche sous son canevas une rangée de vignettes ; toucher une vignette ouvre le panneau « Photo sélectionnée » (alt + description détaillée, autosave onBlur). La sélection canevas ouvre aussi le panneau. Affiché pour toutes les étapes avec photos, pas seulement l'étape active.
+3. **Fix dialog publication** : `publish()` rafraîchit désormais `wf` (`state`, `current_version`) — la confirmation affiche « Publier V2 ? » après une V1.
+
+**Test** : renommages dans `server/test/v13-exports.test.ts` (2) et `web/src/lib/photo-meta.test.ts` (1) — pas de logique nouvelle côté serveur ; la migration rename ne s'applique qu'aux bases existantes (les bases de test sont créées au schéma à jour).
+
+**Fichiers** : `server/src/db/schema.ts`, `server/src/routes/{photos,publish,export}.ts`, `server/src/mcp/{tools,modop-client}.ts`, `web/src/{api.ts,photo-meta.tsx}`, `web/src/pages/editor.tsx`, tests + docs.
+
+**État** : livré le 16 nov. 2026 — branche `beta` (déploiement CT 203).
+
+## C-98 — Chemins arborescents en API, exports Markdown/JSON, description détaillée des images (réalisé)
+
+**Problème** (Vague 13 #1/#2/#3/#5, spéc `docs/spec-api-ia.md`) : (a) l'arborescence documentaire (C-94) n'était **pas exposée en API** — aucun chemin `mecanique/montage` consommable par un outil externe ; (b) l'export unique était le **docx**, inutilisable par un LLM ou une intégration GMAO (binaire, texte brut perdu) ; (c) les photos n'avaient **aucune description pour l'IA** (l'`alt` sert à l'accessibilité) et **aucune édition d'alt post-upload** — se tromper exigeait de supprimer et re-téléverser la photo.
+
+**Correctif** :
+1. **Chemins à la volée (V13 #1)** : `categoryPaths()` (nouveau `server/src/lib/category-path.ts`) charge les catégories en une requête et joint les slugs depuis la racine. Exposé : `category_path` sur `GET /api/workflows/:id` et la liste, `path` sur `GET /api/categories`. **Jamais stocké** (slugs immuables C-94) : aucun risque de désynchronisation au déplacement d'un nœud.
+2. **Exports md/json (V13 #2/#3)** : la route export existante branchée sur `?format=md|json` (défaut inchangé : docx ; `?version=n` inchangé, 404 si introuvable). **md** : front matter YAML (référence, titre, version, chemin, famille, type, description, responsable, dates) + `## Étape n — titre` + `> Ancre : MO-xxx/etapes/n` par étape + corps + pictos + images `![alt](/photos/fichier)` + `*Description IA : …*`. **json** : snapshot EXACT de la version publiée (zéro perte) + bloc `meta` (GED, `category_path`, `anchors`). Audits dédiés `export_md`/`export_json`.
+3. **Description IA (V13 #5)** : colonne `photos.image_description` (migration auto, défaut `""`) ; posée dès l'upload (multipart `image_description`, borne 1000) ; **nouvelle route `PUT /api/photos/:id/meta`** (author+, `alt?`/`image_description?`, bornes 200/1000, 422 si aucun champ, audit `photo_meta`) — première édition d'alt post-upload du produit ; portée par le snapshot de publication ; réponse publish étendue `{ number, warnings: string[] }` (photos sans description, **non bloquant**). MCP : `upload_photo` accepte `image_description`, nouvel outil `set_photo_description`.
+4. **Front** : panneau « Photo sélectionnée » sous le canevas quand une photo est sélectionnée (alt + description détaillée, autosave onBlur, re-sync au changement de photo) ; publication avec avertissements = encart jaune listant les photos à compléter, on reste sur l'éditeur (republier après complétion).
+
+**Test** : `server/test/v13-exports.test.ts` (2 : résolution category_path workflow/liste/catégories ; meta 403/422/404 + warnings publish V1→V2 + contenu md (front matter, chemin, ancres, description détaillée) + json (meta, anchors, snapshot exact) + 404 version + 401 + docx défaut) ; `web/src/lib/photo-meta.test.ts` (rendu, autosave PUT au blur, pas de PUT sans modification, re-sync au changement de photo).
+
+**Fichiers** : `server/src/lib/category-path.ts` (nouveau), `server/src/db/schema.ts`, `server/src/routes/{photos,publish,workflows,list,categories,export}.ts`, `server/src/app.ts`, `server/src/mcp/{tools,modop-client}.ts`, `server/test/v13-exports.test.ts`, `web/src/api.ts`, `web/src/photo-meta.tsx` (nouveau), `web/src/pages/editor.tsx`, `web/src/lib/photo-meta.test.ts`
+
+**État** : livré le 16 nov. 2026 — branche `beta` (déploiement CT 203). *C-99 : champ renommé `image_description`, label md `*Description : …*`, panneau désormais ouvert via vignettes cliquables par étape.*
+
+## C-97 — Indications métiers paramétrables + abandon d'un brouillon sans version publiée (réalisé)
+
+**Problème** (Vague 12 #8-9, retour terrain du 28 oct. 2026) : (a) la liste des **indications métiers** (flyout « Indications » : Attention, Danger, EPI…) était **figée en dur** — impossible d'adapter les encarts à un métier (demande déjà exprimée en C-70 #16, différée « migration + API ») ; (b) un **brouillon jamais publié (V0)** ne pouvait être **ni abandonné ni jeté** : « Abandonner le brouillon » = restore de la dernière version publiée, inopérant quand il n'y en a aucune — et des étapes aux pictos/canvas JSON corrompus faisaient échouer le chargement du MO (500), verrouillant toute porte de sortie.
+
+**Correctif** :
+1. **Indications paramétrables (V12 #8)** : liste stockée en settings (clé `indications`, JSON), seed = les 7 indications historiques. `GET /api/settings/indications` (reader+) sert le flyout de l'éditeur (chargées au montage, seed en dur en fallback hors-ligne) ; `PUT` (admin) remplace la liste (1 à 30 items, kind slug unique, label 1-40, couleur `#rrggbb`) depuis la page Paramètres (libellé + couleur + suppression + ajout + « Restaurer les 7 par défaut »). **Amélioration en cascade** : `PUT /api/steps/:id` résout désormais les kinds en objets auto-porteurs `{kind,label,color}` via la liste active — les pictos posés par l'API/MCP (avant : strings brutes, mal rendues par le lecteur) sont maintenant toujours stockés complets. Pictos auto-porteurs = renommer/retirer une indication ne rétro-modifie **pas** les MO ni les versions publiées.
+2. **Reset de brouillon (V12 #9)** : `POST /api/workflows/:id/reset-draft` (author+) — MO publié : le brouillon redevient la dernière version publiée (équivalent restore, transaction partagée) ; MO jamais publié : **purge complète** (étapes, photos — lignes et fichiers non référencés —, commentaires d'auteurs en cascade ; le MO reste, à neuf). L'éditeur adapte le bouton (« Réinitialiser le brouillon ») et la confirmation ; la route ne dépend pas du chargement des étapes.
+3. **Tolérance aux données corrompues** : pictos/canvas non parsables ne font plus échouer le GET d'un workflow (500 → listes vides) — un brouillon « introuvable » reste ouvrable, donc réparable ou vidable.
+
+**Test** : `server/test/indications.test.ts` (5 : seed/GET lecteur, PUT admin + normalisation + 403, validations 422, résolution kinds, tolérance pictos corrompus) ; `server/test/reset-draft.test.ts` (3 : purge V0 avec preuve d'unlink + cascade commentaires + audit, retour V1 après publication, 404/403) ; `web/src/lib/settings-indications.test.ts` (section Paramètres : rendu, modification + PUT, ajout, suppression). Deux assertions historiques (publish/workflows) mises à jour au nouveau contrat pictos résolus.
+
+**Fichiers** : `server/src/routes/settings.ts`, `server/src/routes/workflows.ts`, `server/src/routes/restore.ts`, `server/test/{indications,reset-draft}.test.ts`, `web/src/api.ts`, `web/src/editor/tools/{types.ts,definitions.tsx}`, `web/src/pages/{editor,settings}.tsx`, `web/src/lib/settings-indications.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + lint + **162/162 tests serveur** + tous tests front verts.
+
+## C-96 — Édition : retours terrain visibles, commentaires d'auteurs par étape, publication sans commentaire hérité (réalisé)
+
+**Problème** (Vague 12 #5-7, retour terrain du 28 oct. 2026) : (a) les **remontées terrain ouvertes étaient invisibles en mode édition** — l'auteur qui préparait une nouvelle version ne voyait pas qu'il avait des corrections à traiter, sauf en allant chercher la page ; (b) le **champ commentaire de version n'était jamais vidé** après publication — le texte resurgissait pré-rempli dans la publication suivante (risque de changelog erroné) ; (c) il n'existait **aucun espace de commentaires de rédaction** entre auteurs au niveau des étapes.
+
+**Correctif** :
+1. **Retours terrain visibles (V12 #5)** : l'éditeur charge les retours ouverts (filtre `status === "open"`) ; **badge warn global** dans la barre sticky (« N retour(s) terrain à traiter ») + **badge ⚑ par étape** dans l'en-tête du bloc, les deux liens vers la page de traitement `/workflow/:id/feedbacks` (page existante, inchangée).
+2. **Publication propre (V12 #6)** : `setChangelog("")` après `api.publishWorkflow` réussi — le champ de commentaire de version repart vide à chaque publication.
+3. **Commentaires d'auteurs par étape (V12 #7)** : table `step_comments` (`step_id` FK CASCADE, `by_email`, `message`, `created_at`) + routes `/api/steps/:id/comments` (GET/POST author+, DELETE par l'auteur du commentaire ou un admin), bornes : message trim, non vide, ≤ 1000. Front : composant repliable dans chaque bloc étape ouverte. **Choix assumé : jamais publiés** — absents du snapshot de publication, du lecteur, de la lecture guidée, de l'export docx et du serveur MCP ; supprimés en cascade avec l'étape.
+
+**Test** : `server/test/step-comments.test.ts` (6 tests runtime : roundtrip, 422/404, lecteur 403, suppression auteur/autre/admin, absence du snapshot après publish, CASCADE) ; `web/src/lib/step-comments.test.ts` (compteur replié, ouverture, POST ajouté au DOM, suppression réservée au propriétaire).
+
+**Fichiers** : `server/src/db/schema.ts`, `server/src/routes/comments.ts`, `server/src/app.ts`, `server/test/step-comments.test.ts`, `web/src/step-comments.tsx`, `web/src/api.ts`, `web/src/pages/editor.tsx`, `web/src/lib/step-comments.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + lint + 154/154 tests serveur + tous tests front verts.
+
+## C-95 — Export docx & lecture : annotations photo rendues, formes basses non tronquées (réalisé)
+
+**Problème** (Vague 12 #2-4, retour terrain du 28 oct. 2026) : l'export docx était signalé infidèle — images et formes « légèrement décalées », mauvaise gestion des positions relatives, formes plus basses que les photos tronquées. Diagnostic : (a) les **annotations photo** (formes posées SUR une photo, p. ex. via l'outil MCP `annotate_photo`) n'étaient dessinées **nulle part** — ni dans le composite docx ni dans la vue lecture ; (b) la hauteur du canevas de lecture était calculée **uniquement sur les photos** — une flèche ou une zone posée plus bas disparaissait sous `overflow: hidden` (le composite docx, lui, tenait déjà compte des formes).
+
+**Correctif** :
+1. **Calque d'annotations photo** (`PhotoAnnotationLayer` dans `annotated-photo.tsx`) : SVG `viewBox 0 0 1 1` (fractions 0-1 de la photo) + pastilles texte HTML, `pointerEvents: none`, marqueur unique par instance (`useId`). Rendu dans la **vue lecture** (`step-canvas-view.tsx`), la **lecture guidée** (même composant) et l'**éditeur** (`step-canvas.tsx`, calque passif — aucune interaction, l'outil d'annotation reste celui du canevas).
+2. **Composite docx** (`canvas-composite.ts`) : dessin factorisé `drawShape(ctx, s, ox, oy, sx, sy)` — formes du canevas dans le repère 800×240, annotations photo dans le repère de chaque photo ; positions scalées, épaisseurs/pointes/pastilles en px écran, fidèle au `vectorEffect="non-scaling-stroke"` du web. La route `export.ts` passe les annotations du snapshot au composite.
+3. **Troncature (V12 #4)** : `step-canvas-view.tsx` mesure la hauteur en incluant les formes (même règle que le composite : bas de forme ×240 + 24 px) — une forme plus basse que les photos n'est plus coupée en lecture.
+
+Leur entrée dans le snapshot de publication (perdues avant, rendues ici) = **C-92**, livré dans la foulée.
+
+**Test** : `server/test/composite-annotations.test.ts` (annotations rendues dans le composite, hauteur inchangée) ; `web/src/lib/photo-annotations.test.ts` (calque flèche/zone/pastille rendu en lecture + hauteur recalculée avec une forme basse).
+
+**Fichiers** : `server/src/routes/export.ts`, `server/src/render/canvas-composite.ts`, `web/src/annotated-photo.tsx`, `web/src/step-canvas-view.tsx`, `web/src/step-canvas.tsx`, `server/test/composite-annotations.test.ts`, `web/src/lib/photo-annotations.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + lint + 148/148 tests serveur + tous tests front verts.
+
+---
+
+## C-92 — Annotations photo absentes du snapshot de publication (réalisé)
+
+**Problème** (candidat réservé le 16 nov. 2026) : le `SELECT` photos de `publish.ts` ne prenait pas la colonne `annotations` — le snapshot de version publiée ne contenait pas les annotations posées sur les photos (p. ex. via l'outil MCP `annotate_photo`). Conséquences : invisibles en lecture publiée, absentes de l'export docx, et **perdues définitivement** au restore (le restore les attendait déjà — le snapshot ne les portait jamais).
+
+**Correctif** : le snapshot porte désormais `annotations` par photo (tableau JSON parsé, `[]` si nul) ; la lecture de version publiée (F2) les expose ; le restore les restitue. Rétro-compat : les snapshots antérieurs restent lisibles (champ absent → `?? []`).
+
+**Test** : `server/test/annotations.test.ts` — publication → la version publiée expose les annotations → effacement côté brouillon → restore V1 → annotations restituées.
+
+**Fichiers** : `server/src/routes/publish.ts`, `server/test/annotations.test.ts`
+
+**État** : ✅ livré sur beta avec C-95 (le rendu de ces annotations = C-95).
+
+---
+
+## C-94 — Arborescence documentaire paramétrable + documents parents (réalisé)
+
+**Problème** (Vague 12 #11-12 / Vague 13 #1, demande propriétaire 16 nov. 2026) : les MO ne se rangeaient que par « famille » texte libre — pas de hiérarchie paramétrable, pas de notion de document parent, donc ni navigation arborescente ni socle d'indexation IA (spéc [spec-api-ia.md](spec-api-ia.md) §1).
+
+**Correctif** :
+1. **Serveur** : table `categories` (`parent_id`, `name` renommable, `slug` **immuable** — chemins stables, `position`) ; profondeur libre bornée à 20, anti-cycle au déplacement et au rattachement ; CRUD admin sur `/api/categories` (suppression gardée : refus si enfants ou docs rattachés), lecture ouverte à tous les rôles. `workflows.category_id` (emplacement) et `workflows.parent_id` (document parent) acceptés au POST/PUT, portés par les versions publiées (snapshot), copiés par la duplication ; filtres `?parent=` / `?category_id=` sur la liste.
+2. **Front** : page admin **Arborescence** (`/categories`, menu admin) — arbre reconstruit du flat, création racine/enfant, renommage inline (le slug ne change pas), déplacement (descendants exclus), ordre manuel ↑/↓ entre frères, badge du nombre de MO par nœud. Éditeur : **Détails → Emplacement** (select indenté) + **Document parent**, inclus dans l'autosave (800 ms) et la création. Accueil : filtre **Arborescence** (sous-arbre complet, côté client) + badge « ↳ parent » sur les cartes. Lecteur : ligne « Document parent » sous l'entête + section **Documents liés** après les étapes.
+3. Helpers partagés `web/src/lib/categories-tree.ts` (buildTree / flattenTree / descendantIds) — testables, réutilisés par la page admin, l'éditeur et la liste.
+
+**Test** : `server/test/categories.test.ts` (6 tests runtime : CRUD, profondeur, anti-cycle, garde de suppression) + `web/src/lib/categories-page.test.ts` (arbre rendu en ordre préfixe indenté + création d'enfant avec parent).
+
+**Fichiers** : `server/src/db/schema.ts`, `server/src/routes/categories.ts`, `server/src/routes/workflows.ts`, `server/src/routes/list.ts`, `server/src/routes/publish.ts`, `server/src/routes/duplicate.ts`, `server/src/app.ts`, `shared/api.md`, `shared/types.md`, `web/src/api.ts`, `web/src/lib/categories-tree.ts`, `web/src/pages/categories.tsx`, `web/src/pages/editor.tsx`, `web/src/pages/list.tsx`, `web/src/pages/reader.tsx`, `web/src/app.tsx`, `web/src/nav.tsx`, `server/test/categories.test.ts`, `web/src/lib/categories-page.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + lint + 145/145 tests serveur + tous tests front verts.
+
+---
+
+## C-93 — Texte des étapes en dessous des images (réalisé)
+
+**Problème** (retour propriétaire 16 nov. 2026, Vague 12 #1) : le texte d'une étape s'affichait AU-DESSUS des images — l'opérateur lisait l'instruction puis devait remonter vers le geste illustré. Le terrain veut l'inverse : voir d'abord, lire ensuite.
+
+**Correctif** : ordre d'affichage de l'étape inversé dans les trois vues — lecture, lecture guidée, édition : **images d'abord, puis le texte, puis les pictos** (les indications restent collées au texte). L'éditeur suit le même ordre (WYSIWYG : l'effet est visible pendant la saisie) ; les blocs liés aux photos (barre d'envoi, note « pas de photo ») restent au-dessus du canevas.
+
+**Test** : `web/src/lib/reader-step-order.test.ts` — dans l'ordre du DOM de la page de lecture, le conteneur du canevas précède le paragraphe de texte.
+
+**Fichiers** : `web/src/pages/reader.tsx`, `web/src/pages/guided-reader.tsx`, `web/src/pages/editor.tsx`, `web/src/lib/reader-step-order.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front verts.
+
+---
+
+## C-91 — MCP : instructions serveur servies à l'initialize (réalisé)
+
+**Problème** : un agent qui découvre le connecteur MCP ne voit que 24 outils isolés — pas la carte du domaine (cycle draft→publish→versions, conventions, recette de création complète). Il apprend le fonctionnement par essais/erreurs.
+
+**Correctif** : chaîne `MCP_INSTRUCTIONS` passée au `McpServer` (option `instructions` du SDK) : rôle du compte de service, concepts (workflow/étapes/photos/versions/retours terrain), conventions (ids entiers, dates AAAA-MM-JJ, erreurs auto-corrigibles), périmètre non couvert (rognage/layout/replace), recette pas-à-pas pour créer un MO complet.
+
+**Tests** : `mcp.test.ts` — initialize renvoie les instructions (contient « Modop » + la recette). Suite serveur 135 pass / 0 fail. Amendé après test d'acceptation par un agent « neuf » (découverte par initialize + tools/list uniquement, création complète d'un MO, 24 outils exercés en réel via le tunnel) : les instructions signalent désormais que restore_version / duplicate_workflow changent les ids d'étapes et photos — friction constatée en réel (HTTP 404 « étape introuvable » sur un id périmé).
+
+**Fichiers** : `server/src/mcp/route.ts`, `server/test/mcp.test.ts`, `docs/connecteur-mcp.md`
+
+**État** : ✅ livré sur beta.
+
+---
+
+## C-90 — Connecteur MCP natif : 24 outils IA sur /mcp (réalisé)
+
+**Problème** : aucun moyen programmatique pour un agent IA de lire/piloter les modes opératoires — la roadmap « Vision long terme » prévoyait une API publique (intégrations GMAO) sans premier pas concret.
+
+**Correctif** : serveur MCP **intégré à l'application** (pas de CT dédié — déployé par update.sh/CI, embarqué dans toute install future).
+1. **Endpoint stateless** `POST /mcp` (StreamableHTTP, `sessionIdGenerator: undefined`, transport neuf par requête ; GET/DELETE → 405) ; monté avant le catch-all SPA dans `app.ts`.
+2. **Auth** : Bearer `MODOP_MCP_TOKEN` en comparaison temps constant ; compte de service `svc-mcp` upserté au démarrage depuis l'env (rôle `author`, moindre privilège). Token absent → 501 (désactivé), invalide → 401.
+3. **Zéro duplication métier** : les 24 outils (workflows CRUD+GED, étapes, versions, publication, photos multipart, export docx, retours terrain, comptes) appellent l'API en **loopback HTTP** (client singleton, re-login 401) — validations C-88, magic numbers, rate limits et audit s'appliquent à l'identique.
+4. Erreurs API converties en erreurs d'outils MCP avec le message serveur.
+
+**Tests** : `server/test/mcp.test.ts` — 9 tests E2E avec client SDK réel : 401 sans/avec mauvais token, 405 GET/DELETE, ≥ 20 outils listés, whoami svc-mcp, cycle complet (création → vérif DB → étapes → réordonnancement → publication → versions → export docx signature PK → feedback send/list/resolve), upload photo multipart PNG 1×1 (magic numbers), get_stats 403 pour author, list_users. Suite serveur 134 pass / 0 fail, tsc + lint verts, tests front verts.
+
+**Fichiers** : `server/src/mcp/` (config, bootstrap, modop-client, tools, route), `server/src/app.ts`, `server/src/index.ts`, `server/test/mcp.test.ts`, `docs/connecteur-mcp.md` (nouveau), `docs/durcissement-securite.md`, `AGENTS.md`, `docs/roadmap.md`
+
+**État** : ✅ livré sur beta.
+
+---
+
+## C-89 — Porte de déploiement : update.sh refuse un SHA dont la CI est rouge (réalisé)
+
+**Problème** : un déploiement a eu lieu le 26 oct. alors que la CI de `beta` était rouge (job audit, vulnérabilité undici — découverte 2 j après, runs 40117974090 / 40279284449) : `update.sh` déployait `origin/<branche>` sans jamais regarder le statut GitHub du SHA.
+
+**Correctif** :
+1. `update.sh` interroge les check-runs GitHub du SHA cible (API publique `commits/<SHA>/check-runs`, sans token) **avant tout arrêt** de l'app : fetch → `TARGET_SHA` → `ci_gate`.
+2. Verdicts : CI verte = autorisé ; SHA rouge, CI en cours, aucun run, ou API injoignable = refus net avec message actionnable.
+3. Override manuel explicite uniquement : `bash update.sh --force` — chaque contournement consigné noir sur blanc (« PORTE CI OUTPASSÉE (--force) : … ») dans le journal de déploiement (visible dans l'UI admin) ; l'UI ne peut pas le passer (route deploy : arguments figés `update.sh` / `update.sh rollback`).
+
+**Tests** : matrice fonctionnelle contre l'API GitHub réelle — SHA vert (cf7858b) autorisé ; SHA rouge (01756d8) refusé avec le nom du job fautif ; rouge + `--force` outpassé et consigné ; SHA sans run refusé puis outpassé ; `bash -n`, shellcheck et vw-gate verts.
+
+**Fichiers** : `update.sh`, `docs/roadmap.md` (vague 9 #7 + critères issue #8)
+
+**État** : ✅ livré sur beta.
+
+---
+
+## C-88 — Numéro unique vérifié en direct + Familles en liste de recherche (réalisé)
+
+**Problème** : 1) deux documents pouvaient coexister avec le « même » numéro en changeant la casse (`MO-001` vs `mo-001` — la contrainte SQL UNIQUE est sensible à la casse), et le doublon n'était signalé qu'après soumission du formulaire de création. 2) le champ Famille était une saisie texte libre, sans rattachement aux familles existantes (fautes de frappe → familles parasites dans les filtres).
+
+**Correctif** :
+1. **Unicité insensible à la casse** : `POST /api/workflows` compare `COLLATE NOCASE` (`mo-001` ≡ `MO-001`, espaces trimés) ; la boucle de suffixe `-COPIE` de la duplication suit la même règle ; nouveau filtre exact `GET /api/workflows?reference=` (nocase) pour la vérification en direct.
+2. **Formulaire de création** : la référence est vérifiée **debounced (400 ms)** pendant la frappe — message d'erreur sous le champ + bouton « Créer » désactivé si le numéro est pris ; le 422 serveur reste le garde-fou final.
+3. **Famille = liste de recherche** : type-ahead listant les familles **existantes** (distinctes, triées), filtré par mot-clé insensible à la casse ; le clic pose la valeur ; la saisie libre reste possible (créer une nouvelle famille reste autorisé).
+
+**Tests** : `server/test/workflows.test.ts` (C-88) — `mo-88`/`"  MO-88  "` refusés (422), filtre `?reference=Mo-88` nocase, duplication sautant à `-COPIE-2` quand l'équivalent casse-différente existe ; `web/src/lib/editor-ref-family.test.ts` — erreur en direct + Créer désactivé sur numéro pris, réactivé sur numéro libre, suggestion « Mécanique » pour « méca » posée au clic.
+
+**Fichiers** : `server/src/routes/workflows.ts`, `server/src/routes/list.ts`, `server/src/routes/duplicate.ts`, `web/src/api.ts`, `web/src/pages/editor.tsx`, `server/test/workflows.test.ts`, `web/src/lib/editor-ref-family.test.ts`, `shared/api.md`, `docs/guide-utilisateur.md`
+
+**État** : ✅ livré sur beta — 128/128 tests serveur, tsc + build + lint, tous tests front verts.
+
+---
+
+## C-87 — Création : champs date de revue et responsable non robustes (réalisé)
+
+**Problème** : en création, le champ Responsable n'affichait **aucune suggestion** (la liste des comptes n'était chargée qu'en édition), la date de revue n'était **pas préremplie** (le préremplissage C-86 ignorait le mode création), et surtout `Créer` n'envoyait **ni la date ni le responsable** : les valeurs saisies étaient perdues et les deux champs se retrouvaient vides dès le passage en mode édition (le rechargement les remplaçait par les valeurs serveur, jamais enregistrées).
+
+**Correctif** :
+1. **Serveur** : `POST /api/workflows` accepte `review_due` (même validation que le PUT) et `owner_email` — les valeurs sont persistées à la création.
+2. **Éditeur** : comptes actifs chargés **dès la création** (recherche fonctionnelle), préremplissage J+délai **aussi en création**, `Créer` transmet les deux champs, panneau de détails **maintenu ouvert** au passage en édition (les champs restent visibles), et pas d'autosave fantôme après la création.
+
+**Tests** : `server/test/workflows.test.ts` (C-87) — création avec date/responsable persistés et relus, date invalide 422, valeurs absentes acceptées ; `web/src/lib/editor-create-review.test.ts` — flux complet création→édition en jsdom (date préremplie, suggestion posée, POST transmis, champs conservés en édition). NB : ce test pose les globales jsdom **avant** l'import de react-dom — sinon react-dom s'initialise « sans DOM » et le onChange des champs texte ne se déclenche pas sur un événement dispatché.
+
+**Fichiers** : `server/src/routes/workflows.ts`, `web/src/api.ts`, `web/src/pages/editor.tsx`, `server/test/workflows.test.ts`, `web/src/lib/editor-create-review.test.ts`, `docs/guide-utilisateur.md`
+
+**État** : ✅ livré sur beta — 126/126 tests serveur, tsc + build + lint, tous tests front verts.
+
+---
+
+## C-81 — Lecteur : bouton d'export remonté dans l'entête (réalisé)
+
+**Problème** : le lien « Exporter en .docx » vivait seul en bas de page — inaccessible sans scroller tout le document.
+
+**Correctif** : le lien rejoint l'entête avec les autres outils (Guidé, QR, Terrain, Éditer), et exporte **la version affichée** (`?version=` transmis quand une version publiée est consultée). Le lien en bas de page est supprimé.
+
+**Test** : `web/src/lib/review-banner.test.ts` — lien présent dans `<header>` avec le bon href.
+
+**Fichiers** : `web/src/pages/reader.tsx`, `web/src/lib/review-banner.test.ts`, `docs/guide-utilisateur.md`
+
+## C-82 — Export docx : images et formes ne suivaient pas le lecteur (réalisé)
+
+**Problème** : le composite serveur divergeait du rendu du lecteur — une photo jamais déplacée (sans `display_w`) sortait à **60 % de largeur** (le lecteur la rend pleine largeur), les textes étaient dessinés **bruts à partir de l'ancre** (le lecteur centre une pastille), l'épaisseur de trait par défaut était 3 (lecteur : 2) et la hauteur réservée aux textes surestimée.
+
+**Correctif** (`render/canvas-composite.ts`, défauts alignés sur `step-canvas-view.tsx`) : photo sans `display_w` = pleine largeur ; texte = **pastille arrondie** de la couleur de la forme, texte blanc centré sur l'ancre ; épaisseur par défaut 2 ; hauteur d'un texte bornée à `y1 + 0.1` (comme le lecteur).
+
+**Tests** : `server/test/export.test.ts` (C-82) — photo 1×1 sans `display_w` : composite de 800×824 px (pleine largeur, pas 492) ; texte à `y1=1.5` : hauteur 408 px (`y1 + 0.1`).
+
+**Fichiers** : `server/src/render/canvas-composite.ts`, `server/test/export.test.ts`
+
+## C-83 — « À revoir » : la raison manque, pas de lien (réalisé)
+
+**Problème** : un document « à revoir » n'expliquait pas pourquoi (date dépassée ? depuis quand ? absence de date ?) et n'offrait aucun lien pour agir.
+
+**Correctif** :
+1. **Lecteur** : le badge devient une **alerte** qui donne la raison (« La date de revue est dépassée depuis le jj/mm/aaaa » ou « Aucune date de revue n'est définie », selon le paramètre « sans date = à revoir ») et propose aux auteurs **« Mettre à jour la revue »** → l'éditeur s'ouvre avec les détails dépliés sur le champ (`?revue=1`).
+2. **Accueil** : l'alerte « à revoir » liste chaque document avec **sa raison** et un **lien qui l'ouvre** (5 premiers + compteur).
+
+**Tests** : `web/src/lib/review-banner.test.ts` — alerte avec la date de dépassement + lien `edit?revue=1` ; `web/src/pages/editor.tsx` ouvre les détails sur `?revue=1`.
+
+**Fichiers** : `web/src/pages/reader.tsx`, `web/src/pages/list.tsx`, `web/src/pages/editor.tsx`, `web/src/lib/review-banner.test.ts`, `docs/guide-utilisateur.md`
+
+## C-84 — Versions publiées : date de revue et responsable perdus (réalisé)
+
+**Problème** : en consultant une version publiée, la date de revue et le responsable « sautaient » — `GET /api/workflows/:id/versions/:number` ne renvoyait ni l'un ni l'autre (badge « à revoir » jamais affiché en vue publiée), et l'export docx prenait les valeurs du workflow **courant** au lieu du snapshot de la version exportée.
+
+**Correctif** :
+1. **Serveur** : la version publiée renvoie `review_due` et `owner_email` **portés par le snapshot** (figés à la publication) + `owner_name` (Prénom Nom, jointure users) ; `GET /api/workflows/:id` expose aussi `owner_name`.
+2. **Export docx** : page de garde alimentée par le snapshot — nouvelle ligne « À revoir le », responsable affiché en « Prénom Nom ».
+3. **Lecteur** : la ligne d'information affiche « À revoir le jj/mm/aaaa » et « Responsable : Prénom Nom ».
+
+**Tests** : `server/test/version-read.test.ts` (C-84) — V1 garde sa date et son responsable après modification du brouillon ; `owner_name` résolu.
+
+**Fichiers** : `server/src/routes/publish.ts`, `server/src/routes/workflows.ts`, `server/src/routes/export.ts`, `web/src/pages/reader.tsx`, `web/src/api.ts`, `server/test/version-read.test.ts`
+
+## C-85 — Recherche de responsable muette pour les auteurs (réalisé)
+
+**Problème** : le champ Responsable chargeait `/api/admin/users` (admin seul) — pour un auteur : **aucune suggestion**, et le champ se vidait au blur. La recherche par mot-clé semblait inexistante.
+
+**Correctif** : nouvelle route `GET /api/users` (author+) qui liste les **comptes actifs** (id, email, Prénom/Nom, rôle) ; l'éditeur l'utilise pour son type-ahead (recherche sur Prénom, Nom et email).
+
+**Tests** : `server/test/settings.test.ts` (C-85) — anonyme 401, auteur 200, compte actif présent / désactivé absent, Prénom/Nom exposés.
+
+**Fichiers** : `server/src/routes/admin.ts` (`activeUsersRouter`), `server/src/app.ts`, `web/src/pages/editor.tsx`, `server/test/settings.test.ts`
+
+## C-86 — Préremplissage de la date de revue paramétrable (réalisé)
+
+**Problème** : la date « À revoir le » devait être posée à la main à chaque MO ; beaucoup de documents naissaient sans date (donc « à revoir » selon le paramétrage).
+
+**Correctif** : nouveau paramètre applicatif **« Délai de revue par défaut »** (jours, 1–3650, défaut **30**, page Paramètres). À l'ouverture d'un MO **sans date** dans l'éditeur, le champ est prérempli à **J + délai** — valeur affichée seulement (persistée à la sauvegarde des métadonnées ou à la publication), jamais imposée : une date saisie ou un champ vidé manuellement ne sont pas écrasés.
+
+**Tests** : `server/test/settings.test.ts` (C-86) — défaut 30, PUT admin, bornes (0 et 99999 refusés), arrondi entier ; préremplissage couvert par le build front + suite verte.
+
+**Fichiers** : `server/src/routes/settings.ts`, `web/src/pages/settings.tsx`, `web/src/pages/editor.tsx`, `web/src/api.ts`, `server/test/settings.test.ts`, `docs/guide-utilisateur.md`
+
+**État (C-81 → C-86)** : ✅ livré sur beta — 125/125 tests serveur, build serveur + front, lint, tous tests front verts.
+
+---
+
 ## C-80 — Validation texte : plus de saut de fenêtre + documentation à jour (correctif C-77)
 
 **Problème** : à la validation d'un texte, le focus explicite sur le canevas (C-77) provoquait un **saut de la fenêtre** — `focus()` fait défiler l'élément par défaut.
@@ -353,7 +643,7 @@ Nota : le correctif de focus de C-77 (focus explicite sur le canevas avant démo
 
 ## C-64 — Refonte UI : Tailwind v4 + design tokens de la palette + composants type shadcn (réalisé)
 
-**Contexte** : l'interface était entièrement en styles inline React sur une palette ad-hoc (bleu `#1f4e9c`), sans système de design. Le propriétaire a fourni un guide UI/UX de référence ([Guide interface utilisateur.md](Guide%20interface%20utilisateur.md) : Tailwind + shadcn/ui, responsive, WCAG) et la palette de marque ([palette-couleurs.md](palette-couleurs.md) : bleu-gris `#517485` primaire, orange `#e84e0f` accent, anthracite `#2c3a43`).
+**Contexte** : l'interface était entièrement en styles inline React sur une palette ad-hoc (bleu `#1f4e9c`), sans système de design. Le propriétaire a fourni un guide UI/UX de référence ([Guide interface utilisateur.md](guide-interface-utilisateur.md) : Tailwind + shadcn/ui, responsive, WCAG) et la palette de marque ([palette-couleurs.md](../web/src/styles.css) : bleu-gris `#517485` primaire, orange `#e84e0f` accent, anthracite `#2c3a43`).
 
 **Correctif** :
 1. **Fondation** : Tailwind v4 (plugin `@tailwindcss/vite`, compatible Vite 8) ; `styles.css` remappé sur la palette **en conservant les noms de variables** (`--accent`, `--surface`…) — le code non migré change de peau automatiquement ; exposition `@theme inline` (utilitaires `bg-primary`, `text-muted-foreground`, `border-border`…) ; variante `dark:` sur `data-theme` (compatible `theme.ts`, pas de classe `dark`).

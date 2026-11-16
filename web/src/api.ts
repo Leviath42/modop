@@ -17,7 +17,26 @@ export interface Workflow {
   current_version: number;
   review_due?: string | null;
   owner_email?: string;
+  // C-94 : rattachement arborescent + document parent.
+  category_id?: number | null;
+  parent_id?: number | null;
   updated_at: string;
+}
+
+// C-94 : nœud de l'arborescence documentaire (1 à X niveaux).
+export interface Category {
+  id: number;
+  parent_id: number | null; // null = racine
+  name: string;             // titre libre (renommable)
+  slug: string;              // immuable — chemins stables
+  position: number;
+}
+
+export interface StepComment {
+  id: number;
+  by: string;
+  message: string;
+  at: string;
 }
 
 export interface Photo {
@@ -25,6 +44,7 @@ export interface Photo {
   step_id?: number;
   filename: string;
   alt: string;
+  image_description?: string;
   annotations?: unknown[];
   display_size?: "small" | "medium" | "large" | "full";
   display_align?: "left" | "center" | "right";
@@ -75,6 +95,25 @@ export interface AdminUser {
 
 export interface WorkflowDetail extends Workflow {
   steps: Step[];
+  // C-84 : nom lisible du responsable (Prénom Nom) quand le compte existe —
+  // porté par le workflow (brouillon) ou par le snapshot (version publiée).
+  owner_name?: string;
+}
+
+// C-72 (#4/#5) + C-86 : paramètres applicatifs (page Paramètres, admin).
+// C-97 (V12 #8) : indication métier paramétrable (flyout « Indications »).
+export interface Indication {
+  kind: string;
+  label: string;
+  color: string;
+}
+
+export interface AppSettings {
+  readers_see_drafts: boolean;
+  no_review_date_is_overdue: boolean;
+  default_stroke_width: number;
+  // C-86 : délai de revue par défaut en jours (préremplissage « À revoir le »).
+  default_review_days: number;
 }
 
 export class ApiError extends Error {
@@ -119,7 +158,7 @@ export const api = {
   async me(): Promise<User> {
     return handle<User>(await fetch("/api/auth/me"));
   },
-  async listWorkflows(params: { search?: string; category?: string; state?: string; family?: string; review?: string; sort?: string } = {}): Promise<Workflow[]> {
+  async listWorkflows(params: { search?: string; category?: string; state?: string; family?: string; review?: string; sort?: string; reference?: string; parent?: string; category_id?: string } = {}): Promise<Workflow[]> {
     const q = new URLSearchParams();
     for (const [k, v] of Object.entries(params)) if (v) q.set(k, v);
     return handle<Workflow[]>(await fetch(`/api/workflows?${q}`));
@@ -127,7 +166,7 @@ export const api = {
   async getWorkflow(id: number | string): Promise<WorkflowDetail> {
     return handle<WorkflowDetail>(await fetch(`/api/workflows/${id}`));
   },
-  async createWorkflow(data: { title: string; reference: string; description?: string; category?: string; family?: string }): Promise<Workflow> {
+  async createWorkflow(data: { title: string; reference: string; description?: string; category?: string; family?: string; review_due?: string | null; owner_email?: string | null; category_id?: number | null; parent_id?: number | null }): Promise<Workflow> {
     return handle<Workflow>(
       await fetch("/api/workflows", {
         method: "POST",
@@ -136,7 +175,7 @@ export const api = {
       })
     );
   },
-  async updateWorkflow(id: number, data: Partial<Pick<Workflow, "title" | "description" | "category" | "family" | "review_due">> & { owner_email?: string | null }): Promise<Workflow> {
+  async updateWorkflow(id: number, data: Partial<Pick<Workflow, "title" | "description" | "category" | "family" | "review_due">> & { owner_email?: string | null; category_id?: number | null; parent_id?: number | null }): Promise<Workflow> {
     return handle<Workflow>(
       await fetch(`/api/workflows/${id}`, {
         method: "PUT",
@@ -148,14 +187,22 @@ export const api = {
   async deleteWorkflow(id: number): Promise<void> {
     await handle<unknown>(await fetch(`/api/workflows/${id}`, { method: "DELETE" }));
   },
-  async publishWorkflow(id: number, changelog?: string): Promise<{ number: number }> {
-    return handle<{ number: number }>(
+  async publishWorkflow(id: number, changelog?: string): Promise<{ number: number; warnings?: string[] }> {
+    return handle<{ number: number; warnings?: string[] }>(
       await fetch(`/api/workflows/${id}/publish`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ changelog: changelog ?? "" }),
       })
     );
+  },
+  // C-98 (V13 #5) : édition après upload de l'alt et de la description IA.
+  async updatePhotoMeta(id: number, data: { alt?: string; image_description?: string }): Promise<Photo> {
+    return handle<Photo>(await fetch(`/api/photos/${id}/meta`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(data),
+    }));
   },
   async versions(id: number): Promise<{ id: number; number: number; changelog: string; author_email: string; published_at: string }[]> {
     return handle(await fetch(`/api/workflows/${id}/versions`));
@@ -167,6 +214,23 @@ export const api = {
   // (abandonner un brouillon raté sans tout retaper).
   async restoreVersion(id: number, number: number): Promise<void> {
     await handle<unknown>(await fetch(`/api/workflows/${id}/versions/${number}/restore`, { method: "POST" }));
+  },
+  // C-97 (V12 #9) : abandon/reset d'un brouillon, même jamais publié (V0)
+  // ou corrompu — la porte de sortie serveur ne dépend pas de l'éditeur.
+  async resetDraft(id: number): Promise<{ ok: true; mode: "restored" | "emptied"; restoredFrom?: number }> {
+    return handle(await fetch(`/api/workflows/${id}/reset-draft`, { method: "POST" }));
+  },
+  // C-97 (V12 #8) : indications métiers paramétrables — liste active (seed
+  // serveur = les 7 historiques) et édition admin.
+  async getIndications(): Promise<Indication[]> {
+    return handle<Indication[]>(await fetch("/api/settings/indications"));
+  },
+  async saveIndications(list: Indication[]): Promise<Indication[]> {
+    return handle<Indication[]>(await fetch("/api/settings/indications", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(list),
+    }));
   },
   // C-73 : rognage — remplace le FICHIER d'une photo (ligne inchangée :
   // position/taille/alt conservées) ; repointage = retour arrière.
@@ -184,11 +248,11 @@ export const api = {
       })
     );
   },
-  // C-72 (#4/#5) : paramètres applicatifs (page Paramètres, admin).
-  async getSettings(): Promise<{ readers_see_drafts: boolean; no_review_date_is_overdue: boolean; default_stroke_width: number }> {
+  // C-72 (#4/#5) + C-86 : paramètres applicatifs (page Paramètres, admin).
+  async getSettings(): Promise<AppSettings> {
     return handle(await fetch("/api/settings"));
   },
-  async saveSettings(data: { readers_see_drafts?: boolean; no_review_date_is_overdue?: boolean; default_stroke_width?: number }): Promise<{ readers_see_drafts: boolean; no_review_date_is_overdue: boolean; default_stroke_width: number }> {
+  async saveSettings(data: Partial<AppSettings>): Promise<AppSettings> {
     return handle(
       await fetch("/api/settings", {
         method: "PUT",
@@ -271,6 +335,20 @@ export const api = {
       await fetch(`/api/workflows/${workflowId}/feedback/${feedbackId}/resolve`, { method: "PUT" })
     );
   },
+  // C-96 (V12 #7) : commentaires de rédaction par étape — édition only.
+  async listStepComments(stepId: number): Promise<StepComment[]> {
+    return handle(await fetch(`/api/steps/${stepId}/comments`));
+  },
+  async addStepComment(stepId: number, message: string): Promise<StepComment> {
+    return handle(await fetch(`/api/steps/${stepId}/comments`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message }),
+    }));
+  },
+  async deleteStepComment(stepId: number, commentId: number): Promise<void> {
+    await handle<unknown>(await fetch(`/api/steps/${stepId}/comments/${commentId}`, { method: "DELETE" }));
+  },
   exportUrl(id: number, version?: number): string {
     return `/api/workflows/${id}/export${version ? `?version=${version}` : ""}`;
   },
@@ -302,5 +380,31 @@ export const api = {
     return handle<{ temporaryPassword: string }>(
       await fetch(`/api/admin/users/${id}/reset-password`, { method: "POST" })
     );
+  },
+  // C-94 : arborescence documentaire — l'admin structure l'arbre,
+  // tous les rôles lisent (lecteur inclus : navigation par arborescence).
+  async listCategories(): Promise<Category[]> {
+    return handle<Category[]>(await fetch("/api/categories"));
+  },
+  async createCategory(name: string, parentId?: number | null): Promise<Category> {
+    return handle<Category>(
+      await fetch("/api/categories", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name, parent_id: parentId ?? null }),
+      })
+    );
+  },
+  async updateCategory(id: number, data: { name?: string; parent_id?: number | null; position?: number }): Promise<Category> {
+    return handle<Category>(
+      await fetch(`/api/categories/${id}`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(data),
+      })
+    );
+  },
+  async deleteCategory(id: number): Promise<void> {
+    await handle<unknown>(await fetch(`/api/categories/${id}`, { method: "DELETE" }));
   },
 };

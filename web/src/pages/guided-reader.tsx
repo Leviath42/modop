@@ -65,6 +65,9 @@ export default function GuidedReaderPage() {
 
         <article className="rounded-lg bg-surface p-4 shadow-sm">
           <h2 className="mt-0 text-lg">{idx + 1}. {step.title}</h2>
+          {/* C-93 : images d'abord, texte en dessous (même ordre que la
+              lecture classique — Vague 12 #1). */}
+          {step.photos.length > 0 && <div className="mb-2"><StepCanvasView photos={step.photos ?? []} shapes={step.canvas ?? []} /></div>}
           {step.body && <p className="whitespace-pre-wrap break-words text-base">{step.body}</p>}
           {step.pictos.length > 0 && (
             <div className="mb-1.5 grid gap-1.5">
@@ -75,7 +78,6 @@ export default function GuidedReaderPage() {
               ))}
             </div>
           )}
-          {step.photos.length > 0 && <StepCanvasView photos={step.photos ?? []} shapes={step.canvas ?? []} />}
         </article>
 
         <nav

@@ -10,9 +10,15 @@ Les modes opératoires sont regroupés : **Publié** (avec compteur) puis **Brou
 
 **Cliquez un en-tête d'état ou de famille pour le replier/déplier** (chevron ▸, compteur conservé) — vos replis sont mémorisés entre les visites.
 
-**Filtres** (bouton « Filtres ») : par état, famille, tri, et **« À revoir »** (documents dont la date de revue est dépassée — ou sans date de revue, selon les paramètres).
+**Filtres** (bouton « Filtres ») : par état, famille, arborescence, tri, et **« À revoir »** (documents dont la date de revue est dépassée — ou sans date de revue, selon les paramètres).
 
 **Rechercher** : la loupe de la barre du haut ouvre l'accueil avec le champ de recherche prêt à saisir ; le champ cherche dans les titres, les références **et le texte des étapes**.
+
+## Arborescence des documents
+
+Les modes opératoires peuvent être rangés dans une **arborescence de catégories** (profondeur libre), choisie par l'administrateur sur la page **Arborescence** du menu. Un document rattaché à un autre devient son **document parent** : le lecteur l'affiche en haut de page, et les **documents liés** (enfants) en bas. À l'accueil, le filtre **Arborescence** sélectionne un sous-arbre complet et les cartes des enfants portent un badge « ↳ parent ».
+
+Pour rattacher un document : éditeur → **Détails → Emplacement** (catégorie) et **Document parent**. Les titres des catégories peuvent être renommés à tout moment sans casser les liens.
 
 ## Se connecter
 
@@ -40,11 +46,13 @@ Bouton **icône soleil / lune** dans la barre du haut (et sur la page de connexi
 - Toutes les étapes s'affichent **à la suite** — on défile naturellement.
 - Le **sélecteur d'étape** (en haut, toujours visible) suit la même logique que l'éditeur : l'étape affichée est marquée **▶**, choisir une étape y défile en douceur.
 - **Versions** : la lecture ouvre par défaut la **dernière version PUBLIÉE** — le brouillon en cours n'est jamais montré au poste. Le sélecteur de version (V1, V2…) consulte n'importe quelle version publiée avec son **changelog** ; l'option **« Brouillon en cours »** (auteurs/admins uniquement) affiche le brouillon de travail avec un bandeau d'avertissement.
-- Les pictogrammes d'avertissement apparaissent en couleur sous le titre de l'étape ; un badge **« à revoir »** signale un document en retard de revue.
-- Les photos s'affichent à la taille et la position choisies par l'auteur ; les annotations (flèches, zones, textes) sont dessinées dessus.
+- Les pictogrammes d'avertissement apparaissent en couleur sous le titre de l'étape ; un document en retard de revue est signalé par une **alerte « à revoir » qui explique la raison** (date dépassée, avec la date, ou absence de date de revue) et propose aux auteurs le bouton **« Mettre à jour la revue »** (l'éditeur s'ouvre directement sur le champ).
+- La ligne d'information sous le titre affiche la **date de revue** (« À revoir le jj/mm/aaaa ») et le **responsable** (Prénom Nom) de la version publiée consultée.
+- Les photos s'affichent à la taille et la position choisies par l'auteur ; les annotations (flèches, zones, textes) sont dessinées dessus — y compris les **annotations posées sur une photo** (repères, zones), visibles en lecture, en édition et dans l'export .docx.
 - **Cliquez/touchez une photo** : elle s'ouvre **plein écran** (Échap ou toucher le fond pour fermer, pincez pour zoomer).
 - **Signaler un problème** : bouton « Signaler un problème sur cette étape » sous chaque étape — votre message va aux auteurs.
-- **« ⬇ Exporter en .docx »** télécharge la version publiée (ouvrable dans Word/LibreOffice).
+- **« ⬇ Exporter en .docx »** (auteurs/admins, dans l'entête avec les autres outils) télécharge la version affichée (ouvrable dans Word/LibreOffice) — le canevas composé (photos positionnées + formes + textes + annotations photo) reproduit fidèlement la lecture.
+- Les intégrations et outils IA disposent de deux formats supplémentaires sur la même route : **Markdown** (`?format=md` — front matter YAML, étapes titrées, ancres `MO-xxx/etapes/n`, descriptions des photos) et **JSON canonique** (`?format=json` — snapshot exact de la version + métadonnées GED). Réservés aux comptes connectés, comme le docx.
 - **« Éditer »** (auteurs/admins) ouvre directement l'éditeur depuis la lecture.
 - Le bouton **↑** flottant en bas à droite ramène au **début du document**, visible en toute position.
 - **⇥ Guidé** : lecture **une étape par écran** (mobile au poste) — boutons Précédent / Suivant / Terminé accrochés en bas de l'écran, progression n/N.
@@ -63,11 +71,12 @@ Le lien **« ⚑ Terrain »** du lecteur ouvre la page dédiée : **À traiter**
 ### Créer
 
 1. **« + »** dans la liste.
-2. Titre, référence (unique, ex. `MO-001`), **famille** (ex. Mécanique) et **type** (ex. Maintenance), description → **Créer**.
+2. Titre, **référence unique** (vérifiée pendant la frappe — deux documents ne peuvent pas partager le même numéro, majuscules/minuscules ignorées), **famille** (liste de recherche parmi les familles existantes, saisie libre possible) et **type** (ex. Maintenance), description → **Créer**.
+3. Dès la création, la **date « À revoir le » est préremplie** (J+30 par défaut, voir Paramètres) et le **responsable se choisit par recherche** (Prénom, Nom ou email) — les deux valeurs sont enregistrées avec le document, et restent affichées au passage en édition.
 
 ### L'interface d'édition
 
-Le **bandeau** (toujours visible en haut) affiche : titre + référence, badge « Enregistrement… », bouton **Détails** (métadonnées : titre, famille, type, description, **À revoir le**, **Responsable**), **Publier**, ▸/▾ (tout ouvrir/replier), et le **sélecteur d'étape active**.
+Le **bandeau** (toujours visible en haut) affiche : titre + référence, badge « Enregistrement… », badge **« N retours terrain à traiter »** (si des remontées ouvertes existent — touchez-le pour aller les traiter), bouton **Détails** (métadonnées : titre, famille, type, description, **À revoir le**, **Responsable**), **Publier**, ▸/▾ (tout ouvrir/replier), et le **sélecteur d'étape active**.
 
 La **barre d'outils** est **fixée en bas de l'écran** (zone pouce, mobile comme PC) :
 
@@ -83,6 +92,7 @@ La **barre d'outils** est **fixée en bas de l'écran** (zone pouce, mobile comm
 - Ouvrir une étape : **cliquer sur son titre** ou le bouton ▸/▾.
 - **Réordonner** : glissez la poignée **⠿** à gauche du titre (au doigt aussi).
 - Chaque étape : titre, description, pictogrammes, photos. **Autosave** : titre/description/famille… enregistrés ~1 s après la dernière frappe.
+- **⚑ sur l'en-tête d'une étape** : des retours terrain ouverts concernent cette étape — touchez le badge pour aller les traiter.
 
 ### Photos
 
@@ -106,16 +116,23 @@ Le canevas regroupe photos et formes dans le même espace :
 
 ### Indications (pictogrammes)
 
-Bouton **⚠ Indications** : Attention, Danger, EPI, Risque électrique, Point chaud, Outillage, Information — cliquez pour activer/désactiver (compteur sur le bouton).
+Bouton **⚠ Indications** : Attention, Danger, EPI, Risque électrique, Point chaud, Outillage, Information — cliquez pour activer/désactiver (compteur sur le bouton). La liste est **paramétrable** par l'administrateur (page Paramètres → *Indications métiers*) : renommage, couleur, ajout d'encarts propres à votre métier, suppression — sans toucher aux modes opératoires déjà rédigés.
+
+### Commentaires d'auteurs (rédaction)
+
+Chaque étape ouverte offre une section repliable **« Commentaires auteurs »** : des notes internes entre rédacteurs (photo à refaire, consigne à vérifier…), affichées avec leur auteur et leur date. Saisie ≤ 1000 caractères ; suppression par l'auteur du commentaire ou un admin. **Ces notes ne sont jamais publiées** : elles n'apparaissent ni dans les versions publiées, ni chez les lecteurs, ni dans l'export docx — et disparaissent avec l'étape si elle est supprimée.
+
+Sous le canevas de chaque étape qui a des photos, une **rangée de vignettes** apparaît : touchez-en une pour ouvrir le panneau **« Photo sélectionnée »** et compléter son **texte alternatif** (accessibilité) et sa **description détaillée** (exports Markdown/JSON, recherche). Enregistrement automatique en quittant le champ. À la publication, les photos sans description déclenchent un **avertissement non bloquant** dans un encart jaune — complétez-les puis republiez.
 
 ### Publier et versions
 
-- **« Publier »** exige au moins une étape ; la première publication crée **V1**, chaque republication **V2, V3…** (snapshot immuable). Un **changelog** des modifications vous est demandé. **Publication refusée si la date de revue est dépassée** — mettez-la à jour dans les détails.
+- **« Publier »** exige au moins une étape ; la première publication crée **V1**, chaque republication **V2, V3…** (snapshot immuable). Un **changelog** des modifications vous est demandé — le champ repart **vide** à chaque nouvelle publication (aucun commentaire hérité de la précédente). **Publication refusée si la date de revue est dépassée** — mettez-la à jour dans les détails.
 - **« Abandonner le brouillon »** (bandeau) : remplace le brouillon en cours par la dernière version publiée — le recours après un brouillon raté, sans rien retaper (confirmation demandée).
+- **MO jamais publié** : le bouton devient **« Réinitialiser le brouillon »** — toutes les étapes, photos et commentaires de rédaction non publiés sont supprimés, le mode opératoire reste (à neuf). La porte de sortie quand un brouillon a mal tourné, même si ses données sont corrompues.
 - L'historique des versions (numéro, auteur, date, changelog) est consultable dans le lecteur ; une version peut être **restaurée** (l'état d'alors remplace le brouillon, l'historique reste intact).
 - **Dupliquer** : copie complète en brouillon (référence `-COPIE`), photos indépendantes.
-- **Revue périodique** : champ **« À revoir le »** dans les détails — passé l'échéance, le badge « à revoir » apparaît en liste et en lecture, et le filtre « À revoir » le remonte.
-- **Responsable** : champ à recherche dans les détails — tapez quelques lettres, choisissez parmi les comptes actifs (Prénom Nom). Si le compte responsable est désactivé, ses MO passent automatiquement **à revoir** pour réattribution.
+- **Revue périodique** : champ **« À revoir le »** dans les détails — vide à l'ouverture d'un MO sans date, il est **prérempli à J+30** (délai paramétrable, voir Paramètres) ; passé l'échéance, l'alerte « à revoir » apparaît en liste (avec la raison par document) et en lecture, et le filtre « À revoir » le remonte.
+- **Responsable** : champ à recherche dans les détails — tapez quelques lettres du **Prénom, du Nom ou de l'email**, choisissez parmi les comptes actifs (Prénom Nom) ; la recherche fonctionne pour tous les auteurs. Si le compte responsable est désactivé, ses MO passent automatiquement **à revoir** pour réattribution.
 
 ### Supprimer un mode opératoire (admin uniquement)
 
@@ -137,8 +154,10 @@ Section en bas de l'éditeur, double confirmation avec **case à cocher décoch�
 Options appliquées **immédiatement** à toute l'application :
 
 - **Sans date de revue = à revoir** (activé par défaut) ;
+- **Délai de revue par défaut** en jours (défaut 30) — préremplit « À revoir le » d'un MO sans date, à J+délai ;
 - **Brouillons visibles par les lecteurs** (désactivé par défaut) ;
-- **Épaisseur de trait par défaut** des formes (1–10, défaut 5).
+- **Épaisseur de trait par défaut** des formes (1–10, défaut 5) ;
+- **Indications métiers** (C-97) — encarts du bouton « Indications » de l'éditeur : libellé, couleur, ajout/suppression, « Restaurer les 7 par défaut ». Appliqués uniquement au clic sur **Enregistrer** ; ne modifient jamais les MO existants.
 
 La page **Comptes** affiche aussi une alerte avec le nombre de modes opératoires **sans responsable**.
 

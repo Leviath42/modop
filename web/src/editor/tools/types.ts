@@ -20,6 +20,9 @@ export interface PictoPreset {
 export interface ToolContext {
   isNew: boolean;
   steps: Step[];
+  // C-97 (V12 #8) : indications métiers actives (paramétrées par l'admin) —
+  // le flyout « Indications » les propose à la place du jeu en dur.
+  indications: PictoPreset[];
   activeStepId: number | null;
   insertTool: Shape["type"] | null;
   insertColor: string;
