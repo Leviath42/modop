@@ -55,7 +55,8 @@ web/src/lib/         tests front autonomes (jsdom, un fichier = un scénario, ex
 
 | Zone de travail | Lire |
 |---|---|
-| État du projet / restant | `docs/roadmap.md` (vagues 7-10) |
+| État du projet / restant | `docs/roadmap.md` (vagues 7-13) |
+| Architecture docs / API IA | `docs/spec-api-ia.md` |
 | Spécification RF/RNF | `docs/cahier-des-charges.md` § 1.3 bis (liste RF) |
 | Pourquoi d'un comportement existant | `grep -n "<mot-clé>" docs/correctifs.md` — **ne pas lire ce journal en entier** |
 | Sécurité / config prod | `docs/durcissement-securite.md` |
