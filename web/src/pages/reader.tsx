@@ -201,6 +201,13 @@ export default function ReaderPage() {
         {wf.steps.map((step, i) => (
           <article key={step.id} id={`etape-${i}`} className="mb-3 scroll-mt-32 rounded-lg bg-surface p-4 shadow-sm">
             <h2 className="mt-0 text-base font-semibold">{i + 1}. {step.title}</h2>
+            {/* C-93 : les images d'abord, le texte de l'étape en dessous —
+                l'opérateur voit le geste, puis lit l'instruction (Vague 12 #1). */}
+            {step.photos.length > 0 && (
+              <div className="mb-2 grid gap-2.5">
+                <StepCanvasView photos={step.photos ?? []} shapes={step.canvas ?? []} />
+              </div>
+            )}
             {step.body && <p className="whitespace-pre-wrap break-words">{step.body}</p>}
             {step.pictos.length > 0 && (
               <div className="mb-1.5 grid gap-1.5">
@@ -209,11 +216,6 @@ export default function ReaderPage() {
                     <TriangleAlert size={16} aria-hidden="true" style={{ color: p.color }} /> {p.label}
                   </p>
                 ))}
-              </div>
-            )}
-            {step.photos.length > 0 && (
-              <div className="grid gap-2.5">
-                <StepCanvasView photos={step.photos ?? []} shapes={step.canvas ?? []} />
               </div>
             )}
             {feedbackOpenStep === step.id ? (

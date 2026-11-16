@@ -699,26 +699,7 @@ export default function EditorPage() {
                   </div>
                   {openSteps.has(step.id) && (
                   <>
-                  <Textarea
-                    value={step.body}
-                    rows={2}
-                    placeholder="Description de l'opération…"
-                    onChange={(e) => { setActiveStepId(step.id); setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, body: e.target.value } : s))); }}
-                    onBlur={() => patchStep(step, { body: step.body })}
-                    className="min-h-0"
-                    aria-label={`Description étape ${i + 1}`}
-                  />
-                  {/* #12 : indications rendues à l'identique du mode lecture —
-                      effet immédiat visible pendant l'édition. */}
-                  {step.pictos.length > 0 && (
-                    <div className="grid gap-1.5">
-                      {step.pictos.map((p, k) => (
-                        <p key={k} className="m-0 flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-bold uppercase tracking-wide text-foreground" style={{ background: `${p.color}1f`, borderLeft: `5px solid ${p.color}` }}>
-                          <TriangleAlert size={16} aria-hidden="true" style={{ color: p.color }} /> {p.label}
-                        </p>
-                      ))}
-                    </div>
-                  )}
+
                   {uploadProgress?.stepId === step.id && (
                     <p role="status" className="m-0 text-sm text-muted-foreground">
                       Envoi des photos… {uploadProgress.done}/{uploadProgress.total}
@@ -782,6 +763,28 @@ export default function EditorPage() {
                       />
                     </div>
                   </div>
+                  {/* C-93 : images d'abord, texte de l'étape en dessous —
+                      même ordre que le mode lecture (Vague 12 #1). */}
+                  <Textarea
+                    value={step.body}
+                    rows={2}
+                    placeholder="Description de l'opération…"
+                    onChange={(e) => { setActiveStepId(step.id); setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, body: e.target.value } : s))); }}
+                    onBlur={() => patchStep(step, { body: step.body })}
+                    className="min-h-0"
+                    aria-label={`Description étape ${i + 1}`}
+                  />
+                  {/* #12 : indications rendues à l'identique du mode lecture —
+                      effet immédiat visible pendant l'édition. */}
+                  {step.pictos.length > 0 && (
+                    <div className="grid gap-1.5">
+                      {step.pictos.map((p, k) => (
+                        <p key={k} className="m-0 flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-bold uppercase tracking-wide text-foreground" style={{ background: `${p.color}1f`, borderLeft: `5px solid ${p.color}` }}>
+                          <TriangleAlert size={16} aria-hidden="true" style={{ color: p.color }} /> {p.label}
+                        </p>
+                      ))}
+                    </div>
+                  )}
                   </>
                   )}
                 </li>

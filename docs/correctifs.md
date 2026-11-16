@@ -36,6 +36,20 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-93 — Texte des étapes en dessous des images (réalisé)
+
+**Problème** (retour propriétaire 16 nov. 2026, Vague 12 #1) : le texte d'une étape s'affichait AU-DESSUS des images — l'opérateur lisait l'instruction puis devait remonter vers le geste illustré. Le terrain veut l'inverse : voir d'abord, lire ensuite.
+
+**Correctif** : ordre d'affichage de l'étape inversé dans les trois vues — lecture, lecture guidée, édition : **images d'abord, puis le texte, puis les pictos** (les indications restent collées au texte). L'éditeur suit le même ordre (WYSIWYG : l'effet est visible pendant la saisie) ; les blocs liés aux photos (barre d'envoi, note « pas de photo ») restent au-dessus du canevas.
+
+**Test** : `web/src/lib/reader-step-order.test.ts` — dans l'ordre du DOM de la page de lecture, le conteneur du canevas précède le paragraphe de texte.
+
+**Fichiers** : `web/src/pages/reader.tsx`, `web/src/pages/guided-reader.tsx`, `web/src/pages/editor.tsx`, `web/src/lib/reader-step-order.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + tous tests front verts.
+
+---
+
 ## C-91 — MCP : instructions serveur servies à l'initialize (réalisé)
 
 **Problème** : un agent qui découvre le connecteur MCP ne voit que 24 outils isolés — pas la carte du domaine (cycle draft→publish→versions, conventions, recette de création complète). Il apprend le fonctionnement par essais/erreurs.
