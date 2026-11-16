@@ -36,6 +36,20 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-100 — Montées de versions sécurité des dépendances + réalignement main (réalisé)
+
+**Problème** : Dependabot signalait 30 vulnérabilités sur la branche par défaut (24 high, 4 moderate, 2 low). Sur `beta` l'audit restait à 9 moderate (chaîne `minimatch` / `@eslint/*` / `typescript-eslint`, outillage dev uniquement) — l'écart venait de `main` resté 31 commits derrière (correctifs sécurité C-80+ jamais fusionnés, dont body-parser GHSA-27r3-jxmh-p828 déjà fixé sur `beta` en cf7858b).
+
+**Correctif** :
+1. `npm audit fix` — lock racine uniquement, dépendances transitives (aucun `package.json` modifié) : audits 0/0/0 sur root, server et web. Zéro impact runtime (outillage dev).
+2. **Réalignement de `main` sur `beta`** : fusion des 31 commits C-81→C-100 (fast-forward impossible — `main` portait la PR #1 cahier des charges + un ancien merge ; fusion propre, aucun conflit). Les 24 high Dependabot disparaissent : les correctifs étaient déjà livrés sur `beta`. `beta` reste la branche de production (O2 retiré), `main` redevient un miroir à jour.
+
+**Test** : aucun changement de code — gates complètes rejouées : build web + tests front + **164/164 tests serveur** + lint verts.
+
+**Fichiers** : `package-lock.json`.
+
+**État** : livré le 16 nov. 2026 — branche `beta` (déploiement CT 203) ; `main` réaligné le jour même.
+
 ## C-99 — Renommage image_description, vignettes d'édition photo, fix dialog publication (réalisé)
 
 **Problème** (retour utilisateur post-C-98) : (a) le nom `ai_description` était trop spécifique — l'IA n'est qu'un lecteur parmi d'autres de ce champ (exports md/json, recherche, outils d'analyse) ; (b) après une publication réussie avec avertissements, recliquer sur « Publier » affichait encore « Publier V1 ? » — le state `wf` de l'éditeur n'était jamais rafraîchi ; (c) aucune voie d'édition découverte : le panneau alt/description ne s'ouvrait que via la sélection d'une photo sur le canevas, mécanisme indécouvrable.
