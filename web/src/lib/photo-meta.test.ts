@@ -1,7 +1,7 @@
 import { JSDOM } from "jsdom";
 import type { Photo } from "../api";
 
-// C-98 (V13 #5) : composant PhotoMeta — alt + description IA de la photo
+// C-98 (V13 #5) : composant PhotoMeta — alt + description de la photo
 // sélectionnée, sauvegarde automatique à la sortie du champ.
 // NB : globales jsdom posées AVANT l'import de react-dom (onChange fiable).
 
@@ -14,7 +14,7 @@ g.matchMedia = dom.window.matchMedia?.bind(dom.window) ?? ((q: string) => ({ mat
 g.ResizeObserver = class { observe() {} disconnect() {} unobserve() {} };
 
 const calls: { method: string; url: string; body?: Record<string, unknown> }[] = [];
-let PHOTO: Photo = { id: 12, filename: "p.jpg", alt: "vue avant", ai_description: "" };
+let PHOTO: Photo = { id: 12, filename: "p.jpg", alt: "vue avant", image_description: "" };
 
 g.fetch = (async (url: unknown, init?: { method?: string; body?: string }) => {
   const u = String(url);
@@ -45,9 +45,9 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // valeurs initiales rendues
 const input = doc.querySelector("input") as HTMLInputElement | null;
 const area = doc.querySelector("textarea") as HTMLTextAreaElement | null;
-if (!input || !area) throw new Error("champs alt/description IA absents");
+if (!input || !area) throw new Error("champs alt/description absents");
 if (String(input.value) !== "vue avant") throw new Error("alt initial attendu « vue avant », obtenu « " + input.value + " »");
-if (area.value !== "") throw new Error("description IA initiale attendue vide");
+if (area.value !== "") throw new Error("description initiale attendue vide");
 
 // modification + sortie de champ → PUT automatique avec les deux valeurs
 // (setter natif AVANT le dispatch input, sinon React ignore le changement)
@@ -62,7 +62,7 @@ input.dispatchEvent(new dom.window.Event("focusout", { bubbles: true }));
 await wait(150);
 const put = calls.find((c) => c.method === "PUT" && c.url.includes("/api/photos/12/meta"));
 if (!put) throw new Error("PUT /api/photos/12/meta non déclenché au blur");
-if (put.body?.alt !== "vue après" || put.body?.ai_description !== "armoire ouverte, rangées de fusibles")
+if (put.body?.alt !== "vue après" || put.body?.image_description !== "armoire ouverte, rangées de fusibles")
   throw new Error("body PUT inattendu : " + JSON.stringify(put.body));
 if (!(doc.body.textContent ?? "").includes("Enregistré")) throw new Error("confirmation d'enregistrement absente");
 if (saved.length !== 1) throw new Error("onSaved attendu 1 fois, obtenu " + saved.length);
@@ -77,9 +77,9 @@ await wait(100);
 if (calls.length !== before) throw new Error("PUT ne doit pas partir sans modification");
 
 // sélection d'une autre photo → champs re-synchronisés
-renderPhoto({ id: 13, filename: "q.jpg", alt: "autre vue", ai_description: "déjà décrite" });
+renderPhoto({ id: 13, filename: "q.jpg", alt: "autre vue", image_description: "déjà décrite" });
 await wait(150);
 if (String(input.value) !== "autre vue") throw new Error("alt non resynchronisé : « " + input.value + " »");
-if (String(area.value) !== "déjà décrite") throw new Error("description IA non resynchronisée : « " + area.value + " »");
+if (String(area.value) !== "déjà décrite") throw new Error("description non resynchronisée : « " + area.value + " »");
 
 console.log("photo-meta.test : OK (rendu, autosave PUT, re-sync)");

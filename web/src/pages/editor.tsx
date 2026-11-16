@@ -66,6 +66,8 @@ export default function EditorPage() {
   const [cropUndoCount, setCropUndoCount] = useState(0);
   // C-98 (V13 #5) : avertissements de publication (photos sans description IA).
   const [publishWarnings, setPublishWarnings] = useState<{ number: number; warnings: string[] } | null>(null);
+  // C-99 : photo ouverte dans le panneau d'édition (vignettes sous le canevas)
+  const [metaSel, setMetaSel] = useState<{ stepId: number; photoId: number } | null>(null);
   const canvasDeleteRef = useRef<(() => void) | null>(null);
   const [openSteps, setOpenSteps] = useState<Set<number>>(new Set());
   const [showMeta, setShowMeta] = useState(false);
@@ -473,8 +475,12 @@ export default function EditorPage() {
       await api.updateWorkflow(wf.id, { title, category, family, description, review_due: reviewDue || null, owner_email: ownerEmail || null });
       const { number, warnings } = await api.publishWorkflow(wf.id, changelog);
       setChangelog(""); // C-96 (V12 #6) : jamais de commentaire hérité à la publication suivante
-      // C-98 (V13 #5) : publication RÉUSSIE mais photos sans description IA —
-      // on reste sur l'éditeur (non bloquant) pour permettre de les compléter.
+      // C-99 : rafraîchir wf.state/current_version pour que le dialog de
+      // confirmation affiche le bon numéro à la publication suivante
+      // (avant : « Publier V1 ? » restait affiché après une première publication).
+      setWf((w) => (w ? { ...w, state: "published", current_version: number } : w));
+      // C-98/C-99 (V13 #5) : publication RÉUSSIE mais photos sans description
+      // d'image — on reste sur l'éditeur (non bloquant) pour les compléter.
       if ((warnings ?? []).length > 0) {
         setPublishWarnings({ number, warnings: warnings ?? [] });
         setNotice(null);
@@ -496,11 +502,11 @@ export default function EditorPage() {
         {error && <Alert variant="error">{error}</Alert>}
         {notice && <Alert variant="ok">{notice}</Alert>}
         {publishWarnings && (
-          <Alert variant="warn" title={`Publié en V${publishWarnings.number} — ${publishWarnings.warnings.length} photo(s) sans description IA (non bloquant)`}>
+          <Alert variant="warn" title={`Publié en V${publishWarnings.number} — ${publishWarnings.warnings.length} photo(s) sans description d'image (non bloquant)`}>
             <ul className="mb-2 list-disc pl-4">
               {publishWarnings.warnings.map((w) => <li key={w}>{w}</li>)}
             </ul>
-            Sélectionnez chaque photo sur le canevas pour compléter sa description (enregistrement automatique), puis republiez.
+            Cliquez sur la vignette d'une photo sous le canevas de son étape pour compléter sa description (enregistrement automatique), puis republiez.
           </Alert>
         )}
 
@@ -827,14 +833,39 @@ export default function EditorPage() {
                       cropRequest={activeStepId === step.id ? cropTick : 0}
                       onPhotosChanged={async () => { const w = await api.getWorkflow(id!); setSteps(w.steps); }}
                     />
-                    {activeStepId === step.id && canvasSel.photos.length === 1 && (() => {
-                      const sel = (step.photos ?? []).find((ph) => ph.id === canvasSel.photos[0]);
-                      return sel ? (
-                        <PhotoMeta
-                          photo={sel}
-                          onSaved={(p) => setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, photos: (s.photos ?? []).map((ph) => (ph.id === p.id ? p : ph)) } : s)))}
-                        />
-                      ) : null;
+                    {(step.photos ?? []).length > 0 && (() => {
+                      // C-99 : vignettes cliquables sous le canevas — la sélection
+                      // canevas seule ne suffisait pas (race avec activeStepId,
+                      // découverte de la sélection impossible pour l'utilisateur).
+                      const photos = step.photos ?? [];
+                      const sel = (activeStepId === step.id && canvasSel.photos.length === 1
+                        ? photos.find((ph) => ph.id === canvasSel.photos[0])
+                        : undefined
+                      ) ?? (metaSel?.stepId === step.id ? photos.find((ph) => ph.id === metaSel.photoId) : undefined);
+                      return (
+                        <div className="grid gap-1.5">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-xs text-muted-foreground">Photos de l'étape — cliquez pour éditer alt et description :</span>
+                            {photos.map((ph) => (
+                              <button
+                                key={ph.id}
+                                type="button"
+                                onClick={() => setMetaSel(sel?.id === ph.id ? null : { stepId: step.id, photoId: ph.id })}
+                                title={ph.alt || ph.filename}
+                                className={`h-14 overflow-hidden rounded-md border ${sel?.id === ph.id ? "border-2 border-foreground" : "border-border"}`}
+                              >
+                                <img src={"/photos/" + ph.filename} alt={ph.alt || ph.filename} className="h-full w-auto" />
+                              </button>
+                            ))}
+                          </div>
+                          {sel && (
+                            <PhotoMeta
+                              photo={sel}
+                              onSaved={(p) => setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, photos: (s.photos ?? []).map((ph) => (ph.id === p.id ? p : ph)) } : s)))}
+                            />
+                          )}
+                        </div>
+                      );
                     })()}
                     <div>
                       <input

@@ -91,12 +91,14 @@ export function photoRouter(db: Database.Database): Router {
     const dir = photosDir();
     const filename = crypto.randomBytes(16).toString("hex") + ext;
     fs.writeFileSync(path.join(dir, filename), req.file.buffer);
-    // C-98 (V13 #5) : la description IA (texte descriptif de l'image pour
-    // les outils IA et l'export md/json) se pose dès l'upload, comme l'alt.
-    const aiDescription = String((req.body as { ai_description?: unknown })?.ai_description ?? "").trim().slice(0, 1000);
+    // C-98/C-99 (V13 #5) : la description détaillée de l'image (plus riche
+    // que l'alt ; sert aux exports, à la recherche et aux outils d'analyse)
+    // se pose dès l'upload, comme l'alt. Renommée depuis « ai_description »
+    // (C-99) : le nom décrit la donnée, pas un consommateur.
+    const imageDescription = String((req.body as { image_description?: unknown })?.image_description ?? "").trim().slice(0, 1000);
     const info = db
-      .prepare("INSERT INTO photos (step_id, filename, alt, ai_description) VALUES (?, ?, ?, ?)")
-      .run(step.id, filename, (req.body?.alt as string) ?? "", aiDescription);
+      .prepare("INSERT INTO photos (step_id, filename, alt, image_description) VALUES (?, ?, ?, ?)")
+      .run(step.id, filename, (req.body?.alt as string) ?? "", imageDescription);
     const photo = db.prepare("SELECT * FROM photos WHERE id = ?").get(info.lastInsertRowid);
     db.prepare("UPDATE workflows SET updated_at = datetime('now') WHERE id = (SELECT workflow_id FROM steps WHERE id = ?)").run(step.id);
     res.status(201).json(photo);
@@ -198,7 +200,7 @@ export function staticPhotos(): express.RequestHandler {
   };
 }
 
-// C-98 (V13 #5) : édition après upload de l'alt et de la description IA.
+// C-98/C-99 (V13 #5) : édition après upload de l'alt et de la description détaillée.
 // Auparavant AUCUNE édition de l'alt n'existait post-upload : il fallait
 // supprimer et re-téléverser la photo. Author+, bornes alt 200 / IA 1000.
 export function photoMetaRouter(db: Database.Database): Router {
@@ -212,12 +214,12 @@ export function photoMetaRouter(db: Database.Database): Router {
       res.status(404).json({ error: "not_found", message: "photo introuvable" });
       return;
     }
-    const body = req.body as { alt?: unknown; ai_description?: unknown };
-    const patch: { alt?: string; ai_description?: string } = {};
+    const body = req.body as { alt?: unknown; image_description?: unknown };
+    const patch: { alt?: string; image_description?: string } = {};
     if (typeof body.alt === "string") patch.alt = body.alt.trim().slice(0, 200);
-    if (typeof body.ai_description === "string") patch.ai_description = body.ai_description.trim().slice(0, 1000);
+    if (typeof body.image_description === "string") patch.image_description = body.image_description.trim().slice(0, 1000);
     if (Object.keys(patch).length === 0) {
-      res.status(422).json({ error: "validation", message: "aucun champ modifiable fourni (alt, ai_description)" });
+      res.status(422).json({ error: "validation", message: "aucun champ modifiable fourni (alt, image_description)" });
       return;
     }
     const sets = Object.keys(patch).map((k) => `${k} = ?`).join(", ");

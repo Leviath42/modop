@@ -69,7 +69,7 @@ export class ModopClient {
    * Upload multipart d'une photo (FormData/Blob natifs Node 22).
    * binary : Buffer brut (magic numbers déjà contrôlés côté API).
    */
-  async callUpload(path: string, filename: string, binary: Buffer, alt?: string, aiDescription?: string): Promise<ApiResult> {
+  async callUpload(path: string, filename: string, binary: Buffer, alt?: string, imageDescription?: string): Promise<ApiResult> {
     await this.ensureSession();
     const doFetch = async (): Promise<Response> => {
       const form = new FormData();
@@ -82,7 +82,7 @@ export class ModopClient {
             : "image/jpeg";
       form.append("file", new Blob([new Uint8Array(binary)], { type: mime }), filename);
       if (alt !== undefined) form.append("alt", alt);
-      if (aiDescription !== undefined) form.append("ai_description", aiDescription);
+      if (imageDescription !== undefined) form.append("image_description", imageDescription);
       return fetch(`${getMcpBaseUrl()}${path}`, {
         method: "POST",
         headers: this.cookie ? { cookie: this.cookie } : {},

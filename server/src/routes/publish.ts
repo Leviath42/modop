@@ -53,17 +53,18 @@ export function publishRouter(db: Database.Database): Router {
         // C-92 : les annotations photo (formes posées sur chaque photo,
         // p.ex. via le MCP annotate_photo) font partie du document publié —
         // sans elles la version publiée les perdait et un restore les effaçait.
-        photos: (db.prepare("SELECT id, filename, alt, ai_description, annotations, display_size, display_align, display_x, display_y, display_w FROM photos WHERE step_id = ?").all(s.id) as { annotations: string | null }[]).map((ph) => ({ ...ph, annotations: JSON.parse(ph.annotations ?? "[]") })),
+        photos: (db.prepare("SELECT id, filename, alt, image_description, annotations, display_size, display_align, display_x, display_y, display_w FROM photos WHERE step_id = ?").all(s.id) as { annotations: string | null }[]).map((ph) => ({ ...ph, annotations: JSON.parse(ph.annotations ?? "[]") })),
       })) as SnapshotStep[],
     };
-    // C-98 (V13 #5) : avertissements NON BLOQUANTS — chaque photo publiée
-    // sans description IA est listée (l'export md/json et les outils IA
-    // s'appuient sur ce champ). La publication passe quand même.
+    // C-98/C-99 (V13 #5) : avertissements NON BLOQUANTS — chaque photo
+    // publiée sans description détaillée est listée (les exports md/json,
+    // la recherche et les outils d'analyse s'appuient sur ce champ). La
+    // publication passe quand même.
     const warnings = snapshot.steps.flatMap((s) => {
-      const phs = (s as unknown as { photos?: { alt: string; filename: string; ai_description?: string }[] }).photos ?? [];
+      const phs = (s as unknown as { photos?: { alt: string; filename: string; image_description?: string }[] }).photos ?? [];
       return phs
-        .filter((ph) => !(ph.ai_description ?? "").trim())
-        .map((ph) => `étape ${s.position + 1} — photo « ${ph.alt || ph.filename} » sans description IA`);
+        .filter((ph) => !(ph.image_description ?? "").trim())
+        .map((ph) => `étape ${s.position + 1} — photo « ${ph.alt || ph.filename} » sans description d'image`);
     });
     const changelog = typeof (req.body as { changelog?: unknown })?.changelog === "string"
       ? ((req.body as { changelog: string }).changelog).slice(0, 2000)

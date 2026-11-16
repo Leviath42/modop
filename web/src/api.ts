@@ -44,7 +44,7 @@ export interface Photo {
   step_id?: number;
   filename: string;
   alt: string;
-  ai_description?: string;
+  image_description?: string;
   annotations?: unknown[];
   display_size?: "small" | "medium" | "large" | "full";
   display_align?: "left" | "center" | "right";
@@ -197,7 +197,7 @@ export const api = {
     );
   },
   // C-98 (V13 #5) : édition après upload de l'alt et de la description IA.
-  async updatePhotoMeta(id: number, data: { alt?: string; ai_description?: string }): Promise<Photo> {
+  async updatePhotoMeta(id: number, data: { alt?: string; image_description?: string }): Promise<Photo> {
     return handle<Photo>(await fetch(`/api/photos/${id}/meta`, {
       method: "PUT",
       headers: { "content-type": "application/json" },

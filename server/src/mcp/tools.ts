@@ -286,7 +286,7 @@ export function registerModopTools(server: McpServer, client: ModopClient): void
         filename: z.string().min(1).describe("nom de fichier avec extension (.jpg/.png/.webp)"),
         content_base64: z.string().min(1).describe("contenu binaire de l'image encodé en base64"),
         alt: z.string().optional().describe("texte alternatif"),
-        ai_description: z.string().optional().describe("description de l'image pour les outils IA (export md/json)"),
+        image_description: z.string().optional().describe("description détaillée de l'image (export md/json, recherche)"),
       },
     },
     async (args) => {
@@ -295,7 +295,7 @@ export function registerModopTools(server: McpServer, client: ModopClient): void
         args.filename,
         Buffer.from(args.content_base64, "base64"),
         args.alt,
-        args.ai_description,
+        args.image_description,
       );
       if (res.status !== 201) throw new Error(apiError("téléversement de la photo", res));
       return asText(res.body);
@@ -305,18 +305,18 @@ export function registerModopTools(server: McpServer, client: ModopClient): void
   server.registerTool(
     "set_photo_description",
     {
-      description: "Compléter le texte alternatif et/ou la description IA d'une photo déjà téléversée (bornes 200/1000 caractères).",
+      description: "Compléter le texte alternatif et/ou la description détaillée d'une photo déjà téléversée (bornes 200/1000 caractères).",
       inputSchema: {
         photo_id: z.number().int(),
         alt: z.string().optional().describe("texte alternatif"),
-        ai_description: z.string().optional().describe("description de l'image pour les outils IA (export md/json)"),
+        image_description: z.string().optional().describe("description détaillée de l'image (export md/json, recherche)"),
       },
     },
     async (args) => {
-      const { photo_id, alt, ai_description } = args;
+      const { photo_id, alt, image_description } = args;
       return await expectOk(client, [200], "mise à jour de la photo", "PUT", `/api/photos/${photo_id}/meta`, {
         ...(alt !== undefined ? { alt } : {}),
-        ...(ai_description !== undefined ? { ai_description } : {}),
+        ...(image_description !== undefined ? { image_description } : {}),
       });
     },
   );

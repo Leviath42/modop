@@ -36,21 +36,36 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
-## C-98 — Chemins arborescents en API, exports Markdown/JSON, description IA des images (réalisé)
+## C-99 — Renommage image_description, vignettes d'édition photo, fix dialog publication (réalisé)
+
+**Problème** (retour utilisateur post-C-98) : (a) le nom `ai_description` était trop spécifique — l'IA n'est qu'un lecteur parmi d'autres de ce champ (exports md/json, recherche, outils d'analyse) ; (b) après une publication réussie avec avertissements, recliquer sur « Publier » affichait encore « Publier V1 ? » — le state `wf` de l'éditeur n'était jamais rafraîchi ; (c) aucune voie d'édition découverte : le panneau alt/description ne s'ouvrait que via la sélection d'une photo sur le canevas, mécanisme indécouvrable.
+
+**Correctif** :
+1. **Renommage `ai_description` → `image_description`** partout : colonne `photos` (migration `ALTER TABLE photos RENAME COLUMN` au démarrage — zéro donnée au moment du renommage, champ jamais saisi en C-98), upload multipart, `PUT /api/photos/:id/meta`, snapshot publish + warnings (« sans description d'image »), export md (label `*Description : …*`), MCP (`upload_photo`, `set_photo_description`), front, docs. L'ancien nom n'est plus accepté.
+2. **Vignettes cliquables** : chaque étape avec photos affiche sous son canevas une rangée de vignettes ; toucher une vignette ouvre le panneau « Photo sélectionnée » (alt + description détaillée, autosave onBlur). La sélection canevas ouvre aussi le panneau. Affiché pour toutes les étapes avec photos, pas seulement l'étape active.
+3. **Fix dialog publication** : `publish()` rafraîchit désormais `wf` (`state`, `current_version`) — la confirmation affiche « Publier V2 ? » après une V1.
+
+**Test** : renommages dans `server/test/v13-exports.test.ts` (2) et `web/src/lib/photo-meta.test.ts` (1) — pas de logique nouvelle côté serveur ; la migration rename ne s'applique qu'aux bases existantes (les bases de test sont créées au schéma à jour).
+
+**Fichiers** : `server/src/db/schema.ts`, `server/src/routes/{photos,publish,export}.ts`, `server/src/mcp/{tools,modop-client}.ts`, `web/src/{api.ts,photo-meta.tsx}`, `web/src/pages/editor.tsx`, tests + docs.
+
+**État** : livré le 16 nov. 2026 — branche `beta` (déploiement CT 203).
+
+## C-98 — Chemins arborescents en API, exports Markdown/JSON, description détaillée des images (réalisé)
 
 **Problème** (Vague 13 #1/#2/#3/#5, spéc `docs/spec-api-ia.md`) : (a) l'arborescence documentaire (C-94) n'était **pas exposée en API** — aucun chemin `mecanique/montage` consommable par un outil externe ; (b) l'export unique était le **docx**, inutilisable par un LLM ou une intégration GMAO (binaire, texte brut perdu) ; (c) les photos n'avaient **aucune description pour l'IA** (l'`alt` sert à l'accessibilité) et **aucune édition d'alt post-upload** — se tromper exigeait de supprimer et re-téléverser la photo.
 
 **Correctif** :
 1. **Chemins à la volée (V13 #1)** : `categoryPaths()` (nouveau `server/src/lib/category-path.ts`) charge les catégories en une requête et joint les slugs depuis la racine. Exposé : `category_path` sur `GET /api/workflows/:id` et la liste, `path` sur `GET /api/categories`. **Jamais stocké** (slugs immuables C-94) : aucun risque de désynchronisation au déplacement d'un nœud.
 2. **Exports md/json (V13 #2/#3)** : la route export existante branchée sur `?format=md|json` (défaut inchangé : docx ; `?version=n` inchangé, 404 si introuvable). **md** : front matter YAML (référence, titre, version, chemin, famille, type, description, responsable, dates) + `## Étape n — titre` + `> Ancre : MO-xxx/etapes/n` par étape + corps + pictos + images `![alt](/photos/fichier)` + `*Description IA : …*`. **json** : snapshot EXACT de la version publiée (zéro perte) + bloc `meta` (GED, `category_path`, `anchors`). Audits dédiés `export_md`/`export_json`.
-3. **Description IA (V13 #5)** : colonne `photos.ai_description` (migration auto, défaut `""`) ; posée dès l'upload (multipart `ai_description`, borne 1000) ; **nouvelle route `PUT /api/photos/:id/meta`** (author+, `alt?`/`ai_description?`, bornes 200/1000, 422 si aucun champ, audit `photo_meta`) — première édition d'alt post-upload du produit ; portée par le snapshot de publication ; réponse publish étendue `{ number, warnings: string[] }` (photos sans description, **non bloquant**). MCP : `upload_photo` accepte `ai_description`, nouvel outil `set_photo_description`.
-4. **Front** : panneau « Photo sélectionnée » sous le canevas quand une photo est sélectionnée (alt + description IA, autosave onBlur, re-sync au changement de photo) ; publication avec avertissements = encart jaune listant les photos à compléter, on reste sur l'éditeur (republier après complétion).
+3. **Description IA (V13 #5)** : colonne `photos.image_description` (migration auto, défaut `""`) ; posée dès l'upload (multipart `image_description`, borne 1000) ; **nouvelle route `PUT /api/photos/:id/meta`** (author+, `alt?`/`image_description?`, bornes 200/1000, 422 si aucun champ, audit `photo_meta`) — première édition d'alt post-upload du produit ; portée par le snapshot de publication ; réponse publish étendue `{ number, warnings: string[] }` (photos sans description, **non bloquant**). MCP : `upload_photo` accepte `image_description`, nouvel outil `set_photo_description`.
+4. **Front** : panneau « Photo sélectionnée » sous le canevas quand une photo est sélectionnée (alt + description détaillée, autosave onBlur, re-sync au changement de photo) ; publication avec avertissements = encart jaune listant les photos à compléter, on reste sur l'éditeur (republier après complétion).
 
-**Test** : `server/test/v13-exports.test.ts` (2 : résolution category_path workflow/liste/catégories ; meta 403/422/404 + warnings publish V1→V2 + contenu md (front matter, chemin, ancres, description IA) + json (meta, anchors, snapshot exact) + 404 version + 401 + docx défaut) ; `web/src/lib/photo-meta.test.ts` (rendu, autosave PUT au blur, pas de PUT sans modification, re-sync au changement de photo).
+**Test** : `server/test/v13-exports.test.ts` (2 : résolution category_path workflow/liste/catégories ; meta 403/422/404 + warnings publish V1→V2 + contenu md (front matter, chemin, ancres, description détaillée) + json (meta, anchors, snapshot exact) + 404 version + 401 + docx défaut) ; `web/src/lib/photo-meta.test.ts` (rendu, autosave PUT au blur, pas de PUT sans modification, re-sync au changement de photo).
 
 **Fichiers** : `server/src/lib/category-path.ts` (nouveau), `server/src/db/schema.ts`, `server/src/routes/{photos,publish,workflows,list,categories,export}.ts`, `server/src/app.ts`, `server/src/mcp/{tools,modop-client}.ts`, `server/test/v13-exports.test.ts`, `web/src/api.ts`, `web/src/photo-meta.tsx` (nouveau), `web/src/pages/editor.tsx`, `web/src/lib/photo-meta.test.ts`
 
-**État** : livré le 16 nov. 2026 — branche `beta` (déploiement CT 203).
+**État** : livré le 16 nov. 2026 — branche `beta` (déploiement CT 203). *C-99 : champ renommé `image_description`, label md `*Description : …*`, panneau désormais ouvert via vignettes cliquables par étape.*
 
 ## C-97 — Indications métiers paramétrables + abandon d'un brouillon sans version publiée (réalisé)
 

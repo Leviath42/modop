@@ -9,7 +9,7 @@ import os from "node:os";
 import path from "node:path";
 
 // C-98 (V13 #1/#2/#3/#5) — chemin arborescent résolu à la volée, exports
-// Markdown et JSON canonique, ai_description (upload/meta/warnings publish).
+// Markdown et JSON canonique, image_description (upload/meta/warnings publish).
 process.env.MODOP_PHOTOS_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "modop-v13-"));
 
 const db = openDb(":memory:");
@@ -70,7 +70,7 @@ test("C-98 : category_path résolu à la volée (workflow, liste, catégories)",
   assert.equal(cRacine.path, "mecanique");
 });
 
-test("C-98 : ai_description (meta, warnings) + exports md/json canoniques", async () => {
+test("C-98 : image_description (meta, warnings) + exports md/json canoniques", async () => {
   const elec = await call("POST", "/api/categories", { name: "Élec" }, boss);
   const cab = await call("POST", "/api/categories", { name: "Câblage", parent_id: elec.json.id }, boss);
   const wf = await call("POST", "/api/workflows", { title: "Câblage armoire", reference: "MO-V13B", category_id: cab.json.id }, auteur);
@@ -83,25 +83,25 @@ test("C-98 : ai_description (meta, warnings) + exports md/json canoniques", asyn
   fs.writeFileSync(path.join(process.env.MODOP_PHOTOS_DIR!, "v13-a.jpg"), "a");
   fs.writeFileSync(path.join(process.env.MODOP_PHOTOS_DIR!, "v13-b.jpg"), "b");
   const ins = db.prepare(
-    "INSERT INTO photos (step_id, filename, alt, ai_description, annotations, display_size, display_align, display_x, display_y, display_w) VALUES (?, ?, ?, ?, '[]', 'medium', 'center', NULL, NULL, NULL)"
+    "INSERT INTO photos (step_id, filename, alt, image_description, annotations, display_size, display_align, display_x, display_y, display_w) VALUES (?, ?, ?, ?, '[]', 'medium', 'center', NULL, NULL, NULL)"
   );
   ins.run(s1.json.id, "v13-a.jpg", "vue armoire", "armoire ouverte avec rangées de fusibles");
   ins.run(s2.json.id, "v13-b.jpg", "fusibles", "");
   const photoRow = db.prepare("SELECT id FROM photos WHERE filename = 'v13-b.jpg'").get() as { id: number };
 
   // lecteur : jamais l'édition meta
-  const denied = await call("PUT", "/api/photos/" + photoRow.id + "/meta", { ai_description: "volé" }, lecteur);
+  const denied = await call("PUT", "/api/photos/" + photoRow.id + "/meta", { image_description: "volé" }, lecteur);
   assert.equal(denied.status, 403);
   // bornes : body vide → 422, photo inconnue → 404
   assert.equal((await call("PUT", "/api/photos/" + photoRow.id + "/meta", {}, auteur)).status, 422);
   assert.equal((await call("PUT", "/api/photos/999999/meta", { alt: "x" }, auteur)).status, 404);
 
-  // publication V1 : un avertissement non bloquant (photo b sans description IA)
+  // publication V1 : un avertissement non bloquant (photo b sans description d'image)
   const pub1 = await call("POST", "/api/workflows/" + wf.json.id + "/publish", { changelog: "V1" }, auteur);
   assert.equal(pub1.status, 200);
   assert.equal(pub1.json.number, 1);
   assert.equal(pub1.json.warnings.length, 1);
-  assert.ok(String(pub1.json.warnings[0]).includes("sans description IA"));
+  assert.ok(String(pub1.json.warnings[0]).includes("sans description d'image"));
 
   // export Markdown de la V1
   const md1 = await getRaw("/api/workflows/" + wf.json.id + "/export?format=md&version=1", lecteur);
@@ -112,7 +112,7 @@ test("C-98 : ai_description (meta, warnings) + exports md/json canoniques", asyn
   assert.ok(md1.text.includes("chemin: elec/cablage"));
   assert.ok(md1.text.includes("## Étape 1 — Préparer"));
   assert.ok(md1.text.includes("Ancre : MO-V13B/etapes/2"));
-  assert.ok(md1.text.includes("Description IA : armoire ouverte avec rangées de fusibles"));
+  assert.ok(md1.text.includes("Description : armoire ouverte avec rangées de fusibles"));
   assert.ok(md1.text.includes("![fusibles](/photos/v13-b.jpg)"));
 
   // export JSON canonique : snapshot exact + bloc meta
@@ -124,8 +124,8 @@ test("C-98 : ai_description (meta, warnings) + exports md/json canoniques", asyn
   assert.equal(js.meta.anchors.length, 2);
   assert.equal(js.meta.anchors[1].anchor, "MO-V13B/etapes/2");
   assert.equal(js.snapshot.workflow.reference, "MO-V13B");
-  assert.equal(js.snapshot.steps[0].photos[0].ai_description, "armoire ouverte avec rangées de fusibles");
-  assert.equal(js.snapshot.steps[1].photos[0].ai_description, "");
+  assert.equal(js.snapshot.steps[0].photos[0].image_description, "armoire ouverte avec rangées de fusibles");
+  assert.equal(js.snapshot.steps[1].photos[0].image_description, "");
 
   // version introuvable → 404 ; sans session → 401 ; docx reste le défaut
   assert.equal((await getRaw("/api/workflows/" + wf.json.id + "/export?format=md&version=99", auteur)).status, 404);
@@ -135,19 +135,19 @@ test("C-98 : ai_description (meta, warnings) + exports md/json canoniques", asyn
   assert.ok(dx.type.includes("wordprocessingml"));
 
   // meta après publication : l'auteur complète la description, re-publish → plus de warning
-  const meta = await call("PUT", "/api/photos/" + photoRow.id + "/meta", { alt: "fusibles triés", ai_description: "fusibles triés par calibre sur la grille" }, auteur);
+  const meta = await call("PUT", "/api/photos/" + photoRow.id + "/meta", { alt: "fusibles triés", image_description: "fusibles triés par calibre sur la grille" }, auteur);
   assert.equal(meta.status, 200);
-  assert.equal(meta.json.ai_description, "fusibles triés par calibre sur la grille");
+  assert.equal(meta.json.image_description, "fusibles triés par calibre sur la grille");
   assert.equal(meta.json.alt, "fusibles triés");
-  // ai_description exposée dans GET workflow (brouillon)
+  // image_description exposée dans GET workflow (brouillon)
   const one = await call("GET", "/api/workflows/" + wf.json.id, undefined, auteur);
-  const phB = one.json.steps.flatMap((s: { photos: { filename: string; ai_description?: string }[] }) => s.photos).find((p: { filename: string }) => p.filename === "v13-b.jpg");
-  assert.equal(phB.ai_description, "fusibles triés par calibre sur la grille");
+  const phB = one.json.steps.flatMap((s: { photos: { filename: string; image_description?: string }[] }) => s.photos).find((p: { filename: string }) => p.filename === "v13-b.jpg");
+  assert.equal(phB.image_description, "fusibles triés par calibre sur la grille");
 
   const pub2 = await call("POST", "/api/workflows/" + wf.json.id + "/publish", { changelog: "V2" }, auteur);
   assert.equal(pub2.json.number, 2);
   assert.equal(pub2.json.warnings.length, 0);
   const md2 = await getRaw("/api/workflows/" + wf.json.id + "/export?format=md", lecteur);
-  assert.ok(md2.text.includes("Description IA : fusibles triés par calibre sur la grille"));
+  assert.ok(md2.text.includes("Description : fusibles triés par calibre sur la grille"));
   assert.ok(md2.text.includes("![fusibles triés](/photos/v13-b.jpg)"));
 });

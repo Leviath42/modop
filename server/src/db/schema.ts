@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS photos (
   step_id INTEGER NOT NULL REFERENCES steps(id) ON DELETE CASCADE,
   filename TEXT NOT NULL,
   alt TEXT NOT NULL DEFAULT '',
-  ai_description TEXT NOT NULL DEFAULT '',
+  image_description TEXT NOT NULL DEFAULT '',
   annotations TEXT NOT NULL DEFAULT '[]',
   display_size TEXT NOT NULL DEFAULT 'medium' CHECK (display_size IN ('small','medium','large','full')),
   display_align TEXT NOT NULL DEFAULT 'center' CHECK (display_align IN ('left','center','right')),
@@ -134,7 +134,7 @@ const COLUMN_MIGRATIONS: { table: string; column: string; ddl: string }[] = [
   { table: "sessions", column: "expires_at", ddl: "TEXT" },
   { table: "workflows", column: "family", ddl: "TEXT NOT NULL DEFAULT ''" },
   { table: "photos", column: "annotations", ddl: "TEXT NOT NULL DEFAULT '[]'" },
-  { table: "photos", column: "ai_description", ddl: "TEXT NOT NULL DEFAULT ''" },
+  { table: "photos", column: "image_description", ddl: "TEXT NOT NULL DEFAULT ''" },
   { table: "photos", column: "display_size", ddl: "TEXT NOT NULL DEFAULT 'medium'" },
   { table: "photos", column: "display_align", ddl: "TEXT NOT NULL DEFAULT 'center'" },
   { table: "photos", column: "display_x", ddl: "REAL" },
@@ -206,6 +206,14 @@ function repairCorruptedPictos(db: Database.Database): void {
 }
 
 function migrate(db: Database.Database): void {
+  // C-99 : renommage ai_description -> image_description — le nom décrit la
+  // donnée (une description d'image), pas un consommateur (l'IA n'en sera
+  // qu'un lecteur). Colonne arrivée en C-98 et jamais saisie : aucun risque.
+  // SQLite >= 3.25 requis (RENAME COLUMN).
+  const photoCols = db.prepare("PRAGMA table_info(photos)").all() as { name: string }[];
+  if (photoCols.some((c) => c.name === "ai_description") && !photoCols.some((c) => c.name === "image_description")) {
+    db.exec("ALTER TABLE photos RENAME COLUMN ai_description TO image_description");
+  }
   for (const { table, column, ddl } of COLUMN_MIGRATIONS) {
     const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
     if (cols.length > 0 && !cols.some((c) => c.name === column)) {

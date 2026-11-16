@@ -1,27 +1,29 @@
 import { useEffect, useState } from "react";
 import { api, ApiError, type Photo } from "./api";
 
-// C-98 (V13 #5) : édition du texte alternatif et de la description IA de la
-// photo sélectionnée. Sauvegarde automatique à la sortie du champ (onBlur).
-// La description IA alimente les exports Markdown/JSON et les outils IA —
-// elle ne remplace pas l'alt d'accessibilité et n'apparaît pas au lecteur.
+// C-98/C-99 (V13 #5) : édition du texte alternatif et de la description
+// détaillée de la photo sélectionnée. Sauvegarde automatique à la sortie du
+// champ (onBlur). La description détaillée alimente les exports
+// Markdown/JSON, la recherche et les outils d'analyse — elle ne remplace
+// pas l'alt d'accessibilité et n'apparaît pas au lecteur. Renommée depuis
+// « ai_description » en C-99 : le nom décrit la donnée, pas un consommateur.
 export function PhotoMeta({ photo, onSaved }: { photo: Photo; onSaved: (p: Photo) => void }) {
   const [alt, setAlt] = useState(photo.alt ?? "");
-  const [ai, setAi] = useState(photo.ai_description ?? "");
+  const [desc, setDesc] = useState(photo.image_description ?? "");
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   // re-synchronisation quand une autre photo est sélectionnée
   useEffect(() => {
     setAlt(photo.alt ?? "");
-    setAi(photo.ai_description ?? "");
+    setDesc(photo.image_description ?? "");
     setState("idle");
   }, [photo.id]);
 
   async function save() {
-    if (alt === (photo.alt ?? "") && ai === (photo.ai_description ?? "")) return;
+    if (alt === (photo.alt ?? "") && desc === (photo.image_description ?? "")) return;
     setState("saving");
     try {
-      const updated = await api.updatePhotoMeta(photo.id, { alt, ai_description: ai });
+      const updated = await api.updatePhotoMeta(photo.id, { alt, image_description: desc });
       onSaved(updated);
       setState("saved");
     } catch (e) {
@@ -49,10 +51,10 @@ export function PhotoMeta({ photo, onSaved }: { photo: Photo; onSaved: (p: Photo
         />
       </label>
       <label className="grid gap-1">
-        <span>Description IA (exports Markdown/JSON, outillage IA — 1000 caractères max)</span>
+        <span>Description détaillée de l'image (exports Markdown/JSON, recherche — 1000 caractères max)</span>
         <textarea
-          value={ai}
-          onChange={(e) => { setAi(e.target.value); setState("idle"); }}
+          value={desc}
+          onChange={(e) => { setDesc(e.target.value); setState("idle"); }}
           onBlur={() => void save()}
           rows={2}
           maxLength={1000}

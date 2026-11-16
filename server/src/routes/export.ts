@@ -15,7 +15,7 @@ interface SnapshotPicto { kind: string; label: string; color: string }
 interface SnapshotPhoto {
   filename: string;
   alt: string;
-  ai_description?: string;
+  image_description?: string;
   annotations?: CompositeShape[];
   display_x?: number | null;
   display_y?: number | null;
@@ -147,8 +147,8 @@ export function exportRouter(db: Database.Database): Router {
         }
         for (const ph of step.photos ?? []) {
           md.push(`![${ph.alt || ph.filename}](/photos/${ph.filename})`);
-          const ai = (ph.ai_description ?? "").trim();
-          if (ai) md.push("", `*Description IA : ${ai}*`);
+          const ai = (ph.image_description ?? "").trim();
+          if (ai) md.push("", `*Description : ${ai}*`);
           md.push("");
         }
         const shapes = step.canvas ?? [];

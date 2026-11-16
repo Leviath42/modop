@@ -14,7 +14,7 @@ Objectif : rendre chaque MO nativement **indexable, exportable en multi-format e
 - **L'étape = l'unité d'indexation naturelle (chunk)** : id stable, position, titre, corps, pictos. Pas de découpage arbitraire.
 - **Ancrage profond vérifiable** : `MO-017/etapes/3` — toute réponse d'un RAG cite une étape consultable en un clic (lien direct lecteur).
 - Texte riche limité à un sous-ensemble Markdown (gras, listes) : reste exportable en Markdown natif sans conversion hasardeuse (prérequis : item « texte riche » du backlog).
-- **Texte de remplacement IA des images (livré C-98, 16 nov. 2026)** : le champ `alt` existant devient « description accessible », complété par un champ optionnel `ai_description` (déclaratif, saisi par l'auteur — pas de vision automatique en v1). Servi dans tous les exports et par l'API/MCP. **Warning non bloquant à la publication si absent** : l'IA n'aura pas de description de l'image.
+- **Description détaillée des images (livré C-98, 16 nov. 2026 — renommée `image_description` en C-99)** : le champ `alt` existant devient « description accessible », complété par un champ optionnel `image_description` (déclaratif, saisi par l'auteur — pas de vision automatique en v1). Servi dans tous les exports et par l'API/MCP. **Warning non bloquant à la publication si absent** : l'IA n'aura pas de description de l'image.
 
 ## 3. Exports multi-formats
 
@@ -56,6 +56,6 @@ Le Markdown et le JSON sont **les deux formats « adaptés API/IA »** : l'un po
 
 ## 8. Phasage (Vague 13 de la roadmap)
 
-1. Arborescence (V13 #1) ✅ C-94 + C-98 → 2. Markdown + JSON (V13 #2/#3) ✅ C-98 → 3. alt/ai_description (V13 #5) ✅ C-98 → 4. corpus + manifest (V13 #7) → 5. outils MCP lecture IA (V13 #6) → 6. PDF (V13 #4) → 7. tokens API publics (V13 #8, seulement à prod réelle).
+1. Arborescence (V13 #1) ✅ C-94 + C-98 → 2. Markdown + JSON (V13 #2/#3) ✅ C-98 → 3. alt/image_description (V13 #5) ✅ C-98/C-99 → 4. corpus + manifest (V13 #7) → 5. outils MCP lecture IA (V13 #6) → 6. PDF (V13 #4) → 7. tokens API publics (V13 #8, seulement à prod réelle).
 
 Chaque brique est autonome et livrable indépendamment ; l'ordre garantit que l'indexation a toujours un format stable sous elle.
