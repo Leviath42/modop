@@ -42,7 +42,7 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 **Correctif** : chaîne `MCP_INSTRUCTIONS` passée au `McpServer` (option `instructions` du SDK) : rôle du compte de service, concepts (workflow/étapes/photos/versions/retours terrain), conventions (ids entiers, dates AAAA-MM-JJ, erreurs auto-corrigibles), périmètre non couvert (rognage/layout/replace), recette pas-à-pas pour créer un MO complet.
 
-**Tests** : `mcp.test.ts` — initialize renvoie les instructions (contient « Modop » + la recette). Suite serveur 135 pass / 0 fail.
+**Tests** : `mcp.test.ts` — initialize renvoie les instructions (contient « Modop » + la recette). Suite serveur 135 pass / 0 fail. Amendé après test d'acceptation par un agent « neuf » (découverte par initialize + tools/list uniquement, création complète d'un MO, 24 outils exercés en réel via le tunnel) : les instructions signalent désormais que restore_version / duplicate_workflow changent les ids d'étapes et photos — friction constatée en réel (HTTP 404 « étape introuvable » sur un id périmé).
 
 **Fichiers** : `server/src/mcp/route.ts`, `server/test/mcp.test.ts`, `docs/connecteur-mcp.md`
 

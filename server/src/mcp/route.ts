@@ -18,7 +18,7 @@ const MCP_INSTRUCTIONS = `Vous pilotez Modop, une GED de modes opératoires indu
 
 Concepts :
 - Un mode opératoire (workflow) = title + reference unique (insensible à la casse) + métadonnées GED : catégorie, famille, date de prochaine revue (AAAA-MM-JJ), responsable (owner_email : choisir parmi les comptes actifs, voir list_users).
-- Cycle de vie : brouillon → publish_workflow fige une version immuable (V1, V2…) avec un changelog ; les lecteurs ne voient que la dernière version publiée ; restore_version ramène une version publiée en brouillon de travail.
+- Cycle de vie : brouillon → publish_workflow fige une version immuable (V1, V2…) avec un changelog ; les lecteurs ne voient que la dernière version publiée ; restore_version ramène une version publiée en brouillon de travail — attention : après restore_version ou duplicate_workflow, les identifiants d'étapes et de photos changent, relisez get_workflow avant de réutiliser des ids obtenus plus tôt.
 - Un workflow contient des étapes ordonnées (create_step les ajoute en fin ; reorder_steps réordonne tout) ; chaque étape peut porter des photos (upload_photo : base64 JPEG/PNG/WebP, 15 Mo max) et des annotations vectorielles (annotate_photo).
 - Les opérateurs signalent des problèmes via des retours terrain (send_feedback) ; un author les traite puis les clôt (resolve_feedback).
 
