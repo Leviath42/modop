@@ -11,6 +11,9 @@ export function listRouter(db: Database.Database): Router {
     const category = typeof req.query.category === "string" && req.query.category ? req.query.category : null;
     const state = req.query.state === "draft" || req.query.state === "published" ? req.query.state : null;
     const family = typeof req.query.family === "string" && req.query.family ? req.query.family : null;
+    // C-94 : enfants directs d'un document parent + rattachement arborescent exact.
+    const parent = typeof req.query.parent === "string" && req.query.parent ? Number(req.query.parent) : null;
+    const categoryId = typeof req.query.category_id === "string" && req.query.category_id ? Number(req.query.category_id) : null;
     // C-88 : filtre exact (insensible à la casse) sur la référence — sert à
     // la vérification d'unicité en direct depuis le formulaire de création.
     const reference = typeof req.query.reference === "string" ? req.query.reference.trim() : "";
@@ -25,6 +28,8 @@ export function listRouter(db: Database.Database): Router {
     if (textClauses.length) clauses.push(`(${textClauses.join(" OR ")})`);
     if (category) { clauses.push("category = ?"); params.push(category); }
     if (family) { clauses.push("family = ?"); params.push(family); }
+    if (parent !== null && Number.isInteger(parent)) { clauses.push("parent_id = ?"); params.push(parent); }
+    if (categoryId !== null && Number.isInteger(categoryId)) { clauses.push("category_id = ?"); params.push(categoryId); }
     if (state) { clauses.push("state = ?"); params.push(state); }
     if (reference) { clauses.push("reference = ? COLLATE NOCASE"); params.push(reference); }
     if (review === "overdue") {
@@ -42,7 +47,7 @@ export function listRouter(db: Database.Database): Router {
     const orderBy = sortCol ?? "updated_at DESC";
     const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
     const rows = db
-      .prepare(`SELECT id, title, reference, category, family, state, current_version, review_due, owner_email, updated_at FROM workflows ${where} ORDER BY ${orderBy}`)
+      .prepare(`SELECT id, title, reference, category, family, state, current_version, review_due, owner_email, category_id, parent_id, updated_at FROM workflows ${where} ORDER BY ${orderBy}`)
       .all(...params);
     res.json(rows);
   });

@@ -84,6 +84,20 @@ CREATE TABLE IF NOT EXISTS audit_log (
   detail TEXT NOT NULL DEFAULT '',
   at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- C-94 : arborescence documentaire paramétrable (1 à X niveaux, X borné à 20
+-- dans les routes) — chaque catégorie porte un titre libre et un slug immuable
+-- (chemins stables, spec-api-ia.md §1) ; les documents s'y rattachent.
+CREATE TABLE IF NOT EXISTS categories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  parent_id INTEGER REFERENCES categories(id) ON DELETE RESTRICT,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  position INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_parent_slug ON categories(COALESCE(parent_id, 0), slug);
+CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id, position);
+
 -- C-72 : paramètres applicatifs (key/value) — page Paramètres (admin).
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
@@ -116,6 +130,9 @@ const COLUMN_MIGRATIONS: { table: string; column: string; ddl: string }[] = [
   { table: "workflows", column: "review_due", ddl: "TEXT" },
   { table: "workflows", column: "owner_email", ddl: "TEXT NOT NULL DEFAULT ''" },
   { table: "versions", column: "changelog", ddl: "TEXT NOT NULL DEFAULT ''" },
+  // C-94 : rattachement arborescent + document parent (liaison documentaire).
+  { table: "workflows", column: "category_id", ddl: "INTEGER REFERENCES categories(id) ON DELETE SET NULL" },
+  { table: "workflows", column: "parent_id", ddl: "INTEGER REFERENCES workflows(id) ON DELETE SET NULL" },
 ];
 
 // Réparation des pictos corrompus par le bug de l’ancien éditeur : la réponse
@@ -216,6 +233,9 @@ function migrate(db: Database.Database): void {
 
   // Index dépendant des colonnes migrées (après ALTER TABLE).
   db.exec("CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at)");
+  // C-94 : index des rattachements arborescents et des documents parents.
+  db.exec("CREATE INDEX IF NOT EXISTS idx_workflows_category ON workflows(category_id)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_workflows_parent ON workflows(parent_id)");
   repairCorruptedPictos(db);
 }
 

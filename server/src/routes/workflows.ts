@@ -24,7 +24,7 @@ export function workflowRouter(db: Database.Database): Router {
   const r = Router();
 
   r.post("/", requireAuth("author"), (req, res) => {
-    const { title, reference, description, category, family, review_due, owner_email } = req.body ?? {};
+    const { title, reference, description, category, family, review_due, owner_email, category_id, parent_id } = req.body ?? {};
     if (typeof title !== "string" || !title.trim() || typeof reference !== "string" || !reference.trim()) {
       res.status(422).json({ error: "validation", message: "title et reference requis" });
       return;
@@ -45,8 +45,19 @@ export function workflowRouter(db: Database.Database): Router {
       res.status(422).json({ error: "validation", message: "référence déjà utilisée" });
       return;
     }
+    // C-94 : rattachement arborescent + document parent, validés avant écriture.
+    const catId = category_id == null ? null : Number(category_id);
+    if (catId !== null && !db.prepare("SELECT 1 FROM categories WHERE id = ?").get(catId)) {
+      res.status(422).json({ error: "validation", message: "catégorie introuvable" });
+      return;
+    }
+    const parentWfId = parent_id == null ? null : Number(parent_id);
+    if (parentWfId !== null && !db.prepare("SELECT 1 FROM workflows WHERE id = ?").get(parentWfId)) {
+      res.status(422).json({ error: "validation", message: "document parent introuvable" });
+      return;
+    }
     const info = db
-      .prepare("INSERT INTO workflows (title, reference, description, category, family, review_due, owner_email) VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .prepare("INSERT INTO workflows (title, reference, description, category, family, review_due, owner_email, category_id, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
       .run(
         title.trim(),
         reference.trim(),
@@ -54,7 +65,9 @@ export function workflowRouter(db: Database.Database): Router {
         category ?? "",
         family ?? "",
         review_due === "" || review_due == null ? null : (review_due as string),
-        typeof owner_email === "string" ? owner_email.trim() : ""
+        typeof owner_email === "string" ? owner_email.trim() : "",
+        catId,
+        parentWfId
       );
     auditLog(db, (req as { user?: { email: string } }).user?.email ?? "?", "create_workflow", `workflow:${info.lastInsertRowid}`, reference.trim());
     const wf = db.prepare("SELECT * FROM workflows WHERE id = ?").get(info.lastInsertRowid);
@@ -112,7 +125,7 @@ export function workflowRouter(db: Database.Database): Router {
       res.status(404).json({ error: "not_found", message: "mode opératoire introuvable" });
       return;
     }
-    const { title, description, category, family, review_due, owner_email } = req.body ?? {};
+    const { title, description, category, family, review_due, owner_email, category_id, parent_id } = req.body ?? {};
     if (title !== undefined && (typeof title !== "string" || !title.trim())) {
       res.status(422).json({ error: "validation", message: "title invalide" });
       return;
@@ -142,6 +155,43 @@ export function workflowRouter(db: Database.Database): Router {
       typeof owner_email === "string" ? owner_email.trim() : null,
       wf.id
     );
+    // C-94 : rattachement arborescent + document parent — sémantique
+    // explicite : champ absent = inchangé, null = détaché.
+    if (category_id !== undefined) {
+      const v = category_id == null ? null : Number(category_id);
+      if (v !== null && !db.prepare("SELECT 1 FROM categories WHERE id = ?").get(v)) {
+        res.status(422).json({ error: "validation", message: "catégorie introuvable" });
+        return;
+      }
+      db.prepare("UPDATE workflows SET category_id = ? WHERE id = ?").run(v, wf.id);
+    }
+    if (parent_id !== undefined) {
+      const v = parent_id == null ? null : Number(parent_id);
+      if (v !== null) {
+        if (v === wf.id) {
+          res.status(422).json({ error: "validation", message: "un document ne peut pas être son propre parent" });
+          return;
+        }
+        if (!db.prepare("SELECT 1 FROM workflows WHERE id = ?").get(v)) {
+          res.status(422).json({ error: "validation", message: "document parent introuvable" });
+          return;
+        }
+        // Pas de liaison circulaire : en remontant la chaîne des parents,
+        // on ne doit jamais retomber sur ce document.
+        let cur: number | null = v;
+        for (let hops = 0; cur !== null && hops < 50; hops++) {
+          if (cur === wf.id) {
+            res.status(422).json({ error: "validation", message: "liaison circulaire interdite" });
+            return;
+          }
+          const row = db.prepare("SELECT parent_id FROM workflows WHERE id = ?").get(cur) as
+            | { parent_id: number | null }
+            | undefined;
+          cur = row?.parent_id ?? null;
+        }
+      }
+      db.prepare("UPDATE workflows SET parent_id = ? WHERE id = ?").run(v, wf.id);
+    }
     res.json(db.prepare("SELECT * FROM workflows WHERE id = ?").get(wf.id));
   });
 

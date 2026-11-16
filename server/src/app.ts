@@ -19,6 +19,7 @@ import { settingsRouter } from "./routes/settings.js";
 import { deployRouter } from "./routes/deploy.js";
 import { adminRouter, activeUsersRouter } from "./routes/admin.js";
 import { duplicateRouter } from "./routes/duplicate.js";
+import { categoryRouter } from "./routes/categories.js";
 import { statsRouter } from "./routes/stats.js";
 import { mcpRouter } from "./mcp/route.js";
 
@@ -63,6 +64,7 @@ export function createApp(db: Database.Database, webDist?: string): express.Expr
   // C-85 : candidats responsables (comptes actifs) pour la recherche de
   // l'éditeur — accessible aux auteurs.
   app.use("/api/users", activeUsersRouter(db));
+  app.use("/api/categories", categoryRouter(db));
   app.use("/api/stats", statsRouter(db));
   app.use("/api/workflows", duplicateRouter(db));
   // Serveur MCP (C-90) — monté AVANT le catch-all SPA qui avale les GET.

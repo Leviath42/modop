@@ -88,7 +88,7 @@ export function publishRouter(db: Database.Database): Router {
       return;
     }
     const snap = JSON.parse(version.snapshot) as {
-      workflow: { title: string; reference: string; description: string; category: string; family?: string; review_due?: string | null; owner_email?: string };
+      workflow: { title: string; reference: string; description: string; category: string; family?: string; review_due?: string | null; owner_email?: string; category_id?: number | null; parent_id?: number | null };
       steps: { id: number; position: number; title: string; body: string; pictos: unknown[]; canvas?: unknown[]; photos: unknown[] }[];
     };
     // C-84 : date de revue et responsable PORTÉS PAR LE SNAPSHOT — la vue
@@ -108,6 +108,10 @@ export function publishRouter(db: Database.Database): Router {
       description: snap.workflow.description,
       category: snap.workflow.category,
       family: snap.workflow.family ?? "",
+      // C-94 : rattachements portés par le snapshot (null pour les
+      // snapshots antérieurs à C-94).
+      category_id: snap.workflow.category_id ?? null,
+      parent_id: snap.workflow.parent_id ?? null,
       state: "published",
       current_version: version.number,
       review_due: snap.workflow.review_due ?? null,

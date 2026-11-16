@@ -98,3 +98,21 @@ Fusion séquentielle delta ← une branche à la fois, portes : tsc + 96 tests r
 - `POST /api/workflows` : la référence est unique **insensible à la casse** (`mo-001` ≡ `MO-001`, espaces trimés) — 422 `référence déjà utilisée` ; la duplication (`-COPIE`, `-COPIE-2`…) suit la même règle
 - `GET /api/workflows?reference=<réf>` (reader+) → filtre **exact** `COLLATE NOCASE` — 0 ou 1 workflow ; sert à la vérification d'unicité en direct du formulaire de création
 - Famille : pas de changement de contrat (texte libre) — le front propose une liste de recherche des familles existantes
+
+# Contrat C-94 — arborescence paramétrable & documents parents (16 nov. 2026)
+
+## Catégories (arbre 1..X niveaux, X borné à 20)
+
+- Table `categories` : `id, parent_id (NULL = racine, REFERENCES categories ON DELETE RESTRICT), name (titre libre), slug (IMMUABLE — chemins stables), position, created_at` — unicité `(COALESCE(parent_id,0), slug)`.
+- `GET /api/categories` (reader+) → `{ id, parent_id, name, slug, position }[]` **à plat**, tri `position, name` — le front reconstruit l'arbre depuis `parent_id`.
+- `POST /api/categories` { name, parent_id? } (admin) → 201 — 422 si parent inconnu, slug déjà pris au même niveau ou profondeur > 20.
+- `PUT /api/categories/:id` { name?, parent_id?, position? } (admin) — `parent_id: null` = passer en racine ; 422 si déplacement sous soi-même ou un de ses descendants ; le slug ne change JAMAIS au renommage.
+- `DELETE /api/categories/:id` (admin) — 422 si sous-catégories ou documents rattachés (détacher d'abord) ; sinon 200 `{ ok: true }`.
+
+## Workflows — rattachement arborescent & document parent
+
+- Colonnes `workflows.category_id` (FK → categories, ON DELETE SET NULL) et `workflows.parent_id` (FK → workflows, ON DELETE SET NULL : supprimer le parent détache les enfants, sans cascade).
+- `POST /api/workflows` et `PUT /api/workflows/:id` acceptent `category_id?: number|null` et `parent_id?: number|null` (author+) — champ absent = inchangé (PUT), `null` = détaché ; 422 si cible inconnue, auto-parentage ou liaison circulaire (remontée de la chaîne des parents, 50 sauts max).
+- `GET /api/workflows` expose les deux colonnes ; filtres `?parent=<id>` (enfants directs) et `?category_id=<id>` (rattachés exacts).
+- Le snapshot de publication porte `category_id`/`parent_id` (le snapshot inclut `SELECT *`) ; `GET /api/workflows/:id/versions/:number` les renvoie (`null` pour les snapshots antérieurs à C-94).
+- La duplication (`POST /api/workflows/:id/duplicate`) copie les deux rattachements.

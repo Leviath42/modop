@@ -60,3 +60,17 @@ interface ApiError {
   error: string;
   message: string;
 }
+
+## C-94 — catégories (arborescence) & documents parents
+
+interface Category {
+  id: number;
+  parent_id: number | null; // null = racine
+  name: string;             // titre libre (renommable)
+  slug: string;             // immuable — chemins arborescents stables
+  position: number;
+}
+
+// Workflow gagne deux champs optionnels :
+//   category_id?: number | null;  // rattachement à un nœud de l'arbre
+//   parent_id?: number | null;    // document parent (notice machine > MO associés)
