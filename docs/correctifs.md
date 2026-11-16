@@ -36,6 +36,21 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-97 — Indications métiers paramétrables + abandon d'un brouillon sans version publiée (réalisé)
+
+**Problème** (Vague 12 #8-9, retour terrain du 28 oct. 2026) : (a) la liste des **indications métiers** (flyout « Indications » : Attention, Danger, EPI…) était **figée en dur** — impossible d'adapter les encarts à un métier (demande déjà exprimée en C-70 #16, différée « migration + API ») ; (b) un **brouillon jamais publié (V0)** ne pouvait être **ni abandonné ni jeté** : « Abandonner le brouillon » = restore de la dernière version publiée, inopérant quand il n'y en a aucune — et des étapes aux pictos/canvas JSON corrompus faisaient échouer le chargement du MO (500), verrouillant toute porte de sortie.
+
+**Correctif** :
+1. **Indications paramétrables (V12 #8)** : liste stockée en settings (clé `indications`, JSON), seed = les 7 indications historiques. `GET /api/settings/indications` (reader+) sert le flyout de l'éditeur (chargées au montage, seed en dur en fallback hors-ligne) ; `PUT` (admin) remplace la liste (1 à 30 items, kind slug unique, label 1-40, couleur `#rrggbb`) depuis la page Paramètres (libellé + couleur + suppression + ajout + « Restaurer les 7 par défaut »). **Amélioration en cascade** : `PUT /api/steps/:id` résout désormais les kinds en objets auto-porteurs `{kind,label,color}` via la liste active — les pictos posés par l'API/MCP (avant : strings brutes, mal rendues par le lecteur) sont maintenant toujours stockés complets. Pictos auto-porteurs = renommer/retirer une indication ne rétro-modifie **pas** les MO ni les versions publiées.
+2. **Reset de brouillon (V12 #9)** : `POST /api/workflows/:id/reset-draft` (author+) — MO publié : le brouillon redevient la dernière version publiée (équivalent restore, transaction partagée) ; MO jamais publié : **purge complète** (étapes, photos — lignes et fichiers non référencés —, commentaires d'auteurs en cascade ; le MO reste, à neuf). L'éditeur adapte le bouton (« Réinitialiser le brouillon ») et la confirmation ; la route ne dépend pas du chargement des étapes.
+3. **Tolérance aux données corrompues** : pictos/canvas non parsables ne font plus échouer le GET d'un workflow (500 → listes vides) — un brouillon « introuvable » reste ouvrable, donc réparable ou vidable.
+
+**Test** : `server/test/indications.test.ts` (5 : seed/GET lecteur, PUT admin + normalisation + 403, validations 422, résolution kinds, tolérance pictos corrompus) ; `server/test/reset-draft.test.ts` (3 : purge V0 avec preuve d'unlink + cascade commentaires + audit, retour V1 après publication, 404/403) ; `web/src/lib/settings-indications.test.ts` (section Paramètres : rendu, modification + PUT, ajout, suppression). Deux assertions historiques (publish/workflows) mises à jour au nouveau contrat pictos résolus.
+
+**Fichiers** : `server/src/routes/settings.ts`, `server/src/routes/workflows.ts`, `server/src/routes/restore.ts`, `server/test/{indications,reset-draft}.test.ts`, `web/src/api.ts`, `web/src/editor/tools/{types.ts,definitions.tsx}`, `web/src/pages/{editor,settings}.tsx`, `web/src/lib/settings-indications.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + lint + **162/162 tests serveur** + tous tests front verts.
+
 ## C-96 — Édition : retours terrain visibles, commentaires d'auteurs par étape, publication sans commentaire hérité (réalisé)
 
 **Problème** (Vague 12 #5-7, retour terrain du 28 oct. 2026) : (a) les **remontées terrain ouvertes étaient invisibles en mode édition** — l'auteur qui préparait une nouvelle version ne voyait pas qu'il avait des corrections à traiter, sauf en allant chercher la page ; (b) le **champ commentaire de version n'était jamais vidé** après publication — le texte resurgissait pré-rempli dans la publication suivante (risque de changelog erroné) ; (c) il n'existait **aucun espace de commentaires de rédaction** entre auteurs au niveau des étapes.

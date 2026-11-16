@@ -2,6 +2,7 @@ import { Router } from "express";
 import type Database from "better-sqlite3";
 import { requireAuth } from "../auth/middleware.js";
 import { auditLog } from "../auth/audit.js";
+import { getIndications } from "./settings.js";
 
 export interface StepRow {
   id: number;
@@ -15,9 +16,21 @@ export interface StepRow {
 
 // Contrat de l’API : pictos est un tableau (comme GET /api/workflows/:id),
 // jamais la chaîne JSON brute de la colonne steps.pictos.
-function pictosArray(row: unknown): Omit<StepRow, "pictos"> & { pictos: string[] } {
+// C-97 (V12 #9) : pictos/canvas corrompus ne doivent plus faire échouer le
+// chargement d'un brouillon (500) — la porte de sortie (reset) reste
+// atteignable. Liste vide au lieu de l'exception.
+function safeJsonArray(raw: string | null | undefined): unknown[] {
+  try {
+    const parsed = JSON.parse(raw ?? "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function pictosArray(row: unknown): Omit<StepRow, "pictos"> & { pictos: unknown[] } {
   const step = row as StepRow;
-  return { ...step, pictos: JSON.parse(step.pictos) };
+  return { ...step, pictos: safeJsonArray(step.pictos) };
 }
 
 export function workflowRouter(db: Database.Database): Router {
@@ -112,8 +125,8 @@ export function workflowRouter(db: Database.Database): Router {
       owner_name: ownerName,
       steps: steps.map((s) => ({
         ...s,
-        pictos: JSON.parse(s.pictos),
-        canvas: JSON.parse(s.canvas ?? "[]"),
+        pictos: safeJsonArray(s.pictos),
+        canvas: safeJsonArray(s.canvas),
         photos: photosByStep.get(s.id),
       })),
     });
@@ -358,6 +371,28 @@ export function workflowRouter(db: Database.Database): Router {
   return r;
 }
 
+// C-97 (V12 #8) : résolution des pictos — l'API et le MCP peuvent passer des
+// kinds ("attention") comme des objets complets ; on stocke toujours des
+// objets auto-porteurs {kind,label,color} résolus via la liste active.
+function resolvePictos(db: Database.Database, pictos: unknown[]): unknown[] {
+  const active = new Map(getIndications(db).map((i) => [i.kind, i]));
+  return pictos.map((p) => {
+    if (typeof p === "string") {
+      const found = active.get(p);
+      return found ?? { kind: p, label: p, color: "#5b7285" };
+    }
+    if (p && typeof p === "object" && "kind" in (p as Record<string, unknown>)) {
+      const o = p as { kind?: unknown; label?: unknown; color?: unknown };
+      const kind = typeof o.kind === "string" ? o.kind : "";
+      const found = active.get(kind);
+      const label = typeof o.label === "string" && o.label.trim() ? o.label.trim() : (found?.label ?? kind);
+      const color = typeof o.color === "string" && /^#[0-9a-fA-F]{6}$/.test(o.color) ? o.color.toLowerCase() : (found?.color ?? "#5b7285");
+      return { kind, label, color };
+    }
+    return p;
+  });
+}
+
 export function stepRouter(db: Database.Database): Router {
   const r = Router();
 
@@ -386,7 +421,7 @@ export function stepRouter(db: Database.Database): Router {
     ).run(
       title?.trim() ?? null,
       body ?? null,
-      pictos !== undefined ? JSON.stringify(pictos) : null,
+      pictos !== undefined ? JSON.stringify(resolvePictos(db, pictos)) : null,
       step.id
     );
     res.json(pictosArray(db.prepare("SELECT * FROM steps WHERE id = ?").get(step.id)));

@@ -151,9 +151,12 @@ test("mise à jour étape avec pictos", async () => {
   assert.deepEqual(s.pictos, [], "POST /steps renvoie pictos en tableau, pas en chaîne JSON");
   const up = await call("PUT", `/api/steps/${s.id}`, { pictos: ["epi", "attention"] }, author);
   assert.equal(up.status, 200);
-  assert.deepEqual(up.json.pictos, ["epi", "attention"], "PUT /steps renvoie pictos en tableau, pas en chaîne JSON");
+  // C-97 : les kinds sont résolus en objets auto-porteurs via la liste active.
+  const EPI = { kind: "epi", label: "EPI obligatoire", color: "#1f4e9c" };
+  const ATTENTION = { kind: "attention", label: "Attention", color: "#f5a623" };
+  assert.deepEqual(up.json.pictos, [EPI, ATTENTION], "PUT /steps renvoie les pictos résolus (objets, pas kinds)");
   const got = await call("GET", `/api/workflows/${id}`, undefined, author);
-  assert.deepEqual(got.json.steps[0].pictos, ["epi", "attention"]);
+  assert.deepEqual(got.json.steps[0].pictos, [EPI, ATTENTION]);
 });
 
 test("suppression du workflow en cascade (C-46 : admin uniquement)", async () => {

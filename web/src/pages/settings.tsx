@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { api, ApiError, type AppSettings } from "../api";
+import { api, ApiError, type AppSettings, type Indication } from "../api";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
 import { Alert } from "../components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { PICTO_PRESETS } from "../editor/tools/definitions";
 
 // C-72 (#4/#5) : page Paramètres (admin) — chaque option est appliquée
 // immédiatement côté serveur (PUT) : le listing « à revoir » et la
@@ -11,6 +13,42 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../co
 export default function SettingsPage() {
   const { user } = useAuth();
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  // C-97 (V12 #8) : indications métiers paramétrables — la liste est
+  // appliquée uniquement via « Enregistrer » (édition locale avant PUT).
+  const [indications, setIndications] = useState<Indication[] | null>(null);
+  const [indNotice, setIndNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.getIndications()
+      .then((l) => setIndications(l))
+      .catch(() => setIndications([]));
+  }, []);
+
+  const setIndicationAt = (k: number, next: Partial<Indication>) => {
+    setIndications((prev) => (prev ?? []).map((x, j) => (j === k ? { ...x, ...next } : x)));
+  };
+
+  function addIndication() {
+    const base = "nouvelle-indication";
+    const kinds = new Set((indications ?? []).map((i) => i.kind));
+    let kind = base;
+    let n = 2;
+    while (kinds.has(kind)) kind = `${base}-${n++}`;
+    setIndications([...(indications ?? []), { kind, label: "Nouvelle indication", color: "#5b7285" }]);
+  }
+
+  async function saveIndications() {
+    if (!indications) return;
+    try {
+      const saved = await api.saveIndications(indications);
+      setIndications(saved);
+      setIndNotice("Indications enregistrées");
+      setError(null);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Enregistrement impossible");
+    }
+    setTimeout(() => setIndNotice(null), 2000);
+  }
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -124,6 +162,45 @@ export default function SettingsPage() {
               "Brouillons visibles par les lecteurs",
               "Les comptes lecteurs voient les brouillons en cours sur l'accueil et peuvent les ouvrir."
             )}
+          </CardContent>
+        </Card>
+
+        {/* C-97 (V12 #8) : indications métiers paramétrables — flyout de
+            l'éditeur. Pictos auto-porteurs : renommer/retirer ne rétro-modifie
+            pas les MO existants ni les versions publiées. */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Indications métiers</CardTitle>
+            <CardDescription>Encarts proposés par le bouton « Indications » de l'éditeur. Renommer ou retirer une indication ne modifie pas les modes opératoires existants — les pictos déjà posés gardent leur libellé d'origine.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-2">
+            {(indications ?? []).map((ind, k) => (
+              <div key={ind.kind} className="flex flex-wrap items-center gap-2">
+                <span className="size-[0.7rem] shrink-0 rounded-full" style={{ background: ind.color }} aria-hidden="true" />
+                <input
+                  value={ind.label}
+                  aria-label={`Libellé de l'indication ${ind.kind}`}
+                  maxLength={40}
+                  onChange={(e) => setIndicationAt(k, { label: e.target.value })}
+                  className="h-9 min-w-40 flex-1 rounded-md border border-border bg-surface px-2 text-sm"
+                />
+                <input
+                  type="color"
+                  value={ind.color}
+                  aria-label={`Couleur de l'indication ${ind.kind}`}
+                  onChange={(e) => setIndicationAt(k, { color: e.target.value })}
+                  className="h-9 w-14 rounded-md border border-border bg-surface"
+                />
+                <code className="text-xs text-muted-foreground" title="Identifiant immuable utilisé par l'API">{ind.kind}</code>
+                <Button variant="outline" size="sm" aria-label={`Supprimer l'indication ${ind.kind}`} onClick={() => setIndications((prev) => (prev ?? []).filter((_, j) => j !== k))}>✕</Button>
+              </div>
+            ))}
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={addIndication} disabled={!indications}>Ajouter une indication</Button>
+              <Button variant="outline" size="sm" onClick={() => setIndications([...PICTO_PRESETS])} disabled={!indications}>Restaurer les 7 par défaut</Button>
+              <Button size="sm" onClick={() => void saveIndications()} disabled={!indications || indications.length === 0}>Enregistrer</Button>
+            </div>
+            {indNotice && <Alert variant="ok">{indNotice}</Alert>}
           </CardContent>
         </Card>
 

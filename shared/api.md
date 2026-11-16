@@ -124,3 +124,12 @@ Fusion séquentielle delta ← une branche à la fois, portes : tsc + 96 tests r
 - `POST /api/steps/:id/comments` { message } (author+) → 201 — 422 si message vide après trim ou > 1000 caractères
 - `DELETE /api/steps/:id/comments/:commentId` — par l'auteur du commentaire ou un admin (403 sinon)
 - **Jamais dans le snapshot de publication** (publish ne les lit pas), ni exposés au lecteur, à l'export docx ou au MCP. Supprimés en cascade avec l'étape (`DELETE /api/steps/:id`).
+
+
+## Contrat C-97 — indications métiers paramétrables + reset de brouillon
+
+- Settings `indications` (JSON) : liste `[{ kind, label, color }]` — seed = les 7 indications historiques (`attention`, `danger`, `epi`, `electrique`, `point-chaud`, `outil`, `info`)
+- `GET /api/settings/indications` (reader+) → liste active — sert le flyout « Indications » de l'éditeur
+- `PUT /api/settings/indications` (admin) → remplace la liste — 422 si 0 ou > 30 items, kind `/^[a-z0-9-]{1,40}$/` dupliqué, label vide/> 40 (trim), couleur hors `#rrggbb` ; label trimé + couleur normalisée minuscule ; audit `update_indications`
+- `PUT /api/steps/:id` : les pictos en **kinds** ("epi") sont désormais **résolus en objets auto-porteurs** `{ kind, label, color }` via la liste active (kind inconnu → `{ kind, label: kind, color: "#5b7285" }`) ; les objets complets passés par l'éditeur restent inchangés. Les pictos/canvas corrompus en base ne font plus échouer `GET /api/workflows/:id` (listes vides, plus de 500)
+- `POST /api/workflows/:id/reset-draft` (author+) → `{ ok: true, mode: "restored", restoredFrom: n }` si publié (brouillon = dernière version publiée) ou `{ ok: true, mode: "emptied" }` si jamais publié (purge : étapes, photos — lignes + fichiers non référencés —, commentaires d'auteurs en cascade) ; 404 si MO inconnu ; audit `reset_draft`

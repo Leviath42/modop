@@ -115,7 +115,7 @@ Le canevas regroupe photos et formes dans le même espace :
 
 ### Indications (pictogrammes)
 
-Bouton **⚠ Indications** : Attention, Danger, EPI, Risque électrique, Point chaud, Outillage, Information — cliquez pour activer/désactiver (compteur sur le bouton).
+Bouton **⚠ Indications** : Attention, Danger, EPI, Risque électrique, Point chaud, Outillage, Information — cliquez pour activer/désactiver (compteur sur le bouton). La liste est **paramétrable** par l'administrateur (page Paramètres → *Indications métiers*) : renommage, couleur, ajout d'encarts propres à votre métier, suppression — sans toucher aux modes opératoires déjà rédigés.
 
 ### Commentaires d'auteurs (rédaction)
 
@@ -125,6 +125,7 @@ Chaque étape ouverte offre une section repliable **« Commentaires auteurs »**
 
 - **« Publier »** exige au moins une étape ; la première publication crée **V1**, chaque republication **V2, V3…** (snapshot immuable). Un **changelog** des modifications vous est demandé — le champ repart **vide** à chaque nouvelle publication (aucun commentaire hérité de la précédente). **Publication refusée si la date de revue est dépassée** — mettez-la à jour dans les détails.
 - **« Abandonner le brouillon »** (bandeau) : remplace le brouillon en cours par la dernière version publiée — le recours après un brouillon raté, sans rien retaper (confirmation demandée).
+- **MO jamais publié** : le bouton devient **« Réinitialiser le brouillon »** — toutes les étapes, photos et commentaires de rédaction non publiés sont supprimés, le mode opératoire reste (à neuf). La porte de sortie quand un brouillon a mal tourné, même si ses données sont corrompues.
 - L'historique des versions (numéro, auteur, date, changelog) est consultable dans le lecteur ; une version peut être **restaurée** (l'état d'alors remplace le brouillon, l'historique reste intact).
 - **Dupliquer** : copie complète en brouillon (référence `-COPIE`), photos indépendantes.
 - **Revue périodique** : champ **« À revoir le »** dans les détails — vide à l'ouverture d'un MO sans date, il est **prérempli à J+30** (délai paramétrable, voir Paramètres) ; passé l'échéance, l'alerte « à revoir » apparaît en liste (avec la raison par document) et en lecture, et le filtre « À revoir » le remonte.
@@ -152,7 +153,8 @@ Options appliquées **immédiatement** à toute l'application :
 - **Sans date de revue = à revoir** (activé par défaut) ;
 - **Délai de revue par défaut** en jours (défaut 30) — préremplit « À revoir le » d'un MO sans date, à J+délai ;
 - **Brouillons visibles par les lecteurs** (désactivé par défaut) ;
-- **Épaisseur de trait par défaut** des formes (1–10, défaut 5).
+- **Épaisseur de trait par défaut** des formes (1–10, défaut 5) ;
+- **Indications métiers** (C-97) — encarts du bouton « Indications » de l'éditeur : libellé, couleur, ajout/suppression, « Restaurer les 7 par défaut ». Appliqués uniquement au clic sur **Enregistrer** ; ne modifient jamais les MO existants.
 
 La page **Comptes** affiche aussi une alerte avec le nombre de modes opératoires **sans responsable**.
 

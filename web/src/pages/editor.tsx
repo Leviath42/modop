@@ -4,6 +4,7 @@ import type { Shape } from "../annotated-photo";
 import { Camera, ChevronDown, ChevronRight, FoldVertical, GripVertical, Image as ImageIcon, Trash2, TriangleAlert, UnfoldVertical } from "lucide-react";
 import { EditorBottomBar } from "../editor/bottom-bar";
 import type { PictoPreset, ToolContext } from "../editor/tools/registry";
+import { PICTO_PRESETS } from "../editor/tools/registry";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, ApiError, type AppSettings, type Category, type Photo, type Step, type Workflow, type WorkflowDetail } from "../api";
@@ -86,6 +87,9 @@ export default function EditorPage() {
   // datalists natifs ne montraient pas les Prénom/Nom de façon fiable).
   const [ownerOpen, setOwnerOpen] = useState(false);
   const [changelog, setChangelog] = useState("");
+  // C-97 (V12 #8) : indications métiers actives — chargées au montage, seed en
+  // dur le temps du chargement (ou si l'appel échoue, mode hors-ligne).
+  const [indications, setIndications] = useState<PictoPreset[]>(PICTO_PRESETS);
   // C-96 (V12 #5) : retours terrain ouverts visibles en édition — badge
   // global + badge par étape, lien vers la page de traitement.
   const [openFeedbacks, setOpenFeedbacks] = useState<{ id: number; step_id: number }[]>([]);
@@ -105,6 +109,11 @@ export default function EditorPage() {
       .then((fbs) => setOpenFeedbacks(fbs.filter((f) => f.status === "open").map((f) => ({ id: f.id, step_id: f.step_id }))))
       .catch(() => setOpenFeedbacks([]));
   }, [id, isNew]);
+  useEffect(() => {
+    api.getIndications()
+      .then((list) => { if (list.length > 0) setIndications(list); })
+      .catch(() => { /* seed conservé */ });
+  }, []);
   // C-88 : unicité du numéro — vérification EN DIRECT en création (le
   // serveur reste le garde-fou final, insensible à la casse).
   const [refTaken, setRefTaken] = useState(false);
@@ -391,24 +400,31 @@ export default function EditorPage() {
   }, [ownerEmail, accounts]);
 
   const toolCtx: ToolContext = {
-    isNew, steps, activeStepId, insertTool, insertColor, insertWidth,
+    isNew, steps, activeStepId, insertTool, insertColor, insertWidth, indications,
     canvasSelection: canvasSel.photos.length + canvasSel.shapes.length,
     photoSelected: canvasSel.photos.length, canUndoCrop: cropUndoCount > 0,
     actions: { addStep, openPhotoSource, setInsertTool: selectInsertTool, setInsertColor, setInsertWidth, togglePreset, deleteActiveStep, deleteCanvasSelection, requestCrop: () => setCropTick((t) => t + 1), undoCrop: () => void undoCrop() },
   };
 
   async function revertDraft() {
-    if (!wf || !wf.current_version) return;
+    if (!wf) return;
     setError(null);
     try {
-      await api.restoreVersion(wf.id, wf.current_version);
+      // C-97 (V12 #9) : MO jamais publié → purge du brouillon (route dédiée,
+      // sert même si les étapes sont corrompues) ; sinon retour à la
+      // dernière version publiée (comportement historique).
+      if ((wf.current_version ?? 0) === 0) {
+        await api.resetDraft(wf.id);
+      } else {
+        await api.restoreVersion(wf.id, wf.current_version);
+      }
       const w = await api.getWorkflow(id!);
       setWf(w); setSteps(w.steps);
       setTitle(w.title); setReference(w.reference);
       setCategory(w.category); setFamily(w.family ?? ""); setDescription(w.description);
       setReviewDue(w.review_due ?? ""); setOwnerEmail(w.owner_email ?? "");
       setCategoryId(w.category_id ? String(w.category_id) : ""); setParentIdDoc(w.parent_id ? String(w.parent_id) : "");
-      setNotice(`Brouillon abandonné — retour à V${w.current_version}`);
+      setNotice((wf.current_version ?? 0) === 0 ? `Brouillon réinitialisé — étapes et photos non publiées supprimées` : `Brouillon abandonné — retour à V${w.current_version}`);
       setTimeout(() => setNotice(null), 2500);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Restauration impossible");
@@ -488,9 +504,9 @@ export default function EditorPage() {
                 {showMeta ? "Masquer les détails" : "Détails"}
               </Button>
             )}
-            {!isNew && wf?.state === "draft" && (wf.current_version ?? 0) > 0 && (
-              <Button onClick={() => setConfirmRevert(true)} variant="outline" size="sm" title="Abandonner le brouillon et revenir à la dernière version publiée" aria-label="Abandonner le brouillon">
-                Abandonner le brouillon
+            {!isNew && wf?.state === "draft" && (
+              <Button onClick={() => setConfirmRevert(true)} variant="outline" size="sm" title={(wf.current_version ?? 0) > 0 ? "Abandonner le brouillon et revenir à la dernière version publiée" : "Réinitialiser le brouillon : supprime les étapes et photos non publiées (aucune version publiée)"} aria-label="Abandonner le brouillon">
+                {(wf.current_version ?? 0) > 0 ? "Abandonner le brouillon" : "Réinitialiser le brouillon"}
               </Button>
             )}
             {!isNew && steps.length > 0 && (
@@ -942,20 +958,24 @@ export default function EditorPage() {
           </Label>
         </Modal>
       )}
-      {wf && wf.current_version != null && wf.current_version > 0 && (
+      {wf && (
         <Modal
           open={confirmRevert}
           onClose={() => setConfirmRevert(false)}
-          title="Abandonner le brouillon ?"
+          title={(wf.current_version ?? 0) > 0 ? "Abandonner le brouillon ?" : "Réinitialiser le brouillon ?"}
           footer={
             <>
               <Button variant="outline" onClick={() => setConfirmRevert(false)}>Annuler</Button>
-              <Button variant="destructive" onClick={() => { setConfirmRevert(false); void revertDraft(); }}>Revenir à V{wf.current_version}</Button>
+              <Button variant="destructive" onClick={() => { setConfirmRevert(false); void revertDraft(); }}>
+                {(wf.current_version ?? 0) > 0 ? `Revenir à V${wf.current_version}` : "Vider le brouillon"}
+              </Button>
             </>
           }
         >
           <p className="m-0 text-sm text-muted-foreground">
-            Le brouillon en cours sera remplacé par la dernière version publiée (V{wf.current_version}). Toutes les modifications non publiées seront perdues — cette action ne peut pas être annulée.
+            {(wf.current_version ?? 0) > 0
+              ? `Le brouillon en cours sera remplacé par la dernière version publiée (V${wf.current_version}). Toutes les modifications non publiées seront perdues — cette action ne peut pas être annulée.`
+              : "Aucune version n'a encore été publiée : toutes les étapes, photos et commentaires de rédaction du brouillon seront supprimés. Le mode opératoire reste, à neuf — cette action ne peut pas être annulée."}
           </p>
         </Modal>
       )}

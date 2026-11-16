@@ -100,6 +100,13 @@ export interface WorkflowDetail extends Workflow {
 }
 
 // C-72 (#4/#5) + C-86 : paramètres applicatifs (page Paramètres, admin).
+// C-97 (V12 #8) : indication métier paramétrable (flyout « Indications »).
+export interface Indication {
+  kind: string;
+  label: string;
+  color: string;
+}
+
 export interface AppSettings {
   readers_see_drafts: boolean;
   no_review_date_is_overdue: boolean;
@@ -198,6 +205,23 @@ export const api = {
   // (abandonner un brouillon raté sans tout retaper).
   async restoreVersion(id: number, number: number): Promise<void> {
     await handle<unknown>(await fetch(`/api/workflows/${id}/versions/${number}/restore`, { method: "POST" }));
+  },
+  // C-97 (V12 #9) : abandon/reset d'un brouillon, même jamais publié (V0)
+  // ou corrompu — la porte de sortie serveur ne dépend pas de l'éditeur.
+  async resetDraft(id: number): Promise<{ ok: true; mode: "restored" | "emptied"; restoredFrom?: number }> {
+    return handle(await fetch(`/api/workflows/${id}/reset-draft`, { method: "POST" }));
+  },
+  // C-97 (V12 #8) : indications métiers paramétrables — liste active (seed
+  // serveur = les 7 historiques) et édition admin.
+  async getIndications(): Promise<Indication[]> {
+    return handle<Indication[]>(await fetch("/api/settings/indications"));
+  },
+  async saveIndications(list: Indication[]): Promise<Indication[]> {
+    return handle<Indication[]>(await fetch("/api/settings/indications", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(list),
+    }));
   },
   // C-73 : rognage — remplace le FICHIER d'une photo (ligne inchangée :
   // position/taille/alt conservées) ; repointage = retour arrière.
