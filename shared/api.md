@@ -126,6 +126,19 @@ Fusion séquentielle delta ← une branche à la fois, portes : tsc + 96 tests r
 - **Jamais dans le snapshot de publication** (publish ne les lit pas), ni exposés au lecteur, à l'export docx ou au MCP. Supprimés en cascade avec l'étape (`DELETE /api/steps/:id`).
 
 
+## Contrat C-98 — chemins arborescents, exports md/json, ai_description (V13 #1-3/#5)
+
+- `GET /api/workflows/:id` → ajoute `category_path` (slugs depuis la racine, ex. `mecanique/montage`) ; les photos portent `ai_description` (défaut ``)
+- `GET /api/workflows` (liste) → chaque ligne porte `category_path` ; `GET /api/categories` → chaque catégorie porte `path` complet — **calculés à la volée, jamais stockés** (slugs immuables C-94)
+- `GET /api/workflows/:id/export?format=docx|md|json&version=n` (reader+ ; docx = défaut) :
+  - `md` → `text/markdown; charset=utf-8` : front matter YAML (référence, titre, version, chemin, famille, type, description, responsable, dates) + `# titre` + `## Étape n — titre` + `> Ancre : MO-xxx/etapes/n` par étape + corps + pictos (⚠ libellés) + images `![alt](/photos/filename)` + `*Description IA : …*`
+  - `json` → snapshot EXACT de la version publiée (zéro perte) + bloc `meta` (GED + `category_path` + `anchors: [{ position, title, anchor }]`)
+  - 404 si version introuvable ; audits `export_md` / `export_json`
+- `photos.ai_description TEXT NOT NULL DEFAULT ''` (migration automatique) ; upload multipart `POST /api/steps/:stepId/photos` accepte `ai_description` (≤ 1000)
+- `PUT /api/photos/:id/meta` (author+) : `{ alt?, ai_description? }` (bornes 200/1000, trim) → photo mise à jour ; 422 si aucun champ, 404 si photo inconnue ; audit `photo_meta`
+- `POST /api/workflows/:id/publish` → réponse étendue `{ number, warnings: string[] }` — photos sans `ai_description` (non bloquant)
+- MCP : `upload_photo` accepte `ai_description` ; nouvel outil `set_photo_description` (`photo_id`, `alt?`, `ai_description?`)
+
 ## Contrat C-97 — indications métiers paramétrables + reset de brouillon
 
 - Settings `indications` (JSON) : liste `[{ kind, label, color }]` — seed = les 7 indications historiques (`attention`, `danger`, `epi`, `electrique`, `point-chaud`, `outil`, `info`)

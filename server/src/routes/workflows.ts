@@ -1,5 +1,6 @@
 import { Router } from "express";
 import type Database from "better-sqlite3";
+import { categoryPaths } from "../lib/category-path.js";
 import { requireAuth } from "../auth/middleware.js";
 import { auditLog } from "../auth/audit.js";
 import { getIndications } from "./settings.js";
@@ -120,8 +121,11 @@ export function workflowRouter(db: Database.Database): Router {
       );
     }
     auditLog(db, (req as { user?: { email: string } }).user?.email ?? "?", "view_workflow", `workflow:${wf.id}`);
+    // C-98 (V13 #1) : chemin arborescent de la catégorie, résolu à la volée.
+    const categoryPath = categoryPaths(db).get((wf as unknown as { category_id?: number | null }).category_id ?? 0) ?? "";
     res.json({
       ...wf,
+      category_path: categoryPath,
       owner_name: ownerName,
       steps: steps.map((s) => ({
         ...s,

@@ -52,6 +52,7 @@ Bouton **icône soleil / lune** dans la barre du haut (et sur la page de connexi
 - **Cliquez/touchez une photo** : elle s'ouvre **plein écran** (Échap ou toucher le fond pour fermer, pincez pour zoomer).
 - **Signaler un problème** : bouton « Signaler un problème sur cette étape » sous chaque étape — votre message va aux auteurs.
 - **« ⬇ Exporter en .docx »** (auteurs/admins, dans l'entête avec les autres outils) télécharge la version affichée (ouvrable dans Word/LibreOffice) — le canevas composé (photos positionnées + formes + textes + annotations photo) reproduit fidèlement la lecture.
+- Les intégrations et outils IA disposent de deux formats supplémentaires sur la même route : **Markdown** (`?format=md` — front matter YAML, étapes titrées, ancres `MO-xxx/etapes/n`, descriptions IA des photos) et **JSON canonique** (`?format=json` — snapshot exact de la version + métadonnées GED). Réservés aux comptes connectés, comme le docx.
 - **« Éditer »** (auteurs/admins) ouvre directement l'éditeur depuis la lecture.
 - Le bouton **↑** flottant en bas à droite ramène au **début du document**, visible en toute position.
 - **⇥ Guidé** : lecture **une étape par écran** (mobile au poste) — boutons Précédent / Suivant / Terminé accrochés en bas de l'écran, progression n/N.
@@ -120,6 +121,8 @@ Bouton **⚠ Indications** : Attention, Danger, EPI, Risque électrique, Point c
 ### Commentaires d'auteurs (rédaction)
 
 Chaque étape ouverte offre une section repliable **« Commentaires auteurs »** : des notes internes entre rédacteurs (photo à refaire, consigne à vérifier…), affichées avec leur auteur et leur date. Saisie ≤ 1000 caractères ; suppression par l'auteur du commentaire ou un admin. **Ces notes ne sont jamais publiées** : elles n'apparaissent ni dans les versions publiées, ni chez les lecteurs, ni dans l'export docx — et disparaissent avec l'étape si elle est supprimée.
+
+Sélectionnez une photo sur le canevas d'une étape : un panneau **« Photo sélectionnée »** apparaît sous le canevas pour compléter son **texte alternatif** (accessibilité) et sa **description IA** (exports Markdown/JSON, outillage IA). Enregistrement automatique en quittant le champ. À la publication, les photos sans description IA déclenchent un **avertissement non bloquant** dans un encart jaune — complétez-les puis republiez.
 
 ### Publier et versions
 

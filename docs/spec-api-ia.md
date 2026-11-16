@@ -5,7 +5,7 @@ Objectif : rendre chaque MO nativement **indexable, exportable en multi-format e
 ## 1. Arborescence documentaire (socle)
 
 - Arbre paramétrable **Famille > Sous-famille > Type** (table `categories` : `parent_id`, `slug`, `ordre`) — reprend la Vague 8 #3.
-- **Socle livré (C-94, 16 nov. 2026)** : table `categories` (1 à X niveaux, `name` renommable, `slug` immuable), `workflows.category_id` / `parent_id`, filtre par sous-arbre, page admin `/categories`. Reste à matérialiser le `path` et l'exposer en API (cette section).
+- **Socle livré (C-94, 16 nov. 2026)** : table `categories` (1 à X niveaux, `name` renommable, `slug` immuable), `workflows.category_id` / `parent_id`, filtre par sous-arbre, page admin `/categories`. Chemins livrés (C-98, 16 nov. 2026) : `category_path` sur GET workflow, liste workflows et catégories, dans les exports md/json — calcul à la volée (jamais stockés, donc jamais désynchronisés).
 - Chaque MO rattaché à un nœud feuille ; la **référence `MO-xxx` reste l'identifiant documentaire unique**.
 - `path` matérialisé par MO (ex. `mecanique/montage/pose-fusibles`) : URLs API stables, filtres arborescents, navigation facettée.
 
@@ -14,7 +14,7 @@ Objectif : rendre chaque MO nativement **indexable, exportable en multi-format e
 - **L'étape = l'unité d'indexation naturelle (chunk)** : id stable, position, titre, corps, pictos. Pas de découpage arbitraire.
 - **Ancrage profond vérifiable** : `MO-017/etapes/3` — toute réponse d'un RAG cite une étape consultable en un clic (lien direct lecteur).
 - Texte riche limité à un sous-ensemble Markdown (gras, listes) : reste exportable en Markdown natif sans conversion hasardeuse (prérequis : item « texte riche » du backlog).
-- **Texte de remplacement IA des images** : le champ `alt` existant devient « description accessible », complété par un champ optionnel `ai_description` (déclaratif, saisi par l'auteur — pas de vision automatique en v1). Servi dans tous les exports et par l'API/MCP. **Warning non bloquant à la publication si absent** : l'IA n'aura pas de description de l'image.
+- **Texte de remplacement IA des images (livré C-98, 16 nov. 2026)** : le champ `alt` existant devient « description accessible », complété par un champ optionnel `ai_description` (déclaratif, saisi par l'auteur — pas de vision automatique en v1). Servi dans tous les exports et par l'API/MCP. **Warning non bloquant à la publication si absent** : l'IA n'aura pas de description de l'image.
 
 ## 3. Exports multi-formats
 
@@ -27,7 +27,7 @@ Endpoint unifié : `GET /api/workflows/:id/export?format=docx|md|json|pdf&versio
 | `json` | API, GMAO, intégrateurs | **JSON canonique** : snapshot exact de la version + métadonnées GED + arborescence + alts — aucune perte (contrairement au docx) |
 | `pdf` | usine / affichage | rendu du format lecteur (depuis le composite existant) |
 
-Le Markdown et le JSON sont **les deux formats « adaptés API/IA »** : l'un pour les modèles de langage, l'autre pour les machines.
+Le Markdown et le JSON sont **les deux formats « adaptés API/IA »** : l'un pour les modèles de langage, l'autre pour les machines. **md et json livrés (C-98, 16 nov. 2026)** sur `GET /api/workflows/:id/export` — front matter YAML, ancres `MO-xxx/etapes/n`, descriptions IA ; json = snapshot exact + bloc `meta`. Reste : pdf.
 
 ## 4. Consultation par IA
 
@@ -56,6 +56,6 @@ Le Markdown et le JSON sont **les deux formats « adaptés API/IA »** : l'un po
 
 ## 8. Phasage (Vague 13 de la roadmap)
 
-1. Arborescence (V13 #1) → 2. Markdown + JSON (V13 #2/#3) → 3. alt/ai_description (V13 #5) → 4. corpus + manifest (V13 #7) → 5. outils MCP lecture IA (V13 #6) → 6. PDF (V13 #4) → 7. tokens API publics (V13 #8, seulement à prod réelle).
+1. Arborescence (V13 #1) ✅ C-94 + C-98 → 2. Markdown + JSON (V13 #2/#3) ✅ C-98 → 3. alt/ai_description (V13 #5) ✅ C-98 → 4. corpus + manifest (V13 #7) → 5. outils MCP lecture IA (V13 #6) → 6. PDF (V13 #4) → 7. tokens API publics (V13 #8, seulement à prod réelle).
 
 Chaque brique est autonome et livrable indépendamment ; l'ordre garantit que l'indexation a toujours un format stable sous elle.

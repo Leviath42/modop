@@ -44,6 +44,7 @@ export interface Photo {
   step_id?: number;
   filename: string;
   alt: string;
+  ai_description?: string;
   annotations?: unknown[];
   display_size?: "small" | "medium" | "large" | "full";
   display_align?: "left" | "center" | "right";
@@ -186,14 +187,22 @@ export const api = {
   async deleteWorkflow(id: number): Promise<void> {
     await handle<unknown>(await fetch(`/api/workflows/${id}`, { method: "DELETE" }));
   },
-  async publishWorkflow(id: number, changelog?: string): Promise<{ number: number }> {
-    return handle<{ number: number }>(
+  async publishWorkflow(id: number, changelog?: string): Promise<{ number: number; warnings?: string[] }> {
+    return handle<{ number: number; warnings?: string[] }>(
       await fetch(`/api/workflows/${id}/publish`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ changelog: changelog ?? "" }),
       })
     );
+  },
+  // C-98 (V13 #5) : édition après upload de l'alt et de la description IA.
+  async updatePhotoMeta(id: number, data: { alt?: string; ai_description?: string }): Promise<Photo> {
+    return handle<Photo>(await fetch(`/api/photos/${id}/meta`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(data),
+    }));
   },
   async versions(id: number): Promise<{ id: number; number: number; changelog: string; author_email: string; published_at: string }[]> {
     return handle(await fetch(`/api/workflows/${id}/versions`));

@@ -36,6 +36,22 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-98 — Chemins arborescents en API, exports Markdown/JSON, description IA des images (réalisé)
+
+**Problème** (Vague 13 #1/#2/#3/#5, spéc `docs/spec-api-ia.md`) : (a) l'arborescence documentaire (C-94) n'était **pas exposée en API** — aucun chemin `mecanique/montage` consommable par un outil externe ; (b) l'export unique était le **docx**, inutilisable par un LLM ou une intégration GMAO (binaire, texte brut perdu) ; (c) les photos n'avaient **aucune description pour l'IA** (l'`alt` sert à l'accessibilité) et **aucune édition d'alt post-upload** — se tromper exigeait de supprimer et re-téléverser la photo.
+
+**Correctif** :
+1. **Chemins à la volée (V13 #1)** : `categoryPaths()` (nouveau `server/src/lib/category-path.ts`) charge les catégories en une requête et joint les slugs depuis la racine. Exposé : `category_path` sur `GET /api/workflows/:id` et la liste, `path` sur `GET /api/categories`. **Jamais stocké** (slugs immuables C-94) : aucun risque de désynchronisation au déplacement d'un nœud.
+2. **Exports md/json (V13 #2/#3)** : la route export existante branchée sur `?format=md|json` (défaut inchangé : docx ; `?version=n` inchangé, 404 si introuvable). **md** : front matter YAML (référence, titre, version, chemin, famille, type, description, responsable, dates) + `## Étape n — titre` + `> Ancre : MO-xxx/etapes/n` par étape + corps + pictos + images `![alt](/photos/fichier)` + `*Description IA : …*`. **json** : snapshot EXACT de la version publiée (zéro perte) + bloc `meta` (GED, `category_path`, `anchors`). Audits dédiés `export_md`/`export_json`.
+3. **Description IA (V13 #5)** : colonne `photos.ai_description` (migration auto, défaut `""`) ; posée dès l'upload (multipart `ai_description`, borne 1000) ; **nouvelle route `PUT /api/photos/:id/meta`** (author+, `alt?`/`ai_description?`, bornes 200/1000, 422 si aucun champ, audit `photo_meta`) — première édition d'alt post-upload du produit ; portée par le snapshot de publication ; réponse publish étendue `{ number, warnings: string[] }` (photos sans description, **non bloquant**). MCP : `upload_photo` accepte `ai_description`, nouvel outil `set_photo_description`.
+4. **Front** : panneau « Photo sélectionnée » sous le canevas quand une photo est sélectionnée (alt + description IA, autosave onBlur, re-sync au changement de photo) ; publication avec avertissements = encart jaune listant les photos à compléter, on reste sur l'éditeur (republier après complétion).
+
+**Test** : `server/test/v13-exports.test.ts` (2 : résolution category_path workflow/liste/catégories ; meta 403/422/404 + warnings publish V1→V2 + contenu md (front matter, chemin, ancres, description IA) + json (meta, anchors, snapshot exact) + 404 version + 401 + docx défaut) ; `web/src/lib/photo-meta.test.ts` (rendu, autosave PUT au blur, pas de PUT sans modification, re-sync au changement de photo).
+
+**Fichiers** : `server/src/lib/category-path.ts` (nouveau), `server/src/db/schema.ts`, `server/src/routes/{photos,publish,workflows,list,categories,export}.ts`, `server/src/app.ts`, `server/src/mcp/{tools,modop-client}.ts`, `server/test/v13-exports.test.ts`, `web/src/api.ts`, `web/src/photo-meta.tsx` (nouveau), `web/src/pages/editor.tsx`, `web/src/lib/photo-meta.test.ts`
+
+**État** : livré le 16 nov. 2026 — branche `beta` (déploiement CT 203).
+
 ## C-97 — Indications métiers paramétrables + abandon d'un brouillon sans version publiée (réalisé)
 
 **Problème** (Vague 12 #8-9, retour terrain du 28 oct. 2026) : (a) la liste des **indications métiers** (flyout « Indications » : Attention, Danger, EPI…) était **figée en dur** — impossible d'adapter les encarts à un métier (demande déjà exprimée en C-70 #16, différée « migration + API ») ; (b) un **brouillon jamais publié (V0)** ne pouvait être **ni abandonné ni jeté** : « Abandonner le brouillon » = restore de la dernière version publiée, inopérant quand il n'y en a aucune — et des étapes aux pictos/canvas JSON corrompus faisaient échouer le chargement du MO (500), verrouillant toute porte de sortie.

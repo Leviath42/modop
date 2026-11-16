@@ -1,5 +1,6 @@
 import { Router } from "express";
 import type Database from "better-sqlite3";
+import { categoryPaths } from "../lib/category-path.js";
 import { requireAuth } from "../auth/middleware.js";
 import { getSettings } from "./settings.js";
 
@@ -48,8 +49,11 @@ export function listRouter(db: Database.Database): Router {
     const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
     const rows = db
       .prepare(`SELECT id, title, reference, category, family, state, current_version, review_due, owner_email, category_id, parent_id, updated_at FROM workflows ${where} ORDER BY ${orderBy}`)
-      .all(...params);
-    res.json(rows);
+      .all(...params) as { category_id: number | null }[];
+    // C-98 (V13 #1) : chemin arborescent de la catégorie, résolu à la volée
+    // (une seule requête catégories, résolution en mémoire).
+    const paths = categoryPaths(db);
+    res.json(rows.map((w) => ({ ...w, category_path: paths.get(w.category_id ?? 0) ?? "" })));
   });
 
   return r;

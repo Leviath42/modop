@@ -1,4 +1,5 @@
 import StepCanvas, { COLORS } from "../step-canvas";
+import { PhotoMeta } from "../photo-meta";
 import StepComments from "../step-comments";
 import type { Shape } from "../annotated-photo";
 import { Camera, ChevronDown, ChevronRight, FoldVertical, GripVertical, Image as ImageIcon, Trash2, TriangleAlert, UnfoldVertical } from "lucide-react";
@@ -63,6 +64,8 @@ export default function EditorPage() {
   const [cropTick, setCropTick] = useState(0);
   const cropUndoStackRef = useRef<{ photoId: number; prevFilename: string }[]>([]);
   const [cropUndoCount, setCropUndoCount] = useState(0);
+  // C-98 (V13 #5) : avertissements de publication (photos sans description IA).
+  const [publishWarnings, setPublishWarnings] = useState<{ number: number; warnings: string[] } | null>(null);
   const canvasDeleteRef = useRef<(() => void) | null>(null);
   const [openSteps, setOpenSteps] = useState<Set<number>>(new Set());
   const [showMeta, setShowMeta] = useState(false);
@@ -468,8 +471,16 @@ export default function EditorPage() {
     setError(null);
     try {
       await api.updateWorkflow(wf.id, { title, category, family, description, review_due: reviewDue || null, owner_email: ownerEmail || null });
-      const { number } = await api.publishWorkflow(wf.id, changelog);
+      const { number, warnings } = await api.publishWorkflow(wf.id, changelog);
       setChangelog(""); // C-96 (V12 #6) : jamais de commentaire hérité à la publication suivante
+      // C-98 (V13 #5) : publication RÉUSSIE mais photos sans description IA —
+      // on reste sur l'éditeur (non bloquant) pour permettre de les compléter.
+      if ((warnings ?? []).length > 0) {
+        setPublishWarnings({ number, warnings: warnings ?? [] });
+        setNotice(null);
+        return;
+      }
+      setPublishWarnings(null);
       setNotice(`Publié en V${number}`);
       setTimeout(() => setNotice(null), 2500);
       navigate(`/workflow/${wf.id}/read`);
@@ -484,6 +495,14 @@ export default function EditorPage() {
       <main className="mx-auto grid w-full min-w-0 max-w-[820px] gap-4 p-4 pb-28">
         {error && <Alert variant="error">{error}</Alert>}
         {notice && <Alert variant="ok">{notice}</Alert>}
+        {publishWarnings && (
+          <Alert variant="warn" title={`Publié en V${publishWarnings.number} — ${publishWarnings.warnings.length} photo(s) sans description IA (non bloquant)`}>
+            <ul className="mb-2 list-disc pl-4">
+              {publishWarnings.warnings.map((w) => <li key={w}>{w}</li>)}
+            </ul>
+            Sélectionnez chaque photo sur le canevas pour compléter sa description (enregistrement automatique), puis republiez.
+          </Alert>
+        )}
 
         <section className="sticky top-[var(--nav-h,2.9rem)] z-30 grid min-w-0 gap-2 rounded-lg border border-border bg-surface px-3 py-2.5 shadow-md">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -808,6 +827,15 @@ export default function EditorPage() {
                       cropRequest={activeStepId === step.id ? cropTick : 0}
                       onPhotosChanged={async () => { const w = await api.getWorkflow(id!); setSteps(w.steps); }}
                     />
+                    {activeStepId === step.id && canvasSel.photos.length === 1 && (() => {
+                      const sel = (step.photos ?? []).find((ph) => ph.id === canvasSel.photos[0]);
+                      return sel ? (
+                        <PhotoMeta
+                          photo={sel}
+                          onSaved={(p) => setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, photos: (s.photos ?? []).map((ph) => (ph.id === p.id ? p : ph)) } : s)))}
+                        />
+                      ) : null;
+                    })()}
                     <div>
                       <input
                         type="file"

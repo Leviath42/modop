@@ -2,6 +2,7 @@ import { Router } from "express";
 import type Database from "better-sqlite3";
 import { requireAuth } from "../auth/middleware.js";
 import { auditLog } from "../auth/audit.js";
+import { categoryPaths } from "../lib/category-path.js";
 
 export interface CategoryRow {
   id: number;
@@ -69,7 +70,10 @@ export function categoryRouter(db: Database.Database): Router {
     const rows = db
       .prepare("SELECT id, parent_id, name, slug, position FROM categories ORDER BY position, name")
       .all() as CategoryRow[];
-    res.json(rows);
+    // C-98 (V13 #1) : chemin complet (slugs depuis la racine) par catégorie,
+    // calculé à la volée — jamais stocké, donc jamais désynchronisé.
+    const paths = categoryPaths(db);
+    res.json(rows.map((c) => ({ ...c, path: paths.get(c.id) ?? "" })));
   });
 
   r.post("/", requireAuth("admin"), (req, res) => {
