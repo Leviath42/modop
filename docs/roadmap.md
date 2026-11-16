@@ -1,10 +1,10 @@
 # Modop — Roadmap
 
-*Dernière mise à jour : après C-88 — **cycle de retour terrain clos (C-70 → C-80, fusionné sur main) + correctifs GED/lecture C-81 → C-88** : export en entête du lecteur, fidélité du composite docx, alerte « à revoir » expliquée avec lien, date de revue/responsable portés par les versions publiées, recherche de responsable accessible aux auteurs, délai de revue par défaut paramétrable (30 j), champs date/responsable robustes dès la création, numéro unique vérifié en direct (casse ignorée) + Familles en liste de recherche. **Backlog prioritaire** : undo/redo global, **templates de documents** (mode de réaction, tableau, enregistrements, FIT, fiches d'aspect), vidéo liée au MO, texte riche. Vague 10 (sécurité) en standby. Vague 9 terminée code + ops ; production sur `beta`. **Ajout (26 oct. 2026) : vague 11 « preuve de formation » (quiz de compréhension pré/post) proposée — voir § Vague 11.*** **Ajout (26 oct. 2026) : § Conformité & traçabilité contractuelle — suivi des versions des CGV (art. 19) + liaison licence ↔ version.** **Porte de déploiement (26 oct. 2026)** ajoutée en Vague 9 #7 : `update.sh` refuse un SHA rouge / en cours / sans run (livré C-89, 15 nov. 2026) — constat : un déploiement a eu lieu alors que la CI était rouge (échec audit undici).***
+*Dernière mise à jour : après C-88 — **cycle de retour terrain clos (C-70 → C-80, fusionné sur main) + correctifs GED/lecture C-81 → C-88** : export en entête du lecteur, fidélité du composite docx, alerte « à revoir » expliquée avec lien, date de revue/responsable portés par les versions publiées, recherche de responsable accessible aux auteurs, délai de revue par défaut paramétrable (30 j), champs date/responsable robustes dès la création, numéro unique vérifié en direct (casse ignorée) + Familles en liste de recherche. **Backlog prioritaire** : undo/redo global, **templates de documents** (mode de réaction, tableau, enregistrements, FIT, fiches d'aspect), vidéo liée au MO, texte riche. Vague 10 (sécurité) en standby. Vague 9 terminée code + ops ; production sur `beta`. **Ajout (26 oct. 2026) : vague 11 « preuve de formation » (quiz de compréhension pré/post) proposée — voir § Vague 11.*** **Ajout (26 oct. 2026) : § Conformité & traçabilité contractuelle — suivi des versions des CGV (art. 19) + liaison licence ↔ version.** **Porte de déploiement (26 oct. 2026)** ajoutée en Vague 9 #7 : `update.sh` refuse un SHA rouge / en cours / sans run (livré C-89, 15 nov. 2026) — constat : un déploiement a eu lieu alors que la CI était rouge (échec audit undici).*** **Ajout (16 nov. 2026) : C-90/C-91 — serveur MCP natif sur `/mcp` (24 outils IA + instructions serveur), premier pas de la Vision long terme « API publique » ; doc `docs/connecteur-mcp.md`. Nouvel item backlog : texte des étapes en dessous des images.**
 
 L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archives/roadmap-v1-a-v6bis.md](archives/roadmap-v1-a-v6bis.md). La série de correctifs UI/UX (C-01 → C-88) est journalisée dans [correctifs.md](correctifs.md).
 
-## ✅ Implémenté (v0 → v6bis + correctifs C-01..C-88)
+## ✅ Implémenté (v0 → v6bis + correctifs C-01..C-91)
 
 - **Éditeur complet** : canevas par étape (photos libres, flèches/zones/textes clic-clic, corbeille de drag), étape active dynamique, autosave des métadonnées, uploads galerie **ou appareil photo**, barre d'outils sticky avec labels, pictos couleur+texte, familles/types.
 - **Publication versionnée** : V1 → Vn immuable (snapshot complet : canevas + mise en page), changelog à la publication, restauration de version, duplication.
@@ -17,6 +17,7 @@ L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archi
 - **Suppression MO** : admin uniquement, double confirmation, case décochée par défaut.
 - **Sécurité** : anti-CSRF (+ allowlist `MODOP_ALLOWED_HOSTS`), magic numbers, rate limits (login, feedback), révocation au changement de rôle, en-têtes durcis, audit.
 - **Ops** : mise à jour/retour arrière depuis l'interface (admin), journal en direct, tests rationalisés (~9 s serveur + ~16 s front).
+- **Connecteur MCP (C-90/C-91)** : serveur MCP natif sur `/mcp` — 24 outils IA (workflows, étapes, photos, versions, publication, export docx, retours terrain), Bearer `MODOP_MCP_TOKEN` + compte service `svc-mcp` (rôle author), appels API en loopback (validations, rate limits et audit identiques), instructions serveur à l'initialize ; doc `docs/connecteur-mcp.md`.
 - **Refonte UI (C-64)** : Tailwind v4 + design tokens de la palette officielle (bleu-gris/orange, clair + sombre) + composants type shadcn faits maison (`web/src/components/ui/`) ; toutes les pages migrées vers les classes/utilitaires, comportements, aria et invariants conservés ; guide de référence `docs/guide-interface-utilisateur.md`, palette `web/src/styles.css`.
 
 ## 🚧 Restant à implémenter
@@ -117,6 +118,7 @@ Critères d'acceptation (à affiner) : un MO avec quiz actif conserve les scores
 - [ ] Si pas de commentaire de version, le commentaire précédent est repris
 - [ ] Docx : mauvaise gestion des photos et formes (position relative)
 - [ ] Docx : formes plus basses que l'image tronquées en lecture
+- [ ] **Texte des étapes en dessous des images** : dans l'affichage d'une étape (lecture et édition), placer le texte de l'étape en dessous des images plutôt qu'au layout actuel. Ajouté le 16 nov. 2026 (demande propriétaire).
 
 ### Conformité & traçabilité contractuelle (ajouté le 26 oct. 2026)
 
