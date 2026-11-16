@@ -48,10 +48,10 @@ Bouton **icône soleil / lune** dans la barre du haut (et sur la page de connexi
 - **Versions** : la lecture ouvre par défaut la **dernière version PUBLIÉE** — le brouillon en cours n'est jamais montré au poste. Le sélecteur de version (V1, V2…) consulte n'importe quelle version publiée avec son **changelog** ; l'option **« Brouillon en cours »** (auteurs/admins uniquement) affiche le brouillon de travail avec un bandeau d'avertissement.
 - Les pictogrammes d'avertissement apparaissent en couleur sous le titre de l'étape ; un document en retard de revue est signalé par une **alerte « à revoir » qui explique la raison** (date dépassée, avec la date, ou absence de date de revue) et propose aux auteurs le bouton **« Mettre à jour la revue »** (l'éditeur s'ouvre directement sur le champ).
 - La ligne d'information sous le titre affiche la **date de revue** (« À revoir le jj/mm/aaaa ») et le **responsable** (Prénom Nom) de la version publiée consultée.
-- Les photos s'affichent à la taille et la position choisies par l'auteur ; les annotations (flèches, zones, textes) sont dessinées dessus.
+- Les photos s'affichent à la taille et la position choisies par l'auteur ; les annotations (flèches, zones, textes) sont dessinées dessus — y compris les **annotations posées sur une photo** (repères, zones), visibles en lecture, en édition et dans l'export .docx.
 - **Cliquez/touchez une photo** : elle s'ouvre **plein écran** (Échap ou toucher le fond pour fermer, pincez pour zoomer).
 - **Signaler un problème** : bouton « Signaler un problème sur cette étape » sous chaque étape — votre message va aux auteurs.
-- **« ⬇ Exporter en .docx »** (auteurs/admins, dans l'entête avec les autres outils) télécharge la version affichée (ouvrable dans Word/LibreOffice) — le canevas composé (photos positionnées + formes + textes) reproduit fidèlement la lecture.
+- **« ⬇ Exporter en .docx »** (auteurs/admins, dans l'entête avec les autres outils) télécharge la version affichée (ouvrable dans Word/LibreOffice) — le canevas composé (photos positionnées + formes + textes + annotations photo) reproduit fidèlement la lecture.
 - **« Éditer »** (auteurs/admins) ouvre directement l'éditeur depuis la lecture.
 - Le bouton **↑** flottant en bas à droite ramène au **début du document**, visible en toute position.
 - **⇥ Guidé** : lecture **une étape par écran** (mobile au poste) — boutons Précédent / Suivant / Terminé accrochés en bas de l'écran, progression n/N.

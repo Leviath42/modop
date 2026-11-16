@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
-import { parseShapes, type Shape } from "./annotated-photo";
+import { parseShapes, type Shape, PhotoAnnotationLayer } from "./annotated-photo";
 import type { Photo } from "./api";
 
 // U-B1 (RF-31) : lightbox plein écran — clic/tap sur une photo du canevas de
@@ -68,12 +68,20 @@ export default function StepCanvasView({ photos, shapes }: { photos: Photo[]; sh
         const hpx = y * 240 + (w * width * (ratios[ph.id] ?? 0.75)) + 12;
         if (hpx > max) max = hpx;
       }
+      // C-95 (V12 #4) : les formes comptent aussi dans la hauteur — une
+      // flèche ou une zone plus basse que les photos n'est plus tronquée
+      // (overflow: hidden). Même règle que l'export docx.
+      for (const s of sh) {
+        const bottom = s.type === "arrow" && s.y2 !== undefined ? Math.max(s.y1, s.y2) : s.y1 + (s.type === "text" ? 0.1 : (s.h ?? 0.2));
+        const bpx = bottom * 240 + 24;
+        if (bpx > max) max = bpx;
+      }
       setH(Math.round(max));
     };
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, [photos, ratios]);
+  }, [photos, ratios, sh]);
 
   const W = ref.current?.clientWidth ?? 800;
 
@@ -84,10 +92,13 @@ export default function StepCanvasView({ photos, shapes }: { photos: Photo[]; sh
         const x = typeof ph.display_x === "number" ? ph.display_x : 0;
         const y = typeof ph.display_y === "number" ? ph.display_y : 0.05;
         return (
-          <img key={ph.id} src={`/photos/${ph.filename}`} alt={ph.alt || ""} draggable={false}
-            onClick={() => setZoomed(ph)}
-            title="Agrandir la photo"
-            style={{ position: "absolute", left: `${x * 100}%`, top: `${y * 240}px`, width: `${w * 100}%`, borderRadius: "8px", display: "block", cursor: "zoom-in" }} />
+          <div key={ph.id} style={{ position: "absolute", left: (x * 100) + "%", top: (y * 240) + "px", width: (w * 100) + "%" }}>
+            <img src={"/photos/" + ph.filename} alt={ph.alt || ""} draggable={false}
+              onClick={() => setZoomed(ph)}
+              title="Agrandir la photo"
+              style={{ width: "100%", borderRadius: "8px", display: "block", cursor: "zoom-in" }} />
+            <PhotoAnnotationLayer annotations={ph.annotations} />
+          </div>
         );
       })}
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none"

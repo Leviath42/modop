@@ -10,7 +10,7 @@ interface SnapshotStep {
   body: string;
   pictos: string[];
   canvas: unknown[];
-  photos: { id: number; filename: string; alt: string; display_size?: string; display_align?: string; display_x?: number | null; display_y?: number | null; display_w?: number | null }[];
+  photos: { id: number; filename: string; alt: string; annotations: unknown[]; display_size?: string; display_align?: string; display_x?: number | null; display_y?: number | null; display_w?: number | null }[];
 }
 
 export function publishRouter(db: Database.Database): Router {
@@ -50,7 +50,10 @@ export function publishRouter(db: Database.Database): Router {
         body: s.body,
         pictos: JSON.parse(s.pictos),
         canvas: JSON.parse(s.canvas ?? "[]"),
-        photos: db.prepare("SELECT id, filename, alt, display_size, display_align, display_x, display_y, display_w FROM photos WHERE step_id = ?").all(s.id),
+        // C-92 : les annotations photo (formes posées sur chaque photo,
+        // p.ex. via le MCP annotate_photo) font partie du document publié —
+        // sans elles la version publiée les perdait et un restore les effaçait.
+        photos: (db.prepare("SELECT id, filename, alt, annotations, display_size, display_align, display_x, display_y, display_w FROM photos WHERE step_id = ?").all(s.id) as { annotations: string | null }[]).map((ph) => ({ ...ph, annotations: JSON.parse(ph.annotations ?? "[]") })),
       })) as SnapshotStep[],
     };
     const changelog = typeof (req.body as { changelog?: unknown })?.changelog === "string"

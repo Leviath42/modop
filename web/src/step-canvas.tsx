@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Crop, Trash2, X } from "lucide-react";
 import { api, type Photo } from "./api";
-import { parseShapes, type Shape } from "./annotated-photo";
+import { parseShapes, type Shape, PhotoAnnotationLayer } from "./annotated-photo";
 
 // Canevas unique d'une étape : les images ET les formes vivent dans le même
 // espace, tout est déplaçable librement (borné au canevas).
@@ -691,6 +691,7 @@ export default function StepCanvas({
           }}>
             <img src={`/photos/${o.photo.filename}`} alt={o.photo.alt || ""} draggable={false}
               style={{ width: "100%", display: "block", pointerEvents: "none" }} />
+            <PhotoAnnotationLayer annotations={o.photo.annotations} />
             <span
               onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setSelPhotos(new Set([i])); setDrag({ kind: "resize", photoId: o.photo.id }); }}
               role="button" aria-label="Redimensionner l'image"

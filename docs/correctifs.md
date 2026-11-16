@@ -36,6 +36,39 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-95 — Export docx & lecture : annotations photo rendues, formes basses non tronquées (réalisé)
+
+**Problème** (Vague 12 #2-4, retour terrain du 28 oct. 2026) : l'export docx était signalé infidèle — images et formes « légèrement décalées », mauvaise gestion des positions relatives, formes plus basses que les photos tronquées. Diagnostic : (a) les **annotations photo** (formes posées SUR une photo, p. ex. via l'outil MCP `annotate_photo`) n'étaient dessinées **nulle part** — ni dans le composite docx ni dans la vue lecture ; (b) la hauteur du canevas de lecture était calculée **uniquement sur les photos** — une flèche ou une zone posée plus bas disparaissait sous `overflow: hidden` (le composite docx, lui, tenait déjà compte des formes).
+
+**Correctif** :
+1. **Calque d'annotations photo** (`PhotoAnnotationLayer` dans `annotated-photo.tsx`) : SVG `viewBox 0 0 1 1` (fractions 0-1 de la photo) + pastilles texte HTML, `pointerEvents: none`, marqueur unique par instance (`useId`). Rendu dans la **vue lecture** (`step-canvas-view.tsx`), la **lecture guidée** (même composant) et l'**éditeur** (`step-canvas.tsx`, calque passif — aucune interaction, l'outil d'annotation reste celui du canevas).
+2. **Composite docx** (`canvas-composite.ts`) : dessin factorisé `drawShape(ctx, s, ox, oy, sx, sy)` — formes du canevas dans le repère 800×240, annotations photo dans le repère de chaque photo ; positions scalées, épaisseurs/pointes/pastilles en px écran, fidèle au `vectorEffect="non-scaling-stroke"` du web. La route `export.ts` passe les annotations du snapshot au composite.
+3. **Troncature (V12 #4)** : `step-canvas-view.tsx` mesure la hauteur en incluant les formes (même règle que le composite : bas de forme ×240 + 24 px) — une forme plus basse que les photos n'est plus coupée en lecture.
+
+Leur entrée dans le snapshot de publication (perdues avant, rendues ici) = **C-92**, livré dans la foulée.
+
+**Test** : `server/test/composite-annotations.test.ts` (annotations rendues dans le composite, hauteur inchangée) ; `web/src/lib/photo-annotations.test.ts` (calque flèche/zone/pastille rendu en lecture + hauteur recalculée avec une forme basse).
+
+**Fichiers** : `server/src/routes/export.ts`, `server/src/render/canvas-composite.ts`, `web/src/annotated-photo.tsx`, `web/src/step-canvas-view.tsx`, `web/src/step-canvas.tsx`, `server/test/composite-annotations.test.ts`, `web/src/lib/photo-annotations.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + lint + 148/148 tests serveur + tous tests front verts.
+
+---
+
+## C-92 — Annotations photo absentes du snapshot de publication (réalisé)
+
+**Problème** (candidat réservé le 16 nov. 2026) : le `SELECT` photos de `publish.ts` ne prenait pas la colonne `annotations` — le snapshot de version publiée ne contenait pas les annotations posées sur les photos (p. ex. via l'outil MCP `annotate_photo`). Conséquences : invisibles en lecture publiée, absentes de l'export docx, et **perdues définitivement** au restore (le restore les attendait déjà — le snapshot ne les portait jamais).
+
+**Correctif** : le snapshot porte désormais `annotations` par photo (tableau JSON parsé, `[]` si nul) ; la lecture de version publiée (F2) les expose ; le restore les restitue. Rétro-compat : les snapshots antérieurs restent lisibles (champ absent → `?? []`).
+
+**Test** : `server/test/annotations.test.ts` — publication → la version publiée expose les annotations → effacement côté brouillon → restore V1 → annotations restituées.
+
+**Fichiers** : `server/src/routes/publish.ts`, `server/test/annotations.test.ts`
+
+**État** : ✅ livré sur beta avec C-95 (le rendu de ces annotations = C-95).
+
+---
+
 ## C-94 — Arborescence documentaire paramétrable + documents parents (réalisé)
 
 **Problème** (Vague 12 #11-12 / Vague 13 #1, demande propriétaire 16 nov. 2026) : les MO ne se rangeaient que par « famille » texte libre — pas de hiérarchie paramétrable, pas de notion de document parent, donc ni navigation arborescente ni socle d'indexation IA (spéc [spec-api-ia.md](spec-api-ia.md) §1).

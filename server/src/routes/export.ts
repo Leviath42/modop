@@ -14,6 +14,7 @@ interface SnapshotPicto { kind: string; label: string; color: string }
 interface SnapshotPhoto {
   filename: string;
   alt: string;
+  annotations?: CompositeShape[];
   display_x?: number | null;
   display_y?: number | null;
   display_w?: number | null;
@@ -179,6 +180,8 @@ export function exportRouter(db: Database.Database): Router {
         photosDir(),
         (step.photos ?? []).map((p) => ({
           filename: p.filename,
+          // C-95 : les annotations photo suivent la photo dans le docx
+          annotations: p.annotations ?? [],
           display_x: p.display_x,
           display_y: p.display_y,
           display_w: p.display_w,

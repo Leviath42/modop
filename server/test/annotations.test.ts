@@ -57,6 +57,42 @@ test("annotations invalides → 422", async () => {
   assert.equal(bad.status, 422);
 });
 
+
+test("C-92 : annotations portées par la version publiée puis restituées au restore", async () => {
+  const wf = await call("POST", "/api/workflows", { title: "T", reference: "MO-AN2" }, cookie);
+  const step = await call("POST", `/api/workflows/${wf.json.id}/steps`, { title: "S" }, cookie);
+  const fd = new FormData();
+  fd.append("file", new Blob([PNG_MIN], { type: "image/png" }), "ann.png");
+  fd.append("alt", "dispositif");
+  const up = await fetch(`${base}/api/steps/${step.json.id}/photos`, { method: "POST", headers: { cookie }, body: fd });
+  const photo = await up.json();
+
+  const shapes = [{ type: "rect", x1: 0.1, y1: 0.1, w: 0.4, h: 0.3, color: "#f5a623" }];
+  await call("PUT", `/api/photos/${photo.id}/annotations`, { annotations: shapes }, cookie);
+
+  const pub = await call("POST", `/api/workflows/${wf.json.id}/publish`, undefined, cookie);
+  assert.equal(pub.status, 200);
+  assert.equal(pub.json.number, 1);
+
+  // la version publiée expose les annotations (lecture F2, snapshot)
+  const v = await call("GET", `/api/workflows/${wf.json.id}/versions/1`, undefined, cookie);
+  assert.equal(v.status, 200);
+  const vphoto = v.json.steps[0].photos[0];
+  assert.ok(Array.isArray(vphoto.annotations), "annotations présentes dans le snapshot publié");
+  assert.equal(vphoto.annotations.length, 1);
+  assert.equal(vphoto.annotations[0].type, "rect");
+
+  // on efface les annotations du brouillon, puis on restaure V1 : elles reviennent
+  await call("PUT", `/api/photos/${photo.id}/annotations`, { annotations: [] }, cookie);
+  const rest = await call("POST", `/api/workflows/${wf.json.id}/versions/1/restore`, undefined, cookie);
+  assert.equal(rest.status, 200);
+  const got = await call("GET", `/api/workflows/${wf.json.id}`, undefined, cookie);
+  const rphoto = got.json.steps[0].photos[0];
+  assert.ok(Array.isArray(rphoto.annotations), "annotations restituées après restore");
+  assert.equal(rphoto.annotations.length, 1);
+  assert.equal(rphoto.annotations[0].w, 0.4);
+});
+
 process.on("exit", () => {
   server.close();
   fs.rmSync("data", { recursive: true, force: true });

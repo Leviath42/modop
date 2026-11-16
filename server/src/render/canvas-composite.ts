@@ -13,6 +13,7 @@ const REF_H = 240;
 
 export interface CompositePhoto {
   filename: string;
+  annotations?: CompositeShape[];
   display_x?: number | null;
   display_y?: number | null;
   display_w?: number | null;
@@ -50,7 +51,7 @@ export async function composeStepCanvas(
   if (photos.length === 0 && shapes.length === 0) return null;
 
   // charger les images et mesurer
-  const loaded: { img: Awaited<ReturnType<typeof loadImage>>; x: number; y: number; w: number; h: number }[] = [];
+  const loaded: { img: Awaited<ReturnType<typeof loadImage>>; x: number; y: number; w: number; h: number; annotations: CompositeShape[] }[] = [];
   for (const p of photos) {
     const file = path.join(photosDir, p.filename);
     if (!fs.existsSync(file)) continue;
@@ -60,7 +61,7 @@ export async function composeStepCanvas(
       const ratio = img.height / img.width;
       const x = (typeof p.display_x === "number" ? p.display_x : 0) * width;
       const y = (typeof p.display_y === "number" ? p.display_y : 0.05) * REF_H;
-      loaded.push({ img, x, y, w, h: w * ratio });
+      loaded.push({ img, x, y, w, h: w * ratio, annotations: Array.isArray(p.annotations) ? p.annotations : [] });
     } catch { /* image illisible : ignorée */ }
   }
 
@@ -81,70 +82,89 @@ export async function composeStepCanvas(
   ctx.fillStyle = "#f0f1f4";
   ctx.fillRect(0, 0, width, maxH);
 
-  // photos (dans l'ordre, comme le DOM)
+  // photos (dans l'ordre, comme le DOM) + annotations posées sur chacune
   for (const o of loaded) {
     ctx.drawImage(o.img, o.x, o.y, o.w, o.h);
+    // C-95 : annotations photo (formes relatives 0-1 À la photo, calque du
+    // lecteur) dessinées dans le repère de la photo — positions scalées,
+    // épaisseurs et pastilles texte en px écran, fidèles au rendu web
+    // (vectorEffect="non-scaling-stroke" côté lecteur).
+    for (const a of o.annotations ?? []) drawShape(ctx, a, o.x, o.y, o.w, o.h);
   }
 
-  // formes — même logique que step-canvas-view
-  const font = "sans-serif";
-  for (const s of shapes) {
-    const color = s.color ?? "#d0021b";
-    const x1 = s.x1 * width;
-    const y1 = s.y1 * REF_H;
-    ctx.strokeStyle = color;
-    ctx.fillStyle = color;
-    // C-82 : épaisseur par défaut 2 comme le lecteur (les formes récentes
-    // portent leur épaisseur ; les anciennes étaient rendues en 2 à l'écran
-    // mais 3 dans l'export).
-    ctx.lineWidth = (s as { width?: number }).width ?? 2;
-    if (s.type === "arrow") {
-      const x2 = (s.x2 ?? s.x1 + 0.2) * width;
-      const y2 = (s.y2 ?? s.y1 + 0.2) * REF_H;
-      const dx = x2 - x1, dy = y2 - y1;
-      const len = Math.hypot(dx, dy) || 1;
-      // C-72 (#6) : pointe proportionnelle a l'epaisseur du trait
-      const head = ctx.lineWidth * 4.7; // ~14px pour width 3 (rendu historique)
-      const ax = x2 - (dx / len) * head, ay = y2 - (dy / len) * head;
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(ax, ay);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(x2, y2);
-      ctx.lineTo(ax - (dy / len) * head * 0.43, ay + (dx / len) * head * 0.43);
-      ctx.lineTo(ax + (dy / len) * head * 0.43, ay - (dx / len) * head * 0.43);
-      ctx.closePath();
-      ctx.fill();
-    } else if (s.type === "rect") {
-      ctx.strokeRect(x1, y1, (s.w ?? 0.3) * width, (s.h ?? 0.2) * REF_H);
-    } else if (s.type === "text") {
-      // C-82 : pastille fidèle au lecteur — rectangle arrondi de la couleur
-      // de la forme, texte blanc centré SUR l'ancre (le lecteur centre via
-      // translate(-50%, -50%) ; l'ancien export dessinait le texte brut à
-      // partir de l'ancre, décalé d'une demi-pastille).
-      const label = s.text ?? "";
-      if (label) {
-        ctx.font = `600 13px ${font}`;
-        const padX = 6, padY = 2.5;
-        const tw = ctx.measureText(label).width + padX * 2;
-        const th = 13 * 1.25 + padY * 2;
-        const rx = x1 - tw / 2, ry = y1 - th / 2;
-        ctx.beginPath();
-        const c2d = ctx as unknown as { roundRect?: (x: number, y: number, w: number, h: number, r: number) => void };
-        if (typeof c2d.roundRect === "function") c2d.roundRect(rx, ry, tw, th, 4);
-        else ctx.rect(rx, ry, tw, th);
-        ctx.fillStyle = color;
-        ctx.fill();
-        ctx.fillStyle = "#ffffff";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(label, x1, y1);
-        ctx.textAlign = "left";
-        ctx.textBaseline = "alphabetic";
-      }
-    }
-  }
+  // formes du canevas — même logique que step-canvas-view (repère 240 px)
+  for (const s of shapes) drawShape(ctx, s, 0, 0, width, REF_H);
+
 
   return canvas.toBuffer("image/png");
+}
+
+
+// Dessin d'une forme (canevas ou annotation photo) dans un repère donné :
+// ox/oy = origine px, sx/sy = largeur/hauteur du repère en px (fractions
+// 0-1 -> px). Épaisseurs, pointes de flèche et pastilles texte restent en
+// px écran (non scalées) — comme le rendu HTML/SVG du lecteur.
+function drawShape(
+  ctx: ReturnType<ReturnType<typeof createCanvas>["getContext"]>,
+  s: CompositeShape,
+  ox: number,
+  oy: number,
+  sx: number,
+  sy: number
+): void {
+  const color = s.color ?? "#d0021b";
+  const x1 = ox + s.x1 * sx;
+  const y1 = oy + s.y1 * sy;
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  // C-82 : épaisseur par défaut 2 comme le lecteur (les formes récentes
+  // portent leur épaisseur ; les anciennes étaient rendues en 2 à l'écran
+  // mais 3 dans l'export).
+  ctx.lineWidth = (s as { width?: number }).width ?? 2;
+  if (s.type === "arrow") {
+    const x2 = ox + (s.x2 ?? s.x1 + 0.2) * sx;
+    const y2 = oy + (s.y2 ?? s.y1 + 0.2) * sy;
+    const dx = x2 - x1, dy = y2 - y1;
+    const len = Math.hypot(dx, dy) || 1;
+    // C-72 (#6) : pointe proportionnelle a l'epaisseur du trait
+    const head = ctx.lineWidth * 4.7; // ~14px pour width 3 (rendu historique)
+    const ax = x2 - (dx / len) * head, ay = y2 - (dy / len) * head;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(ax, ay);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(ax - (dy / len) * head * 0.43, ay + (dx / len) * head * 0.43);
+    ctx.lineTo(ax + (dy / len) * head * 0.43, ay - (dx / len) * head * 0.43);
+    ctx.closePath();
+    ctx.fill();
+  } else if (s.type === "rect") {
+    ctx.strokeRect(x1, y1, (s.w ?? 0.3) * sx, (s.h ?? 0.2) * sy);
+  } else if (s.type === "text") {
+    // C-82 : pastille fidèle au lecteur — rectangle arrondi de la couleur
+    // de la forme, texte blanc centré SUR l'ancre (le lecteur centre via
+    // translate(-50%, -50%) ; l'ancien export dessinait le texte brut à
+    // partir de l'ancre, décalé d'une demi-pastille).
+    const label = s.text ?? "";
+    if (label) {
+      ctx.font = "600 13px sans-serif";
+      const padX = 6, padY = 2.5;
+      const tw = ctx.measureText(label).width + padX * 2;
+      const th = 13 * 1.25 + padY * 2;
+      const rx = x1 - tw / 2, ry = y1 - th / 2;
+      ctx.beginPath();
+      const c2d = ctx as unknown as { roundRect?: (x: number, y: number, w: number, h: number, r: number) => void };
+      if (typeof c2d.roundRect === "function") c2d.roundRect(rx, ry, tw, th, 4);
+      else ctx.rect(rx, ry, tw, th);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, x1, y1);
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
+    }
+  }
 }
