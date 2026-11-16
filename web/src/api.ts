@@ -32,6 +32,13 @@ export interface Category {
   position: number;
 }
 
+export interface StepComment {
+  id: number;
+  by: string;
+  message: string;
+  at: string;
+}
+
 export interface Photo {
   id: number;
   step_id?: number;
@@ -294,6 +301,20 @@ export const api = {
     await handle<unknown>(
       await fetch(`/api/workflows/${workflowId}/feedback/${feedbackId}/resolve`, { method: "PUT" })
     );
+  },
+  // C-96 (V12 #7) : commentaires de rédaction par étape — édition only.
+  async listStepComments(stepId: number): Promise<StepComment[]> {
+    return handle(await fetch(`/api/steps/${stepId}/comments`));
+  },
+  async addStepComment(stepId: number, message: string): Promise<StepComment> {
+    return handle(await fetch(`/api/steps/${stepId}/comments`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message }),
+    }));
+  },
+  async deleteStepComment(stepId: number, commentId: number): Promise<void> {
+    await handle<unknown>(await fetch(`/api/steps/${stepId}/comments/${commentId}`, { method: "DELETE" }));
   },
   exportUrl(id: number, version?: number): string {
     return `/api/workflows/${id}/export${version ? `?version=${version}` : ""}`;

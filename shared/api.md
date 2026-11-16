@@ -116,3 +116,11 @@ Fusion séquentielle delta ← une branche à la fois, portes : tsc + 96 tests r
 - `GET /api/workflows` expose les deux colonnes ; filtres `?parent=<id>` (enfants directs) et `?category_id=<id>` (rattachés exacts).
 - Le snapshot de publication porte `category_id`/`parent_id` (le snapshot inclut `SELECT *`) ; `GET /api/workflows/:id/versions/:number` les renvoie (`null` pour les snapshots antérieurs à C-94).
 - La duplication (`POST /api/workflows/:id/duplicate`) copie les deux rattachements.
+
+## Contrat C-96 — commentaires d'auteurs par étape (édition only)
+
+- Table `step_comments` : `id, step_id` (FK → steps, ON DELETE CASCADE), `by_email` TEXT, `message` TEXT, `created_at` — notes de rédaction entre auteurs, jamais publiées.
+- `GET /api/steps/:id/comments` (author+) → `{ id, by, message, at }[]` (ordre chronologique)
+- `POST /api/steps/:id/comments` { message } (author+) → 201 — 422 si message vide après trim ou > 1000 caractères
+- `DELETE /api/steps/:id/comments/:commentId` — par l'auteur du commentaire ou un admin (403 sinon)
+- **Jamais dans le snapshot de publication** (publish ne les lit pas), ni exposés au lecteur, à l'export docx ou au MCP. Supprimés en cascade avec l'étape (`DELETE /api/steps/:id`).

@@ -103,6 +103,18 @@ CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+-- C-96 (V12 #7) : commentaires de rédaction entre auteurs, par étape —
+-- jamais publiés (absents du snapshot/versions), jamais exposés aux
+-- lecteurs ni à l'export docx. Supprimés avec l'étape (CASCADE).
+CREATE TABLE IF NOT EXISTS step_comments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  step_id INTEGER NOT NULL REFERENCES steps(id) ON DELETE CASCADE,
+  by_email TEXT NOT NULL,
+  message TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_step_comments_step ON step_comments(step_id);
 CREATE INDEX IF NOT EXISTS idx_steps_workflow ON steps(workflow_id, position);
 CREATE INDEX IF NOT EXISTS idx_photos_step ON photos(step_id);
 CREATE INDEX IF NOT EXISTS idx_versions_workflow ON versions(workflow_id, number);

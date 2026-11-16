@@ -36,6 +36,21 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-96 — Édition : retours terrain visibles, commentaires d'auteurs par étape, publication sans commentaire hérité (réalisé)
+
+**Problème** (Vague 12 #5-7, retour terrain du 28 oct. 2026) : (a) les **remontées terrain ouvertes étaient invisibles en mode édition** — l'auteur qui préparait une nouvelle version ne voyait pas qu'il avait des corrections à traiter, sauf en allant chercher la page ; (b) le **champ commentaire de version n'était jamais vidé** après publication — le texte resurgissait pré-rempli dans la publication suivante (risque de changelog erroné) ; (c) il n'existait **aucun espace de commentaires de rédaction** entre auteurs au niveau des étapes.
+
+**Correctif** :
+1. **Retours terrain visibles (V12 #5)** : l'éditeur charge les retours ouverts (filtre `status === "open"`) ; **badge warn global** dans la barre sticky (« N retour(s) terrain à traiter ») + **badge ⚑ par étape** dans l'en-tête du bloc, les deux liens vers la page de traitement `/workflow/:id/feedbacks` (page existante, inchangée).
+2. **Publication propre (V12 #6)** : `setChangelog("")` après `api.publishWorkflow` réussi — le champ de commentaire de version repart vide à chaque publication.
+3. **Commentaires d'auteurs par étape (V12 #7)** : table `step_comments` (`step_id` FK CASCADE, `by_email`, `message`, `created_at`) + routes `/api/steps/:id/comments` (GET/POST author+, DELETE par l'auteur du commentaire ou un admin), bornes : message trim, non vide, ≤ 1000. Front : composant repliable dans chaque bloc étape ouverte. **Choix assumé : jamais publiés** — absents du snapshot de publication, du lecteur, de la lecture guidée, de l'export docx et du serveur MCP ; supprimés en cascade avec l'étape.
+
+**Test** : `server/test/step-comments.test.ts` (6 tests runtime : roundtrip, 422/404, lecteur 403, suppression auteur/autre/admin, absence du snapshot après publish, CASCADE) ; `web/src/lib/step-comments.test.ts` (compteur replié, ouverture, POST ajouté au DOM, suppression réservée au propriétaire).
+
+**Fichiers** : `server/src/db/schema.ts`, `server/src/routes/comments.ts`, `server/src/app.ts`, `server/test/step-comments.test.ts`, `web/src/step-comments.tsx`, `web/src/api.ts`, `web/src/pages/editor.tsx`, `web/src/lib/step-comments.test.ts`
+
+**État** : ✅ livré sur beta — tsc + build + lint + 154/154 tests serveur + tous tests front verts.
+
 ## C-95 — Export docx & lecture : annotations photo rendues, formes basses non tronquées (réalisé)
 
 **Problème** (Vague 12 #2-4, retour terrain du 28 oct. 2026) : l'export docx était signalé infidèle — images et formes « légèrement décalées », mauvaise gestion des positions relatives, formes plus basses que les photos tronquées. Diagnostic : (a) les **annotations photo** (formes posées SUR une photo, p. ex. via l'outil MCP `annotate_photo`) n'étaient dessinées **nulle part** — ni dans le composite docx ni dans la vue lecture ; (b) la hauteur du canevas de lecture était calculée **uniquement sur les photos** — une flèche ou une zone posée plus bas disparaissait sous `overflow: hidden` (le composite docx, lui, tenait déjà compte des formes).

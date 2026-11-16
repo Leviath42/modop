@@ -1,4 +1,5 @@
 import StepCanvas, { COLORS } from "../step-canvas";
+import StepComments from "../step-comments";
 import type { Shape } from "../annotated-photo";
 import { Camera, ChevronDown, ChevronRight, FoldVertical, GripVertical, Image as ImageIcon, Trash2, TriangleAlert, UnfoldVertical } from "lucide-react";
 import { EditorBottomBar } from "../editor/bottom-bar";
@@ -85,6 +86,9 @@ export default function EditorPage() {
   // datalists natifs ne montraient pas les Prénom/Nom de façon fiable).
   const [ownerOpen, setOwnerOpen] = useState(false);
   const [changelog, setChangelog] = useState("");
+  // C-96 (V12 #5) : retours terrain ouverts visibles en édition — badge
+  // global + badge par étape, lien vers la page de traitement.
+  const [openFeedbacks, setOpenFeedbacks] = useState<{ id: number; step_id: number }[]>([]);
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(false);
   const [confirmDeleteDoc2, setConfirmDeleteDoc2] = useState(false);
   const [deleteAck, setDeleteAck] = useState(false); // C-46 : case décochée par défaut
@@ -95,6 +99,12 @@ export default function EditorPage() {
   const cameraRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const isNew = id === "new";
+  useEffect(() => {
+    if (isNew) return;
+    api.listFeedback(Number(id))
+      .then((fbs) => setOpenFeedbacks(fbs.filter((f) => f.status === "open").map((f) => ({ id: f.id, step_id: f.step_id }))))
+      .catch(() => setOpenFeedbacks([]));
+  }, [id, isNew]);
   // C-88 : unicité du numéro — vérification EN DIRECT en création (le
   // serveur reste le garde-fou final, insensible à la casse).
   const [refTaken, setRefTaken] = useState(false);
@@ -443,6 +453,7 @@ export default function EditorPage() {
     try {
       await api.updateWorkflow(wf.id, { title, category, family, description, review_due: reviewDue || null, owner_email: ownerEmail || null });
       const { number } = await api.publishWorkflow(wf.id, changelog);
+      setChangelog(""); // C-96 (V12 #6) : jamais de commentaire hérité à la publication suivante
       setNotice(`Publié en V${number}`);
       setTimeout(() => setNotice(null), 2500);
       navigate(`/workflow/${wf.id}/read`);
@@ -466,6 +477,11 @@ export default function EditorPage() {
             </h1>
             {!isNew && !metaSaved && (
               <Badge variant="warn" role="status" className="font-semibold">Enregistrement…</Badge>
+            )}
+            {!isNew && openFeedbacks.length > 0 && (
+              <Link to={`/workflow/${id}/feedbacks`} className="no-underline" title="Traiter les retours terrain">
+                <Badge variant="warn" role="status" className="font-semibold">{openFeedbacks.length} retour{openFeedbacks.length > 1 ? "s" : ""} terrain à traiter</Badge>
+              </Link>
             )}
             {!isNew && (
               <Button onClick={() => setShowMeta((v) => !v)} aria-expanded={showMeta} variant="outline" size="sm">
@@ -731,7 +747,11 @@ export default function EditorPage() {
                     >
                       {openSteps.has(step.id) ? <ChevronDown size={16} aria-hidden="true" /> : <ChevronRight size={16} aria-hidden="true" />}
                     </Button>
-                    
+                    {openFeedbacks.filter((f) => f.step_id === step.id).length > 0 && (
+                      <Link to={`/workflow/${id}/feedbacks`} aria-label="Retours terrain à traiter sur cette étape" title="Retours terrain à traiter sur cette étape" className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md bg-warn-bg px-1.5 text-xs font-bold text-warn no-underline">
+                        ⚑ {openFeedbacks.filter((f) => f.step_id === step.id).length}
+                      </Link>
+                    )}
                   </div>
                   {openSteps.has(step.id) && (
                   <>
@@ -821,6 +841,7 @@ export default function EditorPage() {
                       ))}
                     </div>
                   )}
+                  <StepComments stepId={step.id} />
                   </>
                   )}
                 </li>

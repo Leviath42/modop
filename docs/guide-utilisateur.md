@@ -75,7 +75,7 @@ Le lien **« ⚑ Terrain »** du lecteur ouvre la page dédiée : **À traiter**
 
 ### L'interface d'édition
 
-Le **bandeau** (toujours visible en haut) affiche : titre + référence, badge « Enregistrement… », bouton **Détails** (métadonnées : titre, famille, type, description, **À revoir le**, **Responsable**), **Publier**, ▸/▾ (tout ouvrir/replier), et le **sélecteur d'étape active**.
+Le **bandeau** (toujours visible en haut) affiche : titre + référence, badge « Enregistrement… », badge **« N retours terrain à traiter »** (si des remontées ouvertes existent — touchez-le pour aller les traiter), bouton **Détails** (métadonnées : titre, famille, type, description, **À revoir le**, **Responsable**), **Publier**, ▸/▾ (tout ouvrir/replier), et le **sélecteur d'étape active**.
 
 La **barre d'outils** est **fixée en bas de l'écran** (zone pouce, mobile comme PC) :
 
@@ -91,6 +91,7 @@ La **barre d'outils** est **fixée en bas de l'écran** (zone pouce, mobile comm
 - Ouvrir une étape : **cliquer sur son titre** ou le bouton ▸/▾.
 - **Réordonner** : glissez la poignée **⠿** à gauche du titre (au doigt aussi).
 - Chaque étape : titre, description, pictogrammes, photos. **Autosave** : titre/description/famille… enregistrés ~1 s après la dernière frappe.
+- **⚑ sur l'en-tête d'une étape** : des retours terrain ouverts concernent cette étape — touchez le badge pour aller les traiter.
 
 ### Photos
 
@@ -116,9 +117,13 @@ Le canevas regroupe photos et formes dans le même espace :
 
 Bouton **⚠ Indications** : Attention, Danger, EPI, Risque électrique, Point chaud, Outillage, Information — cliquez pour activer/désactiver (compteur sur le bouton).
 
+### Commentaires d'auteurs (rédaction)
+
+Chaque étape ouverte offre une section repliable **« Commentaires auteurs »** : des notes internes entre rédacteurs (photo à refaire, consigne à vérifier…), affichées avec leur auteur et leur date. Saisie ≤ 1000 caractères ; suppression par l'auteur du commentaire ou un admin. **Ces notes ne sont jamais publiées** : elles n'apparaissent ni dans les versions publiées, ni chez les lecteurs, ni dans l'export docx — et disparaissent avec l'étape si elle est supprimée.
+
 ### Publier et versions
 
-- **« Publier »** exige au moins une étape ; la première publication crée **V1**, chaque republication **V2, V3…** (snapshot immuable). Un **changelog** des modifications vous est demandé. **Publication refusée si la date de revue est dépassée** — mettez-la à jour dans les détails.
+- **« Publier »** exige au moins une étape ; la première publication crée **V1**, chaque republication **V2, V3…** (snapshot immuable). Un **changelog** des modifications vous est demandé — le champ repart **vide** à chaque nouvelle publication (aucun commentaire hérité de la précédente). **Publication refusée si la date de revue est dépassée** — mettez-la à jour dans les détails.
 - **« Abandonner le brouillon »** (bandeau) : remplace le brouillon en cours par la dernière version publiée — le recours après un brouillon raté, sans rien retaper (confirmation demandée).
 - L'historique des versions (numéro, auteur, date, changelog) est consultable dans le lecteur ; une version peut être **restaurée** (l'état d'alors remplace le brouillon, l'historique reste intact).
 - **Dupliquer** : copie complète en brouillon (référence `-COPIE`), photos indépendantes.

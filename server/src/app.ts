@@ -21,6 +21,7 @@ import { adminRouter, activeUsersRouter } from "./routes/admin.js";
 import { duplicateRouter } from "./routes/duplicate.js";
 import { categoryRouter } from "./routes/categories.js";
 import { statsRouter } from "./routes/stats.js";
+import { stepCommentRouter } from "./routes/comments.js";
 import { mcpRouter } from "./mcp/route.js";
 
 function disabledDeployRouter() {
@@ -55,6 +56,7 @@ export function createApp(db: Database.Database, webDist?: string): express.Expr
   app.use("/api/settings", settingsRouter(db));
   app.use("/api/steps", stepRouter(db));
   app.use("/api/steps", photoRouter(db));
+  app.use("/api/steps", stepCommentRouter(db));
   app.use("/api/photos", deletePhotoRouter(db));
   app.use("/api/photos", annotationsRouter(db));
   app.use("/api/photos", photoLayoutRouter(db));
