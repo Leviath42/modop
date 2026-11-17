@@ -1,10 +1,8 @@
 # Spéc — Preuve de formation & habilitation (Vague 11, proposition à valider)
 
-*Rédigée le 17 nov. 2026 pour arbitrage propriétaire — « à spécifier avant code »
-(roadmap V11). Objectif : faire passer modop de la consultation de MO à la
-preuve de formation — argument habilitation / ISO 9001, mesure concrète pour le
-dossier de création de poste (taux de réussite, temps d'habilitation). Réutilise
-l'existant : rôles, snapshot versionné, journal d'audit, stats admin.*
+*Rédigée le 17 nov. 2026, arbitrée le soir même : **pas de quiz dans modop — la Vague 11 est RETIRÉE de la roadmap modop** (décision propriétaire). Ce document devient le cadrage transférable d'une éventuelle **application de formation dédiée** consommant l'API modop : exports md/json/pdf, corpus `GET /api/corpus` (ré-embedding incrémental), MCP 26 outils, tokens API publics (V13 #8, à activer à prod réelle). Conservé hors périmètre modop.*
+
+*Contenu d'origine (rédaction du 17 nov. 2026) : faire passer la preuve de formation — argument habilitation / ISO 9001, mesure concrète pour le dossier de création de poste (taux de réussite, temps d'habilitation). Réutilise l'existant : rôles, snapshot versionné, journal d'audit, stats admin.*
 
 ## 1. Modèle de données
 
