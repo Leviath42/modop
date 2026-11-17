@@ -74,6 +74,10 @@ Le lien **« ⚑ Terrain »** du lecteur ouvre la page dédiée : **À traiter**
 2. Titre, **référence unique** (vérifiée pendant la frappe — deux documents ne peuvent pas partager le même numéro, majuscules/minuscules ignorées), **famille** (liste de recherche parmi les familles existantes, saisie libre possible) et **type** (ex. Maintenance), description → **Créer**.
 3. Dès la création, la **date « À revoir le » est préremplie** (J+30 par défaut, voir Paramètres) et le **responsable se choisit par recherche** (Prénom, Nom ou email) — les deux valeurs sont enregistrées avec le document, et restent affichées au passage en édition.
 
+### Importer un document existant
+
+**« Importer »** dans la liste (rôles auteur/admin) : choisissez un fichier `.docx`, `.pdf` (textuel) ou `.xlsx`. Un **brouillon** est créé automatiquement (référence `IMP-…`, titre = nom du fichier) et s'ouvre dans l'éditeur : les titres du document deviennent des étapes, les images deviennent des photos. **Relisez et corrigez avant de publier** — l'import ne publie jamais tout seul. Limites v1 : PDF scanné refusé (pas d'OCR — utilisez un PDF textuel ou saisissez à la main), `.xls` à convertir en `.xlsx` d'abord, 100 étapes / 30 images / 20 Mo max par fichier.
+
 ### L'interface d'édition
 
 Le **bandeau** (toujours visible en haut) affiche : titre + référence, badge « Enregistrement… », badge **« N retours terrain à traiter »** (si des remontées ouvertes existent — touchez-le pour aller les traiter), bouton **Détails** (métadonnées : titre, famille, type, description, **À revoir le**, **Responsable**), **Publier**, ▸/▾ (tout ouvrir/replier), et le **sélecteur d'étape active**.

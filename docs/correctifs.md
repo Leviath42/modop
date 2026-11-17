@@ -36,6 +36,34 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-102 — Montée multer 1.4.5-lts.2 → 2.5.0 : dette sécurité soldée (réalisé)
+
+**Problème** : le message Dependabot « 30 vulnérabilités » persistait au push malgré le réalignement `main` de C-100 — la REX « cache du dernier scan » était fausse. Cause réelle : `multer` 1.4.5-lts.2, advisory GitHub (CVE-2025-7338, DoS high : exception non gérée sur multipart malformé, versions >= 1.4.4-lts.1 et < 2.0.2) invisible pour `npm audit` (advisory GitHub non référencé côté npm), d'où audits 0/0/0 + alerte Dependabot. La PR Dependabot #10 fermée visait multer.
+
+**Correctif** : `multer` 2.5.0 (+ `@types/multer` 2.x) — 2.3.0 ferme les alerts ouverts, 2.4.0/2.5.0 corrigent GHSA-3pph-fpjx-jg34 et GHSA-q7qp-rjg7-q26m. Migration sans changement de code (memoryStorage, limits.fileSize, single) ; les tests valident le comportement. REX : le décodage WHATWG-escaped de multer >= 2.3 ne concerne que `filename*=` (RFC 5987) — un filename UTF-8 brut reste mojibake latin1 côté busboy, le roundtrip `fixMultipartName` de C-101 reste donc requis (vérifié par test, retrait essayé puis annulé).
+
+**Test** : gates complètes — build web + tests front + **168/168 tests serveur** + lint verts, audit npm 0/0/0.
+
+**Fichiers** : `server/package.json` + lock racine, `server/src/routes/import.ts` (commentaire du fix mojibake précisé).
+
+**État** : livré le 17 nov. 2026 — branche `beta` (déploiement CT 203).
+
+## C-101 — Import de documents multiformat (V8 #6, RF-78) (réalisé)
+
+**Demande** : importer les modes opératoires existants (`.docx`, `.pdf`, `.xlsx`) au lieu de tout ressaisir ; le résultat doit rester un **brouillon** (RF-78 : relecture obligatoire, jamais de publication automatique).
+
+**Réalisation** :
+1. Route `POST /api/import/document` (author+, 20 Mo via multer) : sniff magique (`PK` zip / `%PDF`), parse, **création directe du brouillon** puis redirection vers l'éditeur. Référence auto `IMP-<6 hex>` unique, titre = nom de fichier sans extension. Pas d'écran de preview : l'éditeur EST la relecture (choix assumé, journalisé).
+2. Parseurs (`server/src/lib/import/`) : `docx.ts` (mammoth `convertToHtml`, images en data URI ; titres Heading = étapes ; images jpeg/png enregistrées comme photos ; fallback regex « Étape/Phase/Step » sans style de titre ; texte d'introduction en « Préambule ») ; `pdf.ts` (pdfjs-dist legacy, couche TEXTE uniquement — un pdf image/scan est refusé en 422 avec message « OCR » ; regroupement des items par ligne : même y arrondi, tri par x) ; `xlsx.ts` (lecteur maison minimal via jszip : 1re feuille, sharedStrings/inlineStr/nombres ; dates sérialisées non converties en v1). **Choix supply-chain acté** : exceljs refusé (traîne uuid<11 vulnérable + 159 paquets deprecated ; l'override npm casse la résolution, testé) — lecteur lecture-seure maison, périmètre borné. En-tête reconnu (titre/étape/step/libellé/nom/phase + description/texte/corps/consigne/instructions/détails), sinon colonne A = titre.
+3. Garde-fous : 100 étapes max, 30 images max, 422 sur `.txt` / faux docx / `.xls` binaire (convertir en `.xlsx`).
+4. Fix mojibake multipart : busboy décode `originalname` en latin1 → roundtrip latin1→utf8 dans la route (les noms accentués arrivaient cassés en « Ã© »).
+
+**Test** : 4 tests serveur — parseurs purs (docx titres+image, pdf regex étapes, xlsx header+fallback), E2E upload FormData (brouillon + étapes + photo sur disque), garde-fous (403 lecteur, 422 formats, 422 pdf sans texte/OCR). `makeDocx`/`makePdf`/`makeXlsx` construisent des fichiers OOXML/PDF réels (pdf de test en `/WinAnsiEncoding` pour les accents). Gates complètes : **168/168 tests serveur**, build web + tests front + lint verts.
+
+**Fichiers** : `server/src/lib/import/{types,docx,pdf,xlsx}.ts` (nouveaux), `server/src/routes/import.ts` (nouveau), `server/src/app.ts`, `server/src/routes/photos.ts` (`photosDir` exporté), `server/test/import.test.ts` (nouveau), `web/src/api.ts` (`importDocument`), `web/src/pages/list.tsx` (bouton « Importer »), `server/package.json` + lock (mammoth 1.13.0, pdfjs-dist 6.5.438, jszip 3.10.2).
+
+**État** : livré le 17 nov. 2026 — branche `beta` (déploiement CT 203).
+
 ## C-100 — Montées de versions sécurité des dépendances + réalignement main (réalisé)
 
 **Problème** : Dependabot signalait 30 vulnérabilités sur la branche par défaut (24 high, 4 moderate, 2 low). Sur `beta` l'audit restait à 9 moderate (chaîne `minimatch` / `@eslint/*` / `typescript-eslint`, outillage dev uniquement) — l'écart venait de `main` resté 31 commits derrière (correctifs sécurité C-80+ jamais fusionnés, dont body-parser GHSA-27r3-jxmh-p828 déjà fixé sur `beta` en cf7858b).

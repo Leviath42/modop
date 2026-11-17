@@ -142,6 +142,14 @@ async function handle<T>(res: Response): Promise<T> {
   return (await res.json()) as T;
 }
 
+// C-101 (V8 #6, RF-78) : réponse de POST /api/import/document.
+export interface ImportResult {
+  workflow: Workflow;
+  steps_created: number;
+  photos_created: number;
+  warnings: string[];
+}
+
 export const api = {
   async login(email: string, password: string): Promise<User> {
     return handle<User>(
@@ -290,6 +298,11 @@ export const api = {
         body: JSON.stringify({ orderedIds }),
       })
     );
+  },
+  async importDocument(file: File): Promise<ImportResult> {
+    const fd = new FormData();
+    fd.append("file", file);
+    return handle<ImportResult>(await fetch("/api/import/document", { method: "POST", body: fd }));
   },
   async uploadPhoto(stepId: number, file: File, alt: string): Promise<Photo> {
     const fd = new FormData();
