@@ -91,6 +91,47 @@ export function registerModopTools(server: McpServer, client: ModopClient): void
     async (args) => await expectOk(client, [200], "lecture du mode opératoire", "GET", `/api/workflows/${args.id}`),
   );
 
+  // C-105 (V13 #6) : lecture IA — Markdown direct (économie de tokens) + corpus.
+  server.registerTool(
+    "get_workflow_markdown",
+    {
+      description:
+        "Export Markdown d'un mode opératoire publié (front matter YAML + ancres d'étapes MO-xxx/etapes/n) — plus économe en tokens que le JSON complet.",
+      inputSchema: {
+        id: z.number().int().describe("identifiant du mode opératoire"),
+        version: z.number().int().optional().describe("numéro de version publiée (défaut : la dernière)"),
+      },
+    },
+    async (args) => {
+      const res = await client.callText(
+        "GET",
+        `/api/workflows/${args.id}/export` + qs({ format: "md", version: args.version !== undefined ? String(args.version) : undefined }),
+      );
+      if (res.status !== 200 || res.text === null) {
+        throw new Error(`modop : export Markdown a échoué (HTTP ${res.status}) — ${res.contentType}`);
+      }
+      return { content: [{ type: "text", text: res.text }] };
+    },
+  );
+
+  server.registerTool(
+    "export_corpus",
+    {
+      description:
+        "Corpus d'indexation : zip Markdown + JSON canonique de tous les MO publiés (modifiables depuis « since » en option) + manifest avec checksums sha256 — ré-embedding incrémental.",
+      inputSchema: {
+        since: z.string().optional().describe("date ISO — seuls les MO publiés/modifiés depuis cette date (incluse)"),
+      },
+    },
+    async (args) => {
+      const res = await client.callBinary("GET", "/api/corpus" + qs({ since: args.since }));
+      if (res.status !== 200 || !res.binary) {
+        throw new Error(`modop : export du corpus a échoué (HTTP ${res.status})`);
+      }
+      return asText({ filename: res.filename ?? "modop-corpus.zip", size: res.binary.length, content_base64: res.binary.toString("base64") });
+    },
+  );
+
   server.registerTool(
     "create_workflow",
     {

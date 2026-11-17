@@ -130,14 +130,14 @@ Fusion séquentielle delta ← une branche à la fois, portes : tsc + 96 tests r
 
 - `GET /api/workflows/:id` → ajoute `category_path` (slugs depuis la racine, ex. `mecanique/montage`) ; les photos portent `image_description` (défaut ``)
 - `GET /api/workflows` (liste) → chaque ligne porte `category_path` ; `GET /api/categories` → chaque catégorie porte `path` complet — **calculés à la volée, jamais stockés** (slugs immuables C-94)
-- `GET /api/workflows/:id/export?format=docx|md|json&version=n` (reader+ ; docx = défaut) :
+- `GET /api/workflows/:id/export?format=docx|md|json|pdf&version=n` (reader+ ; docx = défaut) :
   - `md` → `text/markdown; charset=utf-8` : front matter YAML (référence, titre, version, chemin, famille, type, description, responsable, dates) + `# titre` + `## Étape n — titre` + `> Ancre : MO-xxx/etapes/n` par étape + corps + pictos (⚠ libellés) + images `![alt](/photos/filename)` + `*Description : …*`
   - `json` → snapshot EXACT de la version publiée (zéro perte) + bloc `meta` (GED + `category_path` + `anchors: [{ position, title, anchor }]`)
-  - 404 si version introuvable ; audits `export_md` / `export_json`
-- `photos.image_description TEXT NOT NULL DEFAULT ''` (migration automatique) ; upload multipart `POST /api/steps/:stepId/photos` accepte `image_description` (≤ 1000)
+  - `pdf` → `application/pdf` (C-106) : rendu structuré pdf-lib — page de garde GED + étapes (titre, texte, pictos, composite photo+formes du docx) + pagination ; audit `export_pdf``n  - 404 si version introuvable ; audits `export_md` / `export_json` / `export_pdf`
+- `GET /api/corpus?since=<iso>` (reader+ — C-104) : zip Markdown + JSON canonique de tous les MO publiés (modifiés depuis `since` en option) + `manifest.json` (ids, refs, chemins, versions, dates, checksums sha256) — ré-embedding incrémental ; audit `export_corpus``n- `photos.image_description TEXT NOT NULL DEFAULT ''` (migration automatique) ; upload multipart `POST /api/steps/:stepId/photos` accepte `image_description` (≤ 1000)
 - `PUT /api/photos/:id/meta` (author+) : `{ alt?, image_description? }` (bornes 200/1000, trim) → photo mise à jour ; 422 si aucun champ, 404 si photo inconnue ; audit `photo_meta`
 - `POST /api/workflows/:id/publish` → réponse étendue `{ number, warnings: string[] }` — photos sans `image_description` (non bloquant)
-- MCP : `upload_photo` accepte `image_description` ; nouvel outil `set_photo_description` (`photo_id`, `alt?`, `image_description?`)
+- MCP : `upload_photo` accepte `image_description` ; nouvel outil `set_photo_description` (`photo_id`, `alt?`, `image_description?`) ; C-105 : `get_workflow_markdown` (markdown brut) + `export_corpus` (zip base64) — 26 outils
 
 ## Contrat C-99 — renommage image_description + ergonomie d'édition
 

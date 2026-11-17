@@ -27,19 +27,19 @@ Endpoint unifié : `GET /api/workflows/:id/export?format=docx|md|json|pdf&versio
 | `json` | API, GMAO, intégrateurs | **JSON canonique** : snapshot exact de la version + métadonnées GED + arborescence + alts — aucune perte (contrairement au docx) |
 | `pdf` | usine / affichage | rendu du format lecteur (depuis le composite existant) |
 
-Le Markdown et le JSON sont **les deux formats « adaptés API/IA »** : l'un pour les modèles de langage, l'autre pour les machines. **md et json livrés (C-98, 16 nov. 2026)** sur `GET /api/workflows/:id/export` — front matter YAML, ancres `MO-xxx/etapes/n`, descriptions IA ; json = snapshot exact + bloc `meta`. Reste : pdf.
+Le Markdown et le JSON sont **les deux formats « adaptés API/IA »** : l'un pour les modèles de langage, l'autre pour les machines. **md et json livrés (C-98, 16 nov. 2026)** sur `GET /api/workflows/:id/export` — front matter YAML, ancres `MO-xxx/etapes/n`, descriptions IA ; json = snapshot exact + bloc `meta`. PDF livré (C-106, 17 nov. 2026) : rendu structuré pdf-lib (page de garde GED + étapes + composite photo+formes du docx, pagination) — pas de rendu pixel-perfect (pas de headless Chrome en CT).
 
 ## 4. Consultation par IA
 
 - **Déjà livré (C-90/C-91)** : serveur MCP `/mcp` — 24 outils, instructions serveur.
-- Ajouts proposés :
+- Ajouts proposés (✅ livrés C-105, 17 nov. 2026) :
   - outil MCP `get_workflow_markdown` (retour Markdown direct — économie de tokens et de traduction JSON→texte pour l'agent),
   - outil MCP `export_corpus` (voir §5),
   - recherche plein texte déjà couverte par `list_workflows` (search).
 
 ## 5. Export corpus (alimentation RAG / diffusion)
 
-- `GET /api/admin/corpus?since=<iso>` (ou CLI `modop-corpus`) : zip contenant Markdown + JSON de tous les MO publiés modifiés depuis `since`,
+- ✅ Livré (C-104, 17 nov. 2026) : `GET /api/corpus?since=<iso>` (reader+ — la spec proposait admin ; abaissé : n'agrège que du déjà-exportable) : zip contenant Markdown + JSON de tous les MO publiés modifiés depuis `since`,
 - + **manifest** : ids, références, chemins arborescents, versions, dates de publication, checksums — permet un **ré-embedding incrémental** sans tout recalculer,
 - aucune base vectorielle dans modop v1 : le corpus alimente un moteur externe (pgvector/Qdrant côté homelab, indexation Obsidian côté publication).
 
@@ -56,6 +56,6 @@ Le Markdown et le JSON sont **les deux formats « adaptés API/IA »** : l'un po
 
 ## 8. Phasage (Vague 13 de la roadmap)
 
-1. Arborescence (V13 #1) ✅ C-94 + C-98 → 2. Markdown + JSON (V13 #2/#3) ✅ C-98 → 3. alt/image_description (V13 #5) ✅ C-98/C-99 → 4. corpus + manifest (V13 #7) → 5. outils MCP lecture IA (V13 #6) → 6. PDF (V13 #4) → 7. tokens API publics (V13 #8, seulement à prod réelle).
+1. Arborescence (V13 #1) ✅ C-94 + C-98 → 2. Markdown + JSON (V13 #2/#3) ✅ C-98 → 3. alt/image_description (V13 #5) ✅ C-98/C-99 → 4. corpus + manifest (V13 #7) ✅ C-104 → 5. outils MCP lecture IA (V13 #6) ✅ C-105 → 6. PDF (V13 #4) ✅ C-106 → 7. tokens API publics (V13 #8, seulement à prod réelle — seul reste).
 
 Chaque brique est autonome et livrable indépendamment ; l'ordre garantit que l'indexation a toujours un format stable sous elle.

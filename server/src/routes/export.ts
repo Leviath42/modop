@@ -10,6 +10,8 @@ import { requireAuth } from "../auth/middleware.js";
 import { auditLog } from "../auth/audit.js";
 import { composeStepCanvas } from "../render/canvas-composite.js";
 import { categoryPaths } from "../lib/category-path.js";
+import { buildExportMeta, renderMarkdown } from "../lib/export-payload.js";
+import { renderPdf } from "../lib/pdf.js";
 
 interface SnapshotPicto { kind: string; label: string; color: string }
 interface SnapshotPhoto {
@@ -89,75 +91,30 @@ export function exportRouter(db: Database.Database): Router {
     // JSON = canon : snapshot EXACT de la version publiée (zéro perte)
     // + bloc meta (GED, chemin arborescent, ancres d'étapes). Markdown =
     // rendu texte stable pour relecture, archivage et outillage IA.
+    // C-104 : meta + Markdown partages avec le corpus (lib/export-payload) ;
+    // C-106 : format pdf (rendu structure pdf-lib, composite du docx).
     const fmt = typeof req.query.format === "string" ? req.query.format : "docx";
-    if (fmt === "md" || fmt === "json") {
-      const categoryPath = categoryPaths(db).get((snap.workflow as unknown as { category_id?: number | null }).category_id ?? 0) ?? "";
-      const stepAnchor = (pos: number) => `${snap.workflow.reference}/etapes/${pos + 1}`;
-      const meta = {
-        reference: snap.workflow.reference,
-        title: snap.workflow.title,
-        version: version.number,
-        published_at: version.published_at,
-        author: version.author_email,
-        changelog: version.changelog ?? "",
-        type: snap.workflow.category,
-        category_path: categoryPath,
-        family: snap.workflow.family ?? "",
-        description: snap.workflow.description,
-        review_due: reviewDue,
-        owner_email: ownerEmail,
-        owner_name: ownerLabel,
-        anchors: snap.steps.map((s) => ({ position: s.position + 1, title: s.title, anchor: stepAnchor(s.position) })),
-      };
+    if (fmt === "md" || fmt === "json" || fmt === "pdf") {
+      const meta = buildExportMeta(db, wf, version, snap);
       if (fmt === "json") {
-        auditLog(db, (req as { user?: { email: string } }).user?.email ?? "?", "export_json", `workflow:${wf.id}`, `V${version.number}`);
+        auditLog(db, (req as { user?: { email: string } }).user?.email ?? "?", "export_json", "workflow:" + wf.id, "V" + version.number);
         res.setHeader("content-type", "application/json; charset=utf-8");
-        res.setHeader("content-disposition", `attachment; filename="${snap.workflow.reference}-V${version.number}.json"`);
+        res.setHeader("content-disposition", 'attachment; filename="' + snap.workflow.reference + '-V' + version.number + '.json"');
         res.json({ meta, snapshot: snap });
         return;
       }
-      const fm = (v: string | null | undefined) => (v ?? "").replace(/\r?\n/g, " ").trim();
-      const md: string[] = [
-        "---",
-        `reference: ${snap.workflow.reference}`,
-        `titre: ${fm(snap.workflow.title)}`,
-        `version: ${version.number}`,
-        `chemin: ${categoryPath || "(racine)"}`,
-        `famille: ${fm(snap.workflow.family)}`,
-        `type: ${fm(snap.workflow.category)}`,
-        `description: ${fm(snap.workflow.description)}`,
-        `responsable: ${fm(ownerLabel)}`,
-        `a_revoir_le: ${fm(reviewDue)}`,
-        `publiee_le: ${version.published_at}`,
-        `auteur: ${version.author_email}`,
-        "---",
-        "",
-        `# ${snap.workflow.title}`,
-        "",
-      ];
-      if (version.changelog) md.push(`> **Modifications de cette version :** ${fm(version.changelog)}`, "");
-      if (snap.workflow.description) md.push(fm(snap.workflow.description), "");
-      for (const step of snap.steps) {
-        md.push(`## Étape ${step.position + 1} — ${step.title}`, "", `> Ancre : ${stepAnchor(step.position)}`, "");
-        if (step.body) md.push(step.body, "");
-        const pictos = step.pictos ?? [];
-        if (pictos.length) {
-          for (const p of pictos) md.push(`- ⚠ ${typeof p === "string" ? p : p.label}`);
-          md.push("");
-        }
-        for (const ph of step.photos ?? []) {
-          md.push(`![${ph.alt || ph.filename}](/photos/${ph.filename})`);
-          const ai = (ph.image_description ?? "").trim();
-          if (ai) md.push("", `*Description : ${ai}*`);
-          md.push("");
-        }
-        const shapes = step.canvas ?? [];
-        if (shapes.length) md.push(`_(canevas : ${shapes.length} forme(s), non représentables en Markdown — voir le docx)_`, "");
+      if (fmt === "md") {
+        auditLog(db, (req as { user?: { email: string } }).user?.email ?? "?", "export_md", "workflow:" + wf.id, "V" + version.number);
+        res.setHeader("content-type", "text/markdown; charset=utf-8");
+        res.setHeader("content-disposition", 'attachment; filename="' + snap.workflow.reference + '-V' + version.number + '.md"');
+        res.send(renderMarkdown(meta, snap));
+        return;
       }
-      auditLog(db, (req as { user?: { email: string } }).user?.email ?? "?", "export_md", `workflow:${wf.id}`, `V${version.number}`);
-      res.setHeader("content-type", "text/markdown; charset=utf-8");
-      res.setHeader("content-disposition", `attachment; filename="${snap.workflow.reference}-V${version.number}.md"`);
-      res.send(md.join("\n"));
+      const pdf = await renderPdf(meta, snap, photosDir());
+      auditLog(db, (req as { user?: { email: string } }).user?.email ?? "?", "export_pdf", "workflow:" + wf.id, "V" + version.number);
+      res.setHeader("content-type", "application/pdf");
+      res.setHeader("content-disposition", 'attachment; filename="' + snap.workflow.reference + '-V' + version.number + '.pdf"');
+      res.send(pdf);
       return;
     }
 
