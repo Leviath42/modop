@@ -45,6 +45,19 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 **Correctif** : `handle()` retourne `undefined` sur 204 ou corps vide sans tenter de parser. Test front dédié (`api-delete-204.test.ts` : mock de fetch sans méthode `json`, `adminDeleteUser` doit résoudre).
 
+## C-112 — Import PDF : extraction déterministe des images embarquées + rattachement par position (V14 #3) (réalisé)
+
+**Problème** : REX MO 28 — l'import natif PDF perdait toutes les photos (0 image rattachée), la retouche manuelle était systématique ; le mode IA (C-109) rend les pages au moteur mais ne ramène pas non plus les images d'origine.
+
+**Correctif** : étage 1bis déterministe, sans IA — `server/src/lib/import/pdf-images.ts` : parcours `getOperatorList` de pdf.js avec suivi de matrice (save/restore/transform), boîte affichée de chaque `paintImageXObject`, décodage des kinds 1/2/3 (masque 1 bpp, RGB, RGBA) en JPEG via @napi-rs/canvas (déjà présent). Filtres : image pleine page (> 60 % de la page = scan) ignorée, pictos (< 24 pt ou < 1 %) ignorés, cap 30 images. `pdfTextRows` conserve la position (page, y) de chaque ligne ; chaque image est rattachée à l'étape la plus proche dans le flux de lecture (|Δpage|×5000 + |Δy|), warning invitant à vérifier le placement. Le mode IA ne couvre pas les images en v1 (le moteur ne rend pas de géométrie) — backlog V14 #7.
+
+**REX dev** : le carré unité pdf.js pour une image XObject est (0,0)-(1,1), pas (0,0)-(1,-1) — première version décalée de h vers le bas, corrigé sur preuve du test (boîte attendue [600,700] reçue [500,600]).
+
+**Test** : `server/test/import-images.test.ts` (3 tests, PDF écrit main avec XObject FlateDecode RGB) — extraction JPEG + rattachement par étape avec scan pleine page ignoré ; sans repère d'étape les images suivent l'étape unique ; la route d'import en fait des pièces jointes du brouillon. 194/194 tests serveur.
+
+**Fichiers** : `server/src/lib/import/pdf-images.ts`, `server/src/lib/import/pdf.ts`, `server/test/import-images.test.ts`, `docs/spec-import-ia.md`, `docs/roadmap.md`
+
+---
 ## C-38 — Canevas : un clic sur une flèche la déplaçait (réalisé)
 
 **Problème** : cliquer/taper sur une forme déjà posée (flèche, zone) la déplaçait d'environ 1 cm dans la direction du geste. Cause : le drag des formes démarrait au `pointerdown` **sans seuil de tolérance** — au tactile, le micro-glissement naturel du doigt pendant un tap (quelques px) était traité comme un déplacement, et la forme suivait.

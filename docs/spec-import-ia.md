@@ -27,6 +27,7 @@ document (.docx/.xlsx/.pdf)
 L'étage 2 ne remplace pas l'étage 1 : il se demande explicitement (case
 « Assister par IA » dans la modale d'import) et ne couvre que les PDF en v14
 (docx/xlsx déterministes suffisants à ce jour — backlog #4).
+Le mode IA ne rattachait pas les images en v14 ; l'extraction déterministe (C-112) couvre l'import natif, l'association images en mode IA reste au backlog #7.
 
 ## 3. Moteur IA paramétrable (C-108 + C-110)
 
@@ -91,7 +92,8 @@ UI : carte « Moteur IA » de la page Paramètres — formulaire éditable (C-11
 
 | # | Item | Notes |
 |---|---|---|
-| 3 | Extraction déterministe des **images embarquées** du PDF + association position ↔ étape | étage 1bis, supprime la retouche photo manuelle |
+| 3 | Extraction déterministe des **images embarquées** du PDF + association position ↔ étape | ✅ livré (C-112, 17 nov. 2026) — étage 1bis sans IA : matrice pdf.js, JPEG, filtres scan/picto, rattachement à l'étape la plus proche |
 | 4 | Mode IA pour **docx/xlsx** | réutiliser la couche images/repères existante |
 | 5 | Extraction positionnelle pdf.js (blocs par colonnes) pour renforcer l'étage 1 sans IA | le tri par numéro reste le garde-fou |
 | 6 | Job asynchrone + notification | si les imports dépassent ~60 s en pratique |
+| 7 | Associer les images extraites (C-112) au mode IA (C-109) | le moteur IA ne rend pas de géométrie ; renvoyer les images d'origine au brouillon |
