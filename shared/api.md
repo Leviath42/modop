@@ -145,6 +145,12 @@ Fusion séquentielle delta ← une branche à la fois, portes : tsc + 96 tests r
 - Export md : label descriptif `*Description : …*` (inchangé sinon). Warnings publish : « … sans description d'image ».
 - Éditeur : vignettes cliquables par étape sous le canevas pour ouvrir le panneau alt/description ; le dialog de publication affiche le bon prochain numéro (`V{current_version+1}`).
 
+## Contrat C-101 — import de documents (V8 #6, RF-78)
+
+- `POST /api/import/document` (author+, multipart `file`, 20 Mo max) : sniff magique — `.docx` (mammoth : titres Heading = étapes, images jpeg/png → photos), `.pdf` **textuel** (pdfjs-dist ; sans couche texte → 422, message contient « OCR »), `.xlsx` (lecteur maison jszip : en-tête reconnu sinon colonne A = titre ; dates sérialisées non converties en v1). `.txt` / faux docx / `.xls` binaire → 422.
+- Garde-fous : 100 étapes max, 30 images max. Réponse **201** `{ workflow, steps_created, photos_created, warnings }` — le workflow est un **brouillon** (référence auto `IMP-<6 hex>`, titre = nom de fichier) : relecture obligatoire avant publication, jamais de publication automatique (RF-78).
+- Front : bouton « Importer » à l'accueil → redirection vers l'éditeur du brouillon. MCP non câblé en v1.
+
 ## Contrat C-97 — indications métiers paramétrables + reset de brouillon
 
 - Settings `indications` (JSON) : liste `[{ kind, label, color }]` — seed = les 7 indications historiques (`attention`, `danger`, `epi`, `electrique`, `point-chaud`, `outil`, `info`)

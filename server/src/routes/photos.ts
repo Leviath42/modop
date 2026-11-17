@@ -52,7 +52,7 @@ export function purgeOrphanPhotos(db: Database.Database, dir: string): number {
   return removed;
 }
 
-function photosDir(): string {
+export function photosDir(): string {
   const dir = path.resolve(process.env.MODOP_PHOTOS_DIR ?? "data/photos");
   fs.mkdirSync(dir, { recursive: true });
   return dir;

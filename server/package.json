@@ -22,8 +22,10 @@
     "cookie-parser": "^1.4.7",
     "docx": "^9.0.2",
     "express": "^4.21.0",
+    "mammoth": "^1.13.0",
     "multer": "^1.4.5-lts.1",
     "otpauth": "^9.5.2",
+    "pdfjs-dist": "^6.5.438",
     "zod": "^4.6.7"
   },
   "devDependencies": {
@@ -34,6 +36,7 @@
     "@types/multer": "^1.4.12",
     "@types/node": "^22.7.4",
     "eslint": "^10.13.0",
+    "jszip": "^3.10.2",
     "prettier": "^3.9.10",
     "tsx": "^4.19.1",
     "typescript": "^5.6.2",

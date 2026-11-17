@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, type AppSettings, type Category, type Workflow } from "../api";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
@@ -14,6 +14,25 @@ import { buildTree, descendantIds, flattenTree } from "../lib/categories-tree";
 
 export default function ListPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  // C-101 : import de document (docx/pdf/xlsx) -> brouillon -> éditeur.
+  const importFileRef = useRef<HTMLInputElement | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const [importError, setImportError] = useState("");
+  async function onImportFile(e: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permet de re-sélectionner le même fichier
+    if (!file) return;
+    setImportBusy(true);
+    setImportError("");
+    try {
+      const res = await api.importDocument(file);
+      navigate("/workflow/" + res.workflow.id + "/edit");
+    } catch (err) {
+      setImportError(err instanceof ApiError ? err.message : "Import impossible — réessayez.");
+      setImportBusy(false);
+    }
+  }
   // #10 : le bouton Recherche du bandeau arrive ici avec ?rechercher=1 —
   // on donne le focus au champ et on l'efface pour ne pas polluer l'URL.
   const [searchParams, setSearchParams] = useSearchParams();
@@ -55,6 +74,7 @@ export default function ListPage() {
   };
   const [sort, setSort] = useState("");
   const [error, setError] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(true);
   // C-72 (#4/#5) : paramètres applicatifs (sans date = à revoir ;
   // brouillons visibles par les lecteurs).
@@ -127,11 +147,31 @@ export default function ListPage() {
             className={cn(showFilters && "bg-accent")}
           >Filtres{activeFilters > 0 ? ` (${activeFilters})` : ""}</Button>
           {user && user.role !== "reader" && (
-            <Link to="/workflow/new/edit" aria-label="Créer un mode opératoire" className="inline-flex h-10 shrink-0 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground no-underline">
-              +
-            </Link>
+            <>
+              <input
+                ref={importFileRef}
+                type="file"
+                accept=".docx,.pdf,.xlsx"
+                className="hidden"
+                tabIndex={-1}
+                aria-hidden="true"
+                onChange={onImportFile}
+              />
+              <Button
+                variant="outline"
+                disabled={importBusy}
+                onClick={() => importFileRef.current?.click()}
+                title="Importer un document Word, PDF ou Excel — un brouillon est créé, à relire avant publication"
+              >
+                {importBusy ? "Import…" : "Importer"}
+              </Button>
+              <Link to="/workflow/new/edit" aria-label="Créer un mode opératoire" className="inline-flex h-10 shrink-0 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground no-underline">
+                +
+              </Link>
+            </>
           )}
         </div>
+        {importError && <p role="alert" className="mb-2 text-sm text-error">{importError}</p>}
         {showFilters && (
           <section aria-label="Filtres et tri" className="mb-3 grid gap-3 rounded-lg border border-border bg-surface p-3">
             <div className="flex flex-wrap items-end gap-3">
