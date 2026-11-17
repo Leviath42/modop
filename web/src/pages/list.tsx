@@ -11,6 +11,7 @@ import { Card } from "../components/ui/card";
 import { Input, Label, Select } from "../components/ui/input";
 import { cn } from "../lib/utils";
 import { buildTree, descendantIds, flattenTree } from "../lib/categories-tree";
+import { DOCUMENT_TEMPLATES } from "../templates";
 
 export default function ListPage() {
   const { user } = useAuth();
@@ -22,6 +23,8 @@ export default function ListPage() {
   // C-109 (V14 #2) : import PDF assisti par IA — case affichée seulement si
   // un moteur est configuré (statut author+, sans secret).
   const [importAi, setImportAi] = useState(false);
+  // V15 : choix d'un template qualité à la création d'un mode opératoire.
+  const [showTemplates, setShowTemplates] = useState(false);
   const [aiReady, setAiReady] = useState(false);
   useEffect(() => {
     if (user && user.role !== "reader") {
@@ -189,9 +192,14 @@ export default function ListPage() {
               >
                 {importBusy ? "Import…" : "Importer"}
               </Button>
-              <Link to="/workflow/new/edit" aria-label="Créer un mode opératoire" className="inline-flex h-10 shrink-0 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground no-underline">
+              <button
+                type="button"
+                aria-label="Créer un mode opératoire"
+                onClick={() => setShowTemplates(true)}
+                className="inline-flex h-10 shrink-0 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
+              >
                 +
-              </Link>
+              </button>
             </>
           )}
         </div>
@@ -368,6 +376,33 @@ export default function ListPage() {
           })()
         )}
       </main>
+      {showTemplates && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Créer un mode opératoire"
+          className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
+          onClick={() => setShowTemplates(false)}
+        >
+          <div
+            className="grid w-full max-w-xl gap-3 rounded-lg border border-border bg-surface p-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-base font-semibold">Nouveau mode opératoire</p>
+            <p className="text-sm text-muted-foreground">Partir d'un document vierge ou d'un modèle qualité.</p>
+            <div className="grid gap-2">
+              <Button variant="outline" onClick={() => navigate("/workflow/new/edit")}>Document vierge</Button>
+              {DOCUMENT_TEMPLATES.map((t) => (
+                <Button key={t.id} variant="outline" onClick={() => navigate("/workflow/new/edit?template=" + t.id)} className="grid justify-items-start text-left">
+                  <span className="font-medium">{t.name}</span>
+                  <span className="text-xs font-normal text-muted-foreground">{t.description} — {t.steps.length} étapes préremplies</span>
+                </Button>
+              ))}
+            </div>
+            <Button variant="outline" onClick={() => setShowTemplates(false)}>Annuler</Button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

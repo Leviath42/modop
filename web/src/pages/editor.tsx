@@ -6,6 +6,7 @@ import { Camera, ChevronDown, ChevronRight, FoldVertical, GripVertical, Image as
 import { EditorBottomBar } from "../editor/bottom-bar";
 import type { PictoPreset, ToolContext } from "../editor/tools/registry";
 import { PICTO_PRESETS } from "../editor/tools/registry";
+import { DOCUMENT_TEMPLATES } from "../templates";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, ApiError, type AppSettings, type Category, type Photo, type Step, type Workflow, type WorkflowDetail } from "../api";
@@ -250,6 +251,15 @@ export default function EditorPage() {
         category_id: categoryId ? Number(categoryId) : null,
         parent_id: parentIdDoc ? Number(parentIdDoc) : null,
       });
+      // V15 : si un template qualité est choisi (modale de la liste), ses
+      // étapes sont créées d'un coup — l'éditeur rechargé les affiche.
+      const tplId = searchParams.get("template");
+      const tpl = tplId ? DOCUMENT_TEMPLATES.find((t) => t.id === tplId) : undefined;
+      if (tpl) {
+        for (const s of tpl.steps) {
+          await api.addStep(created.id, { title: s.title, body: s.body });
+        }
+      }
       // pas d'autosave fantôme : les valeurs viennent d'être enregistrées,
       // le rechargement en édition resynchronisera l'état.
       setMetaSaved(true);
