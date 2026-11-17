@@ -58,6 +58,12 @@ const genericAttempts = new Map<string, number[]>();
 // évite les 429 en cascade quand une suite ajoute des appels à une route limitée.
 export function resetRateLimits(): void {
   genericAttempts.clear();
+  // V15 fix flaky S2 : purge AUSSI le limiter login — les suites de tests
+  // rejouent des logins a volonte (security.test.ts consomme pile
+  // MAX_ATTEMPTS essais user@modop.local par passage, donc tout cumul
+  // (2e passage, ordre d'execution, runner partageant le process) provoque
+  // des 429 non deterministes. En prod cette fonction n'est appelee nulle part.
+  attempts.clear();
 }
 export function rateLimiter(name: string, windowMs: number, max: number) {
   return (req: Request, res: Response, next: NextFunction): void => {

@@ -1,8 +1,9 @@
-import { after, test } from "node:test";
+import { after, beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import { openDb } from "../src/db/schema.js";
 import bcrypt from "bcryptjs";
 import { createApp } from "../src/app.js";
+import { resetRateLimits } from "../src/auth/security.js";
 import http from "node:http";
 import fs from "node:fs";
 import os from "node:os";
@@ -20,6 +21,9 @@ const app = createApp(db);
 const server = http.createServer(app);
 await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
 const base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+
+// V15 fix flaky S2 : chaque test repart d'un rate limiter vierge.
+beforeEach(() => resetRateLimits());
 
 async function call(method: string, path: string, body?: object, cookie?: string) {
   const res = await fetch(base + path, {
