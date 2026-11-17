@@ -54,6 +54,11 @@ export function cookieSecure(): boolean {
 
 // S-A4 : rate limiting générique en mémoire (IP + clé), fenêtre glissante.
 const genericAttempts = new Map<string, number[]>();
+// Tests : purge des compteurs de rate limit (fenêtres glissantes en mémoire) —
+// évite les 429 en cascade quand une suite ajoute des appels à une route limitée.
+export function resetRateLimits(): void {
+  genericAttempts.clear();
+}
 export function rateLimiter(name: string, windowMs: number, max: number) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const key = `${name}:${req.ip ?? "?"}`;

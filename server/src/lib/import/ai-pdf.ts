@@ -2,7 +2,8 @@ import { createCanvas } from "@napi-rs/canvas";
 import type Database from "better-sqlite3";
 import { AiError } from "../ai/error.js";
 import { aiChat, aiStatus } from "../ai/client.js";
-import { pdfTextLines } from "./pdf.js";
+import { pdfTextRows, type PdfTextRow } from "./pdf.js";
+import { extractPdfImages } from "./pdf-images.js";
 import type { ImportStep, ImportTodo, ParseResult } from "./types.js";
 
 // C-109 (V14 #2) — import PDF assisti par IA (vision). Rendu des pages en
@@ -17,6 +18,7 @@ const MAX_PAGES = 10;
 const SCALE = 1.5;
 const JPEG_QUALITY = 0.75;
 const TEXT_AID_MAX = 30000;
+const NL = String.fromCharCode(10); // parade transport write_file
 
 // --- rendu des pages -------------------------------------------------------
 
@@ -99,7 +101,7 @@ function systemPrompt(pictoKinds: string[]): string {
     "4. pictos : liste parmi [" + kinds + "] UNIQUEMENT si le document le justifie clairement (ex. mention d'EPI, d'outillage spécifique, d'un danger). Sinon [].",
     "5. reference = la référence du document si visible (ex. FP262 A), sinon chaîne vide. title = la désignation du document si visible, sinon chaîne vide. description = une phrase de résumé factuelle des étapes, sinon chaîne vide.",
     "6. Si une information est illisible, incertaine ou manquante (critère de contrôle, valeur, photo), ajoute une entrée dans a_completer avec step = le numéro de l'étape concernée (ou null si global) et question = ce qu'il faut vérifier/compléter. Ne devine jamais à la place.",
-    "7. Ne décris pas les images et ne tente pas de les extraire : la mise en place des photos se fait après import.",
+    "7. Ne décris pas les images dans le texte des étapes : les photos du PDF d'origine sont extraites et rattachées automatiquement. Si une photo indispensable est manquante ou illisible, signale-le dans a_completer.",
     'Schéma de réponse exact : {"title":string,"reference":string,"description":string,"steps":[{"number":number,"title":string,"body":string,"pictos":string[]}],"a_completer":[{"step":number|null,"question":string}]}',
   ].join("\n");
 }
@@ -184,6 +186,95 @@ export function parseStructureProposal(
   };
 }
 
+// --- C-113 (V14 #7) : photos du PDF d'origine vers les étapes IA ------------
+
+// Le moteur IA ne rend pas de géométrie : la position des étapes vient de la
+// COUCHE TEXTE de la source. Repère = ligne « Étape 2 : … » avec son numéro
+// et sa position ; les photos extraites (pdf-images.ts, C-112) se rattachent
+// ensuite à l'étape la plus proche dans le flux de lecture.
+const ANCHOR_RE = /^\s*(?:étape|etape|step|phase)\s*(\d+)?\s*[:.\-–]?\s*(.*)$/i;
+
+interface Anchor {
+  pageIndex: number;
+  y: number;
+  num: number | null;
+}
+
+function textAnchors(rows: PdfTextRow[]): Anchor[] {
+  const out: Anchor[] = [];
+  for (const r of rows) {
+    const m = ANCHOR_RE.exec(r.text);
+    if (m && (m[1] !== undefined || (m[2] ?? "").trim())) {
+      out.push({ pageIndex: r.pageIndex, y: r.y, num: m[1] !== undefined ? Number(m[1]) : null });
+    }
+  }
+  return out;
+}
+
+async function attachAiImages(
+  buf: Buffer,
+  steps: ImportStep[],
+  numbers: number[],
+  rows: PdfTextRow[]
+): Promise<string[]> {
+  let extracted;
+  try {
+    extracted = await extractPdfImages(buf);
+  } catch {
+    return ["images du PDF non extraites (PDF endommagé ?) — l'import du texte continue"];
+  }
+  if (!extracted.images.length) return [];
+  const warnings: string[] = [];
+  if (extracted.ignored > 0) {
+    warnings.push(extracted.ignored + " élément(s) graphique(s) ignoré(s) (image pleine page de scan, picto ou logo)");
+  }
+  // Position de chaque étape : repère NUMÉROTÉ portant le même numéro de source
+  // en priorité (robuste au désordre du modèle), sinon repère libre dans
+  // l'ordre du flux (repères non numérotés). Sans repère : pas de position.
+  const anchors = textAnchors(rows);
+  const used = new Set<number>();
+  const positions: ({ pageIndex: number; y: number } | null)[] = numbers.map((n) => {
+    const i = anchors.findIndex((a, k) => a.num === n && !used.has(k));
+    if (i < 0) return null;
+    used.add(i);
+    return { pageIndex: anchors[i].pageIndex, y: anchors[i].y };
+  });
+  const free = anchors.map((_, k) => k).filter((k) => !used.has(k));
+  for (let i = 0; i < positions.length; i++) {
+    const k = free.shift();
+    if (positions[i] === null && k !== undefined) {
+      used.add(k);
+      positions[i] = { pageIndex: anchors[k].pageIndex, y: anchors[k].y };
+    }
+  }
+  let attached = 0;
+  for (const img of extracted.images) {
+    let best = -1;
+    let bestD = Infinity;
+    positions.forEach((p, i) => {
+      if (!p) return;
+      const d = Math.abs(p.pageIndex - img.pageIndex) * 5000 + Math.abs(p.y - img.y);
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
+    });
+    if (best < 0) continue;
+    steps[best].images.push({ buffer: img.buffer, alt: "Photo importée du PDF — vérifier le placement" });
+    attached++;
+  }
+  if (attached === extracted.images.length) {
+    warnings.push(
+      attached + " photo(s) extraite(s) du PDF d'origine et rattachée(s) par position — vérifiez leur placement avant publication"
+    );
+  } else {
+    warnings.push(
+      extracted.images.length + " photo(s) extraite(s) du PDF d'origine, " + attached +
+        " rattachée(s) seulement (repères d'étapes illisibles) — ajoutez les photos manquantes à la main"
+    );
+  }
+  return warnings;
+}
 // --- entrée ----------------------------------------------------------------
 
 export async function parsePdfWithAi(buf: Buffer, name: string, pictoKinds: string[], db: Database.Database): Promise<ParseResult> {
@@ -196,10 +287,11 @@ export async function parsePdfWithAi(buf: Buffer, name: string, pictoKinds: stri
   const warnings: string[] = [];
   if (images.length >= MAX_PAGES) warnings.push("seules les " + MAX_PAGES + " premières pages ont été envoyées au moteur IA");
 
+  let rows: PdfTextRow[] = [];
   let textAid = "";
   try {
-    const lines = await pdfTextLines(buf);
-    const text = lines.filter((l) => l.trim()).join("\n");
+    rows = await pdfTextRows(buf);
+    const text = rows.map((r) => r.text).filter((t) => t.trim()).join(NL);
     if (text.trim()) textAid = text.slice(0, TEXT_AID_MAX);
   } catch {
     // PDF scanné : pas de couche texte, la vision suffit.
@@ -214,6 +306,10 @@ export async function parsePdfWithAi(buf: Buffer, name: string, pictoKinds: stri
 
   const reply = await aiChat({ system: systemPrompt(pictoKinds), user, images, json: true, maxTokens: 4000 }, db);
   const parsed = parseStructureProposal(reply, pictoKinds);
+  // C-113 (V14 #7) : rattachement des photos extraites du PDF d'origine (les
+  // warnings passent par le même tableau, le return en dessous les consomme).
+  const imgWarnings = await attachAiImages(buf, parsed.steps, parsed.numbers, rows);
+  for (const w of imgWarnings) warnings.push(w);
   return {
     steps: parsed.steps,
     warnings: [...warnings, ...parsed.warnings, "structure proposée par le moteur IA (" + status.model + ") : vérifiez l'ordre, les textes et les pictos avant publication"],

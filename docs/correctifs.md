@@ -52,11 +52,22 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 **Correctif** : étage 1bis déterministe, sans IA — `server/src/lib/import/pdf-images.ts` : parcours `getOperatorList` de pdf.js avec suivi de matrice (save/restore/transform), boîte affichée de chaque `paintImageXObject`, décodage des kinds 1/2/3 (masque 1 bpp, RGB, RGBA) en JPEG via @napi-rs/canvas (déjà présent). Filtres : image pleine page (> 60 % de la page = scan) ignorée, pictos (< 24 pt ou < 1 %) ignorés, cap 30 images. `pdfTextRows` conserve la position (page, y) de chaque ligne ; chaque image est rattachée à l'étape la plus proche dans le flux de lecture (|Δpage|×5000 + |Δy|), warning invitant à vérifier le placement. Le mode IA ne couvre pas les images en v1 (le moteur ne rend pas de géométrie) — backlog V14 #7.
 
 **REX dev** : le carré unité pdf.js pour une image XObject est (0,0)-(1,1), pas (0,0)-(1,-1) — première version décalée de h vers le bas, corrigé sur preuve du test (boîte attendue [600,700] reçue [500,600]).
-**REX CI** : premier push flaké sur security.test.ts S2 (404 aléatoire) — le test écrivait dans data/photos, dossier partagé purgé par le createApp d\u2019un fichier de test parallèle (purgeOrphanPhotos) : dossier photos dédié (MODOP_PHOTOS_DIR mkdtemp) + retrait des rmSync("data") du fichier. Fix de test, pas de changement serveur.
+**REX CI** : premier push flaké sur security.test.ts S2 (404 aléatoire) — le test écrivait dans data/photos, dossier partagé purgé par le createApp d'un fichier de test parallèle (purgeOrphanPhotos) : dossier photos dédié (MODOP_PHOTOS_DIR mkdtemp) + retrait des rmSync("data") du fichier. Fix de test, pas de changement serveur.
 
 **Test** : `server/test/import-images.test.ts` (3 tests, PDF écrit main avec XObject FlateDecode RGB) — extraction JPEG + rattachement par étape avec scan pleine page ignoré ; sans repère d'étape les images suivent l'étape unique ; la route d'import en fait des pièces jointes du brouillon. 194/194 tests serveur.
 
 **Fichiers** : `server/src/lib/import/pdf-images.ts`, `server/src/lib/import/pdf.ts`, `server/test/import-images.test.ts`, `docs/spec-import-ia.md`, `docs/roadmap.md`
+
+---
+## C-113 — Import IA : photos du PDF d'origine rattachées aux étapes (V14 #7) (réalisé)
+
+**Problème** : le mode IA (C-109) rend les pages au moteur mais ne ramène pas les photos d'origine — le REX MO 28 (photos perdues à l'import) restait ouvert en mode IA.
+
+**Correctif** : le moteur IA ne rend pas de géométrie — la position des étapes vient de la COUCHE TEXTE de la source. Repères « Étape N » relevés avec (page, y) ; la position d'une étape IA = repère NUMÉROTÉ portant son numéro de source (robuste au désordre du modèle, cohérent avec le garde-fou de tri C-109), sinon repère libre dans l'ordre du flux ; les photos extraites (C-112) se rattachent à l'étape positionnée la plus proche. Sans repère lisible : aucun rattachement + warning « ajoutez les photos manquantes à la main ». Prompt règle 7 mis à jour : le moteur ne doit pas décrire les photos (elles sont rattachées automatiquement). Bonus tests : `resetRateLimits()` exporté de security.ts (purge des fenêtres de rate limit — évite les 429 en cascade quand une suite ajoute des appels à une route limitée).
+
+**Test** : `server/test/import-ai.test.ts` +2 — PDF avec textes ET images positionnés contre le faux moteur : photos extraites, rattachées aux bonnes étapes après tri par numéro (mock désordonné 2,1) ; sans repère : extraites mais non rattachées + warning à la main. 196/196 tests serveur.
+
+**Fichiers** : `server/src/lib/import/ai-pdf.ts`, `server/src/lib/import/pdf.ts` (export de `pdfTextRows`), `server/src/auth/security.ts`, `server/test/import-ai.test.ts`, `docs/spec-import-ia.md`, `docs/roadmap.md`
 
 ---
 ## C-38 — Canevas : un clic sur une flèche la déplaçait (réalisé)

@@ -5,8 +5,10 @@ import http from "node:http";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import zlib from "node:zlib";
 import { openDb } from "../src/db/schema.js";
 import { createApp } from "../src/app.js";
+import { resetRateLimits } from "../src/auth/security.js";
 const NL = String.fromCharCode(10);
 
 // PDF minimal écrit à la main (même recette que import.test.ts — les tests
@@ -34,6 +36,40 @@ function makePdf(lines: string[]): Buffer {
   return Buffer.from(out, "latin1");
 }
 
+
+// C-113 (V14 #7) : PDF 1 page avec textes ET images positionnés — même
+// recette que import-images.test.ts (pas de fixture binaire), XObject
+// FlateDecode RGB partagé /Im1 dessiné à plusieurs positions.
+function makePdfAiImg(texts: { text: string; x: number; y: number }[], imgs: { x: number; y: number; w: number; h: number }[]): Buffer {
+  let stream = "";
+  for (const t of texts) {
+    stream += "BT /F1 12 Tf " + t.x + " " + t.y + " Td (" + t.text + ") Tj ET" + NL;
+  }
+  for (const im of imgs) {
+    stream += "q " + im.w + " 0 0 " + im.h + " " + im.x + " " + im.y + " cm /Im1 Do Q" + NL;
+  }
+  const raw = Buffer.alloc(16 * 16 * 3, 200);
+  const data = zlib.deflateSync(raw);
+  const objs = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> /XObject << /Im1 6 0 R >> >> >>",
+    "<< /Length " + Buffer.byteLength(stream, "latin1") + " >>" + NL + "stream" + NL + stream + "endstream",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+    "<< /Type /XObject /Subtype /Image /Width 16 /Height 16 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /Length " + data.length + " >>" + NL + "stream" + NL + data.toString("latin1") + "endstream",
+  ];
+  let out = "%PDF-1.4" + NL;
+  const offsets: number[] = [];
+  objs.forEach((o, i) => {
+    offsets.push(out.length);
+    out += i + 1 + " 0 obj" + NL + o + NL + "endobj" + NL;
+  });
+  const xref = out.length;
+  out += "xref" + NL + "0 " + (objs.length + 1) + NL + "0000000000 65535 f " + NL;
+  for (const off of offsets) out += String(off).padStart(10, "0") + " 00000 n " + NL;
+  out += "trailer" + NL + "<< /Size " + (objs.length + 1) + " /Root 1 0 R >>" + NL + "startxref" + NL + xref + NL + "%%EOF" + NL;
+  return Buffer.from(out, "latin1");
+}
 // C-109 (V14 #2) — import PDF assisti par IA : mode ai=1 sur
 // /api/import/document, contre un FAUX moteur OpenAI en loopback. Garde-fous
 // testés : moteur non configuré => 422 ; PDF uniquement ; TRI PAR NUMÉRO DE
@@ -183,6 +219,55 @@ test("C-109 : PDF scanné accepté en mode IA (lève le refus OCR C-101)", async
   assert.match(warnings, /couche texte/);
 });
 
+test("C-113 : mode IA — photos extraites du PDF d'origine rattachées aux étapes (V14 #7)", async () => {
+  resetRateLimits(); // fenêtre 10 min : purge pour ne pas hériter des quotas des tests précédents
+  const pdf = makePdfAiImg(
+    [{ text: "Etape 1 : Preparation", x: 72, y: 700 }, { text: "Etape 2 : Assemblage", x: 72, y: 500 }],
+    [{ x: 72, y: 600, w: 150, h: 100 }, { x: 72, y: 400, w: 150, h: 100 }]
+  );
+  mockState.reply = JSON.stringify({
+    title: "Fiche avec photos",
+    reference: "",
+    description: "",
+    steps: [
+      { number: 2, title: "Assemblage", body: "corps 2", pictos: [] },
+      { number: 1, title: "Preparation", body: "corps 1", pictos: [] },
+    ],
+    a_completer: [],
+  });
+  const out = await uploadAi("fiche-photos.pdf", pdf, true);
+  assert.equal(out.status, 201);
+  assert.equal(out.json?.steps_created, 2);
+  assert.equal(out.json?.photos_created, 2);
+  const warnings = (out.json?.warnings as string[]).join(" | ");
+  assert.match(warnings, /extraite\(s\) du PDF d'origine et rattachée\(s\) par position/);
+  const wf = await (await fetch(base + "/api/workflows/" + out.json?.workflow.id, { headers: { cookie: auteur } })).json();
+  const steps = wf.steps as { title: string; photos: { filename: string; alt: string }[] }[];
+  assert.equal(steps[0].title, "Preparation");
+  assert.equal(steps[0].photos.length, 1, "photo du haut sur l'étape 1");
+  assert.equal(steps[1].photos.length, 1, "photo du bas sur l'étape 2");
+  assert.match(steps[0].photos[0].alt, /PDF/);
+  assert.ok(
+    steps.every((s) => s.photos.every((p) => fs.existsSync(path.join(process.env.MODOP_PHOTOS_DIR!, p.filename)))),
+    "fichiers photo écrits"
+  );
+});
+
+test("C-113 : mode IA sans repère lisible — photos extraites mais non rattachées, warning à la main", async () => {
+  resetRateLimits(); // fenêtre 10 min : purge pour ne pas hériter des quotas des tests précédents
+  const pdf = makePdfAiImg([{ text: "Fiche sans repere", x: 72, y: 700 }], [{ x: 72, y: 400, w: 150, h: 100 }]);
+  mockState.reply = JSON.stringify({
+    title: "Sans repere", reference: "", description: "",
+    steps: [{ number: 1, title: "Unique", body: "corps", pictos: [] }],
+    a_completer: [],
+  });
+  const out = await uploadAi("fiche-sans-repere.pdf", pdf, true);
+  assert.equal(out.status, 201);
+  assert.equal(out.json?.photos_created, 0);
+  const warnings = (out.json?.warnings as string[]).join(" | ");
+  assert.match(warnings, /0 rattachée\(s\) seulement/);
+  assert.match(warnings, /à la main/);
+});
 test("C-109 : réponse moteur illisible => 502 propre", async () => {
   mockState.reply = "je refuse de répondre en JSON";
   const out = await uploadAi("fiche2.pdf", makePdf(["Étape 1 - X"]), true);

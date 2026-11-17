@@ -50,7 +50,7 @@ export interface PdfTextRow {
 // Lignes de texte de tout le document AVEC leur position, dans l'ordre de
 // lecture « naïf » (une ligne = même y arrondi, cellules triées par x — les
 // colonnes restent interfoliées, l'appelant en fait ce qu'il veut).
-async function pdfTextRows(buf: Buffer): Promise<PdfTextRow[]> {
+export async function pdfTextRows(buf: Buffer): Promise<PdfTextRow[]> {
   const { doc, destroy } = await openPdf(buf);
   const rows: PdfTextRow[] = [];
   try {
