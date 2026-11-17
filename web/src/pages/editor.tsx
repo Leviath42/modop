@@ -5,6 +5,7 @@ import type { Shape } from "../annotated-photo";
 import { Camera, ChevronDown, ChevronRight, FoldVertical, GripVertical, Image as ImageIcon, Trash2, TriangleAlert, UnfoldVertical } from "lucide-react";
 import { EditorBottomBar } from "../editor/bottom-bar";
 import { pushHistory, canUndo, canRedo, undo as undoHistory, redo as redoHistory, resetHistory } from "../editor/history";
+import { filterImageFiles, pasteImageFromClipboard } from "../editor/drop-paste";
 import type { PictoPreset, ToolContext } from "../editor/tools/registry";
 import { PICTO_PRESETS } from "../editor/tools/registry";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -393,7 +394,7 @@ export default function EditorPage() {
   }
 
   const [uploadProgress, setUploadProgress] = useState<{ stepId: number; done: number; total: number } | null>(null);
-  async function uploadPhotos(step: Step, files: FileList) {
+  async function uploadPhotos(step: Step, files: FileList | File[]) {
     const list = Array.from(files).filter((f) => !f.type || f.type.startsWith("image/"));
     if (list.length === 0) return;
     setUploadProgress({ stepId: step.id, done: 0, total: list.length });
@@ -414,6 +415,31 @@ export default function EditorPage() {
     setUploadProgress(null);
     if (firstError) setError(`Photo(s) non envoyée(s) : ${firstError}${list.length > 1 ? " (les autres ont été envoyées)" : ""}`);
   }
+
+  // V8 #1 : glisser-déposer et copier-coller d'images — les fichiers
+  // atterrissent sur l'étape active (ou la première). Le collage est
+  // ignoré pendant la saisie de texte (input/textarea/contentEditable).
+  async function dropOrPasteFiles(files: File[]) {
+    if (files.length === 0) return;
+    const target = activeStepId ?? steps[0]?.id;
+    const step = steps.find((s) => s.id === target);
+    if (!step) return;
+    await uploadPhotos(step, files);
+  }
+
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const t = e.target as Element | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || (t as HTMLElement).isContentEditable)) return;
+      const files = pasteImageFromClipboard(e);
+      if (files.length > 0) {
+        e.preventDefault();
+        void dropOrPasteFiles(files);
+      }
+    };
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  });
 
   // — Actions exposées à la barre basse d'outils (registre de commandes,
   // docs/spec-palette-outils.md) : les outils ne voient QUE ce contexte. —
@@ -564,7 +590,14 @@ export default function EditorPage() {
   return (
     <>
       <NavBar />
-      <main className="mx-auto grid w-full min-w-0 max-w-[820px] gap-4 p-4 pb-28">
+      <main
+        className="mx-auto grid w-full min-w-0 max-w-[820px] gap-4 p-4 pb-28"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          void dropOrPasteFiles(filterImageFiles(e.dataTransfer.files));
+        }}
+      >
         {error && <Alert variant="error">{error}</Alert>}
         {notice && <Alert variant="ok">{notice}</Alert>}
         {publishWarnings && (
