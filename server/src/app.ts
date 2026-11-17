@@ -14,6 +14,7 @@ import { listRouter } from "./routes/list.js";
 import { photoRouter, staticPhotos, deletePhotoRouter, photoReplaceRouter, annotationsRouter, photoLayoutRouter, photoMetaRouter, purgeOrphanPhotos } from "./routes/photos.js";
 import { publishRouter } from "./routes/publish.js";
 import { exportRouter } from "./routes/export.js";
+import { corpusRouter } from "./lib/corpus.js";
 import { restoreRouter } from "./routes/restore.js";
 import { settingsRouter } from "./routes/settings.js";
 import { importRouter } from "./routes/import.js";
@@ -53,6 +54,7 @@ export function createApp(db: Database.Database, webDist?: string): express.Expr
   app.use("/api/workflows", listRouter(db));
   app.use("/api/workflows", publishRouter(db));
   app.use("/api/workflows", exportRouter(db));
+  app.use("/api", corpusRouter(db)); // C-104 : GET /api/corpus
   app.use("/api/workflows", restoreRouter(db));
   app.use("/api/settings", settingsRouter(db));
   app.use("/api/import", importRouter(db));

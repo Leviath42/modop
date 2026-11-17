@@ -125,11 +125,34 @@ export class ModopClient {
     const disposition = res.headers.get("content-disposition");
     const match = disposition ? /filename="?([^"]+)"?/.exec(disposition) : null;
     const ctype = res.headers.get("content-type") ?? "";
-    const isBinary = ctype.includes("octet-stream") || ctype.includes("vnd.openxmlformats");
+    const isBinary = ctype.includes("octet-stream") || ctype.includes("vnd.openxmlformats") || ctype.includes("zip");
     if (!isBinary) {
       return { status: res.status, binary: null, contentType: ctype, filename: match?.[1] ?? null };
     }
     const buf = Buffer.from(await res.arrayBuffer());
     return { status: res.status, binary: buf, contentType: "application/octet-stream", filename: match?.[1] ?? null };
+  }
+
+  /**
+   * C-105 (V13 #6) : appel attendant un corps texte (export Markdown).
+   * Re-login sur 401 comme call(). Renvoie null si non textuel.
+   */
+  async callText(method: string, path: string): Promise<{ status: number; text: string | null; contentType: string }> {
+    await this.ensureSession();
+    const doFetch = async (): Promise<Response> =>
+      fetch(`${getMcpBaseUrl()}${path}`, {
+        method,
+        headers: this.cookie ? { cookie: this.cookie } : {},
+      });
+    let res = await doFetch();
+    if (res.status === 401 && this.cookie !== null) {
+      await this.login();
+      res = await doFetch();
+    }
+    const ctype = res.headers.get("content-type") ?? "";
+    if (!ctype.includes("text/")) {
+      return { status: res.status, text: null, contentType: ctype };
+    }
+    return { status: res.status, text: await res.text(), contentType: ctype };
   }
 }

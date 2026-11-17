@@ -8,6 +8,7 @@ import { setMcpBaseUrl } from "../src/mcp/config.js";
 import http from "node:http";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import JSZip from "jszip";
 
 process.env.MODOP_MCP_TOKEN = "jeton-test-c90";
 process.env.MODOP_MCP_EMAIL = "svc-mcp@modop.local";
@@ -204,6 +205,30 @@ test("C-90 : list_users visible pour author", async () => {
   const users = toolJson(await callTool("list_users")) as unknown[];
   const emails = users.map((u) => (u as { email: string }).email);
   assert.ok(emails.includes("svc-mcp@modop.local"), "compte de service listé");
+});
+
+test("C-105 : get_workflow_markdown + export_corpus (V13 #6/#7)", async () => {
+  const wf = toolJson(await callTool("create_workflow", { title: "Lecture IA", reference: "MO-C105" }));
+  const id = wf.id as number;
+  await callTool("create_step", { workflow_id: id, title: "Préparer" });
+  await callTool("publish_workflow", { id, changelog: "V1 pour le corpus" });
+
+  const md = (await callTool("get_workflow_markdown", { id })) as { content?: { text?: string }[] };
+  const text = md.content?.[0]?.text ?? "";
+  assert.ok(text.startsWith("---"), "markdown brut, front matter en tête");
+  assert.ok(text.includes("reference: MO-C105"), "référence dans le front matter");
+  assert.ok(text.includes("Étape 1"), "étape présente");
+  assert.ok(!text.trim().startsWith("{"), "pas du JSON emballé");
+
+  const corpus = toolJson(await callTool("export_corpus", {}));
+  assert.ok(Number(corpus.size) > 100, "zip non vide");
+  const zip = await JSZip.loadAsync(Buffer.from(corpus.content_base64 as string, "base64"));
+  const manifest = JSON.parse(await zip.file("manifest.json").async("string"));
+  assert.ok(manifest.count >= 1, "au moins un MO publié au corpus");
+  const empty = toolJson(await callTool("export_corpus", { since: "2031-01-01T00:00:00" }));
+  const zip2 = await JSZip.loadAsync(Buffer.from(empty.content_base64 as string, "base64"));
+  const manifest2 = JSON.parse(await zip2.file("manifest.json").async("string"));
+  assert.equal(manifest2.count, 0, "since futur = corpus vide (manifest seul)");
 });
 
 after(async () => {

@@ -36,6 +36,42 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-106 — Export PDF (`?format=pdf`, V13 #4) (réalisé)
+
+**Problème** : l'export REST couvrait docx/md/json ; le PDF (usine / affichage) manquait (Vague 13 #4, spec-api-ia §3).
+
+**Correctif** : `GET /api/workflows/:id/export?format=pdf` (reader+, `?version=n`) : rendu structuré fidèle au contenu du lecteur via **pdf-lib** (zéro dépendance native, 4 deps scoped, audit 0 — pas de headless Chrome en CT) : page de garde GED (réf, version, chemin, type, famille, responsable, dates, description, changelog) + par étape : titre, texte, pictos, **composite photo+formes réutilisé du docx** (`composeStepCanvas`), pagination. Caractères hors WinAnsi sanitizés (⚠ → « (!) »). Audit `export_pdf`.
+
+**Test** : `v13-corpus-pdf.test.ts` — signature %PDF, content-type application/pdf, 404 inchangé.
+
+**Fichiers** : `server/src/lib/pdf.ts`, `server/src/routes/export.ts`
+
+---
+
+## C-105 — Outils MCP lecture IA : get_workflow_markdown + export_corpus (V13 #6) (réalisé)
+
+**Problème** : un agent IA consommait le JSON complet (`get_workflow`) — coûteux en tokens ; pas d'accès corpus.
+
+**Correctif** : 2 outils sur `/mcp` (26 au total) : **`get_workflow_markdown`** (markdown brut du format C-98, économie de tokens, `version` optionnelle — nouveau `ModopClient.callText`) et **`export_corpus`** (zip base64, `since` optionnel). Mêmes validations/rate limits que l'API (loopback).
+
+**Test** : `mcp.test.ts` — client SDK réel : front matter + étapes dans le markdown brut, corpus zip parsé (manifest ≥ 1), `since` futur = 0.
+
+**Fichiers** : `server/src/mcp/tools.ts`, `server/src/mcp/modop-client.ts`
+
+---
+
+## C-104 — Corpus + manifest d'indexation : `GET /api/corpus` (V13 #7) (réalisé)
+
+**Problème** : pas d'alimentation RAG collective — l'indexation devait moissonner les exports un par un.
+
+**Correctif** : `GET /api/corpus?since=<iso>` (reader+ — n'agrège que du déjà-exportable, choix journalisé vs « admin » de la spec) : **zip** Markdown + JSON canonique de tous les MO publiés (modifiés depuis `since` en option) + **manifest** (ids, refs, chemins, versions, dates, **checksums sha256**) → ré-embedding incrémental sans tout recalculer. Refactor DRY : méta GED + markdown extraits dans `lib/export-payload.ts`, partagés route/corpus (un seul générateur, checksums comparables). `since` ISO normalisé (T → espace) pour la comparaison lexicographique SQLite.
+
+**Test** : `v13-corpus-pdf.test.ts` — 2 MO publiés : zip + manifest, checksum md vérifié contre sha256 du fichier, `since` futur = 0, 401 sans session.
+
+**Fichiers** : `server/src/lib/corpus.ts`, `server/src/lib/export-payload.ts`, `server/src/routes/export.ts`, `server/src/app.ts`
+
+---
+
 ## C-103 — Import xlsx v2 : fusions, images ancrées, repères multi-colonnes, multi-feuilles (réalisé)
 
 **Problème** : l'import xlsx v1 (C-101) ne lisait que la première feuille, en-tête reconnu sinon colonne A. Retour terrain : « largement insuffisant — il faut que les excels passent bien avec identification des étapes et photos associées, groupes de cases ».
