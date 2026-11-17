@@ -394,6 +394,10 @@ export const api = {
       await fetch(`/api/admin/users/${id}/reset-password`, { method: "POST" })
     );
   },
+  // C-107 : suppression définitive d'un compte désactivé (admin).
+  async adminDeleteUser(id: number): Promise<void> {
+    await handle<unknown>(await fetch(`/api/admin/users/${id}`, { method: "DELETE" }));
+  },
   // C-94 : arborescence documentaire — l'admin structure l'arbre,
   // tous les rôles lisent (lecteur inclus : navigation par arborescence).
   async listCategories(): Promise<Category[]> {

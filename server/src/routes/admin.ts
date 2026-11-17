@@ -143,6 +143,33 @@ export function adminRouter(db: Database.Database): Router {
     res.json({ temporaryPassword: newPassword });
   });
 
+  // C-107 : suppression définitive d'un compte — uniquement s'il est déjà
+  // désactivé (deux temps voulu : la désactivation révoque les sessions et
+  // marque les MO orphelins (C-45), puis la suppression nettoie la ligne).
+  // Les sessions partent en cascade (FK) ; audit, commentaires et owner_email
+  // des MO référencent l'email en texte : l'historique est conservé.
+  r.delete("/users/:id", (req, res) => {
+    const target = db
+      .prepare("SELECT id, email, active FROM users WHERE id = ?")
+      .get(Number(req.params.id)) as { id: number; email: string; active: number } | undefined;
+    if (!target) {
+      res.status(404).json({ error: "not_found", message: "utilisateur introuvable" });
+      return;
+    }
+    const actor = (req as { user?: { id: number; email: string } }).user!;
+    if (target.id === actor.id) {
+      res.status(422).json({ error: "validation", message: "impossible de supprimer votre propre compte" });
+      return;
+    }
+    if (target.active === 1) {
+      res.status(422).json({ error: "validation", message: "désactivez le compte avant de le supprimer" });
+      return;
+    }
+    db.prepare("DELETE FROM users WHERE id = ?").run(target.id);
+    auditLog(db, actor.email, "delete_user", `user:${target.email}`);
+    res.status(204).end();
+  });
+
   return r;
 }
 

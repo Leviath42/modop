@@ -91,6 +91,19 @@ export default function AdminPage() {
     }
   }
 
+  // C-107 : suppression définitive d'un compte désactivé (confirmation obligatoire).
+  async function deleteUser(u: AdminUser) {
+    if (!window.confirm(`Supprimer définitivement le compte « ${u.email} » ? (Historique conservé : audit, commentaires.)`)) return;
+    setError(null);
+    try {
+      await api.adminDeleteUser(u.id);
+      setNotice(`Compte supprimé : ${u.email}`);
+      await refresh();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Suppression impossible");
+    }
+  }
+
   async function resetPassword(u: AdminUser) {
     setError(null);
     try {
@@ -198,7 +211,10 @@ export default function AdminPage() {
                   {u.id !== user?.id && (
                     u.active === 1
                       ? <Button variant="destructive" size="sm" onClick={() => updateUser(u, { active: 0 })}>Désactiver</Button>
-                      : <Button variant="outline" size="sm" onClick={() => updateUser(u, { active: 1 })}>Réactiver</Button>
+                      : (<>
+                          <Button variant="outline" size="sm" onClick={() => updateUser(u, { active: 1 })}>Réactiver</Button>
+                          <Button variant="destructive" size="sm" onClick={() => void deleteUser(u)} title="Suppression définitive (uniquement pour un compte désactivé)">Supprimer</Button>
+                        </>)
                   )}
                 </span>
               </div>

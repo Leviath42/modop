@@ -60,6 +60,16 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-107 — Comptes : suppression définitive d'un compte désactivé (réalisé)
+
+**Problème** : un compte désactivé restait à vie dans la liste — aucune option de suppression (l'API n'exposait que création, modification, désactivation, réinit. mot de passe). Cas d'usage : comptes de test, départs définitifs, comptes de service éphémères qui sinon s'accumulent ou exigent une chirurgie SQLite à la main.
+
+**Correctif** : `DELETE /api/admin/users/:id` (admin, gate du routeur) en **deux temps obligatoires** : le compte doit être désactivé d'abord (422 sinon — la désactivation conserve ses garde-fous : révocation des sessions, marquage « à revoir » des MO orphelins C-45), et personne ne peut se supprimer soi-même (422). Suppression = ligne utilisateur, sessions en cascade (FK) ; l'historique est conservé par conception (audit, commentaires et `owner_email` des MO : emails en texte, pas d'FK). Action tracée (`delete_user`). Front : bouton « Supprimer » (destructif, confirmation) à côté de « Réactiver », comptes désactivés uniquement, jamais sur soi-même.
+
+**Test** : `server/test/delete-user.test.ts` — cycle complet (création → refus sur actif → désactivation → session révoquée → suppression 204 → disparu de la liste, login impossible), protections (soi 422, id inconnu 404, auteur 403), trace d'audit.
+
+**Fichiers** : `server/src/routes/admin.ts`, `web/src/api.ts`, `web/src/pages/admin.tsx`, `server/test/delete-user.test.ts`
+
 ## C-104 — Corpus + manifest d'indexation : `GET /api/corpus` (V13 #7) (réalisé)
 
 **Problème** : pas d'alimentation RAG collective — l'indexation devait moissonner les exports un par un.
