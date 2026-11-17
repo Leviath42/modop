@@ -5,9 +5,14 @@ import bcrypt from "bcryptjs";
 import { createApp } from "../src/app.js";
 import http from "node:http";
 import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
-fs.rmSync("data", { recursive: true, force: true });
 
+// C-112 REX CI flaky : dossier photos DÉDIÉ — data/photos est partagé entre fichiers
+// de test parallèles (rmSync et purgeOrphanPhotos au createApp dun autre fichier
+// pouvaient supprimer test-secure.png entre écriture et GET, donc 404 aléatoire).
+process.env.MODOP_PHOTOS_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "modop-sec-"));
 const db = openDb(":memory:");
 db.prepare("INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)").run("user@modop.local", bcrypt.hashSync("motdepasse1", 4), "author");
 
@@ -146,8 +151,7 @@ test("S4 : les 500 renvoient un message générique (pas de détail interne)", a
 
 test("S2 : photos accessibles uniquement authentifié", async () => {
   const png = Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c63000100000500010000000049454e44ae426082", "hex");
-fs.mkdirSync("data/photos", { recursive: true });
-  fs.writeFileSync("data/photos/test-secure.png", png);
+fs.writeFileSync(path.join(process.env.MODOP_PHOTOS_DIR!, "test-secure.png"), png);
   // Non authentifié -> 401
   const anon = await fetch(base + "/photos/test-secure.png");
   assert.equal(anon.status, 401);
@@ -176,9 +180,8 @@ test("S3 : upload avec contenu non conforme refusé (magic numbers)", async () =
 
 process.on("exit", () => {
   server.close();
-  fs.rmSync("data", { recursive: true, force: true });
 });
-after(() => { (server as unknown as { closeAllConnections?: () => void }).closeAllConnections?.(); return Promise.resolve(server.close()); });
+after(() => { (server as unknown as { closeAllConnections?: () => void }).closeAllConnections?.(); fs.rmSync(process.env.MODOP_PHOTOS_DIR!, { recursive: true, force: true }); return Promise.resolve(server.close()); });
 server.unref();
 
 test("anti-CSRF : X-Forwarded-Host honored derrière un reverse proxy/tunnel", async () => {
