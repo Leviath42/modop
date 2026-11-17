@@ -31,6 +31,9 @@ export interface ToolContext {
   // C-73 : nombre de PHOTOS sélectionnées (rognage) et undo disponible.
   photoSelected: number;
   canUndoCrop: boolean;
+  // V15 : undo/redo global.
+  canUndo: boolean;
+  canRedo: boolean;
   actions: {
     addStep(): void;
     openPhotoSource(which: "gallery" | "camera"): void;
@@ -38,7 +41,8 @@ export interface ToolContext {
     setInsertColor(c: string): void;
     setInsertWidth(w: number): void;
     requestCrop(): void;
-    undoCrop(): void;
+    undo(): void;
+    redo(): void;
     togglePreset(preset: PictoPreset): void;
     deleteActiveStep(): void;
     deleteCanvasSelection(): void;
