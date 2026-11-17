@@ -91,6 +91,19 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 **Fichiers** : `.github/workflows/ci-cd.yml`
 
 ---
+## C-116 — Moteur IA : le test de connexion dit la cause (fini le « HTTP 400 » muet) (réalisé)
+
+**Constat** : avec une clé valide et un modèle retiré du catalogue Mistral (pixtral-large-latest, REX 17/11), « Tester la connexion » affichait un 502 générique : le message d'erreur du moteur était jeté sans être lu. Impossible de distinguer clé invalide / modèle invalide / URL invalide.
+
+**Correctif** : diagnostic en 2 étapes (`aiTestConnection`) : 1) `GET {base_url}/models` teste la joignabilité ET la clé sans consommer de tokens — 401/403 = « clé API refusée » immédiat ; si le catalogue est lisible et que le modèle configuré en est absent, 422 actionnable AVANT tout appel ; un moteur sans /models n'est pas disqualifié. 2) ping réel « réponds OK » inchangé. Les erreurs `aiChat` incluent désormais le message JSON du moteur (tronqué, jamais le corps brut qui peut échoïer la requête), avec indices : 401/403 = clé, 404 = URL de base. Front : les notes de diagnostic s'affichent sous le résultat. Preuve terrain (prod, df999c9) : connexion Mistral OK en 565 ms avec check « modèle présent au catalogue ».
+
+**Test** : `server/test/ai-diagnostic.test.ts` (5 tests) — tout vert avec check catalogue, 401 /models => message clé, modèle absent => 422 avant tout token, erreur moteur 400 avec message JSON => détail visible, /models absent => non disqualifié. 201/201 tests serveur.
+
+**REX** : (a) mock node : réinitialiser un état à `0` combiné à `?? 200` produit un `writeHead(0)` silencieux qui fait PENDRE les requêtes suivantes jusqu'au timeout — réinitialiser à `undefined` ; (b) drainer le corps des réponses d'erreur avant de rendre la socket au pool undici.
+
+**Fichiers** : `server/src/lib/ai/client.ts`, `server/src/routes/ai.ts`, `server/test/ai-diagnostic.test.ts`, `web/src/api.ts`, `web/src/pages/settings.tsx`
+
+---
 ## C-38 — Canevas : un clic sur une flèche la déplaçait (réalisé)
 
 **Problème** : cliquer/taper sur une forme déjà posée (flèche, zone) la déplaçait d'environ 1 cm dans la direction du geste. Cause : le drag des formes démarrait au `pointerdown` **sans seuil de tolérance** — au tactile, le micro-glissement naturel du doigt pendant un tap (quelques px) était traité comme un déplacement, et la forme suivait.
