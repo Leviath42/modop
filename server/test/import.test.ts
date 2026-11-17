@@ -153,6 +153,96 @@ async function login(email: string, pass: string): Promise<string> {
   });
   return res.headers.get("set-cookie")?.split(";")[0] ?? "";
 }
+// C-103 : classeur riche — fusions, images ancrées (drawing), multi-feuilles.
+export async function makeXlsxRich(
+  sheets: { name: string; cells: Record<string, string>; merges?: string[]; images?: { row: number; col: number }[] }[]
+): Promise<Buffer> {
+  const uniq: string[] = [];
+  const si = (v: string): string => {
+    let i = uniq.indexOf(v);
+    if (i < 0) {
+      i = uniq.length;
+      uniq.push(v);
+    }
+    return String(i);
+  };
+  const byRow = (cells: Record<string, string>): [string, { ref: string; v: string }[]][] => {
+    const m = new Map<string, { ref: string; v: string }[]>();
+    for (const [ref, v] of Object.entries(cells)) {
+      const rm = /^([A-Z]+)(\d+)$/.exec(ref);
+      if (!rm || !v) continue;
+      const arr = m.get(rm[2]) ?? [];
+      arr.push({ ref, v: si(v) });
+      m.set(rm[2], arr);
+    }
+    return [...m.entries()].sort((a, b) => Number(a[0]) - Number(b[0]));
+  };
+  const zip = new JSZip();
+  const overrides: string[] = [];
+  const drawOverrides: string[] = [];
+  const sheetRels: string[] = [];
+  const sheetTags: string[] = [];
+  sheets.forEach((s, p) => {
+    const rowsXml = byRow(s.cells)
+      .map(([row, cs]) => '<row r="' + row + '">' + cs.map((x) => '<c r="' + x.ref + '" t="s"><v>' + x.v + "</v></c>").join("") + "</row>")
+      .join("");
+    const merges = s.merges ?? [];
+    const mergeBlock = merges.length ? '<mergeCells count="' + merges.length + '">' + merges.map((mm) => '<mergeCell ref="' + mm + '"/>').join("") + "</mergeCells>" : "";
+    const hasImg = (s.images ?? []).length > 0;
+    const drawTag = hasImg ? '<drawing r:id="rIdD' + p + '"/>' : "";
+    zip.file(
+      "xl/worksheets/sheet" + (p + 1) + ".xml",
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetData>' + rowsXml + "</sheetData>" + mergeBlock + drawTag + "</worksheet>"
+    );
+    overrides.push('<Override PartName="/xl/worksheets/sheet' + (p + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>');
+    sheetRels.push('<Relationship Id="rIdS' + p + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (p + 1) + '.xml"/>');
+    sheetTags.push('<sheet name="' + s.name + '" sheetId="' + (p + 1) + '" r:id="rIdS' + p + '"/>');
+    if (hasImg) {
+      const anchors = (s.images ?? [])
+        .map(
+          (im, k) =>
+            '<xdr:twoCellAnchor><xdr:from><xdr:col>' + im.col + "</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>" + im.row + "</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:to><xdr:col>" + (im.col + 1) + "</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>" + (im.row + 1) + "</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to><xdr:pic><xdr:nvPicPr><xdr:cNvPr id=" + (k + 1) + ' name="img' + k + '"/><xdr:cNvPicPr/></xdr:nvPicPr><xdr:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rIdI' + k + '"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="9525" cy="9525"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:twoCellAnchor>'
+        )
+        .join("");
+      zip.file(
+        "xl/drawings/drawing" + (p + 1) + ".xml",
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">' + anchors + "</xdr:wsDr>"
+      );
+      zip.file(
+        "xl/drawings/_rels/drawing" + (p + 1) + ".xml.rels",
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdI0" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image1.png"/></Relationships>'
+      );
+      zip.file(
+        "xl/worksheets/_rels/sheet" + (p + 1) + ".xml.rels",
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdD' + p + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing' + (p + 1) + '.xml"/></Relationships>'
+      );
+      drawOverrides.push('<Override PartName="/xl/drawings/drawing' + (p + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>');
+      zip.file("xl/media/image1.png", PNG_1PX);
+    }
+  });
+  zip.file(
+    "[Content_Types].xml",
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>' + overrides.join("") + drawOverrides.join("") + "</Types>"
+  );
+  zip.file(
+    "_rels/.rels",
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'
+  );
+  zip.file(
+    "xl/_rels/workbook.xml.rels",
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdSS" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>' + sheetRels.join("") + "</Relationships>"
+  );
+  zip.file(
+    "xl/workbook.xml",
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' + sheetTags.join("") + "</sheets></workbook>"
+  );
+  zip.file(
+    "xl/sharedStrings.xml",
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="' + uniq.length + '" uniqueCount="' + uniq.length + '">' + uniq.map((t) => '<si><t xml:space="preserve">' + t + "</t></si>").join("") + "</sst>"
+  );
+  return zip.generateAsync({ type: "nodebuffer" }) as Promise<Buffer>;
+}
+
 const auteur = await login("auteur@modop.local", "auteurpass1");
 const lecteur = await login("lecteur@modop.local", "lecteurpass1");
 
@@ -264,3 +354,38 @@ test("C-101 : garde-fous — 403 lecteur, 422 formats refusés, 422 pdf sans tex
   assert.equal(scan.status, 422);
   assert.match(String(scan.json?.message), /OCR/);
 });
+
+test("C-103 : xlsx v2 — fusions, repères multi-colonnes, images ancrées, multi-feuilles", async () => {
+  const buf = await makeXlsxRich([
+    {
+      name: "Procédure",
+      cells: {
+        A1: "Procédure de maintenance",
+        A3: "Étape 1 : Préparation du poste",
+        C3: "Vérifier l'équipement.",
+        A5: "Étape 2 : Montage",
+        C5: "Fixer les vis.",
+        C6: "Serrer au couple.",
+      },
+      merges: ["A1:B1"],
+      images: [{ row: 5, col: 0 }],
+    },
+    {
+      name: "Annexe",
+      cells: { A1: "titre", B1: "description", A2: "Contrôle final", B2: "Vérifier l'ensemble." },
+    },
+  ]);
+  const r = await parseXlsx(buf);
+  assert.equal(r.steps.length, 4);
+  assert.equal(r.steps[0].title, "Préambule");
+  assert.equal(r.steps[0].body, "Procédure de maintenance");
+  assert.equal(r.steps[1].title, "Préparation du poste");
+  assert.equal(r.steps[1].body, "Vérifier l'équipement.");
+  assert.equal(r.steps[2].title, "Montage");
+  assert.equal(r.steps[2].body, "Fixer les vis.\nSerrer au couple.");
+  assert.equal(r.steps[2].images.length, 1);
+  assert.equal(r.steps[3].title, "Contrôle final");
+  assert.equal(r.steps[3].body, "Vérifier l'ensemble.");
+  assert.ok(r.warnings.some((w) => w.includes("feuilles")));
+});
+

@@ -76,7 +76,7 @@ Le lien **« ⚑ Terrain »** du lecteur ouvre la page dédiée : **À traiter**
 
 ### Importer un document existant
 
-**« Importer »** dans la liste (rôles auteur/admin) : choisissez un fichier `.docx`, `.pdf` (textuel) ou `.xlsx`. Un **brouillon** est créé automatiquement (référence `IMP-…`, titre = nom du fichier) et s'ouvre dans l'éditeur : les titres du document deviennent des étapes, les images deviennent des photos. **Relisez et corrigez avant de publier** — l'import ne publie jamais tout seul. Limites v1 : PDF scanné refusé (pas d'OCR — utilisez un PDF textuel ou saisissez à la main), `.xls` à convertir en `.xlsx` d'abord, 100 étapes / 30 images / 20 Mo max par fichier.
+**« Importer »** dans la liste (rôles auteur/admin) : choisissez un fichier `.docx`, `.pdf` (textuel) ou `.xlsx`. Un **brouillon** est créé automatiquement (référence `IMP-…`, titre = nom du fichier) et s'ouvre dans l'éditeur : les titres du document deviennent des étapes, les images deviennent des photos. Pour un `.xlsx` : les cellules fusionnées sont gérées, les images insérées dans le classeur sont rattachées à l'étape correspondante, les repères « Étape 1 : », « Phase 2 »… sont reconnus dans toutes les colonnes, et toutes les feuilles sont importées à la suite. **Relisez et corrigez avant de publier** — l'import ne publie jamais tout seul. Limites v1 : PDF scanné refusé (pas d'OCR — utilisez un PDF textuel ou saisissez à la main), `.xls` à convertir en `.xlsx` d'abord, 100 étapes / 30 images / 20 Mo max par fichier.
 
 ### L'interface d'édition
 

@@ -147,7 +147,7 @@ Fusion séquentielle delta ← une branche à la fois, portes : tsc + 96 tests r
 
 ## Contrat C-101 — import de documents (V8 #6, RF-78)
 
-- `POST /api/import/document` (author+, multipart `file`, 20 Mo max) : sniff magique — `.docx` (mammoth : titres Heading = étapes, images jpeg/png → photos), `.pdf` **textuel** (pdfjs-dist ; sans couche texte → 422, message contient « OCR »), `.xlsx` (lecteur maison jszip : en-tête reconnu sinon colonne A = titre ; dates sérialisées non converties en v1). `.txt` / faux docx / `.xls` binaire → 422.
+- `POST /api/import/document` (author+, multipart `file`, 20 Mo max) : sniff magique — `.docx` (mammoth : titres Heading = étapes, images jpeg/png → photos), `.pdf` **textuel** (pdfjs-dist ; sans couche texte → 422, message contient « OCR »), `.xlsx` (lecteur maison jszip v2 : en-tête reconnu → 1 ligne = 1 étape ; sinon repères « Étape/Phase/Step N : » cherchés sur toutes les colonnes, texte d'avant = étape « Préambule » ; sinon colonne A = titre. Cellules fusionnées propagées ; images embarquées (drawing) rattachées à l'étape couvrante ; toutes les feuilles importées à la suite, warning si > 1 ; dates sérialisées non converties). `.txt` / faux docx / `.xls` binaire → 422.
 - Garde-fous : 100 étapes max, 30 images max. Réponse **201** `{ workflow, steps_created, photos_created, warnings }` — le workflow est un **brouillon** (référence auto `IMP-<6 hex>`, titre = nom de fichier) : relecture obligatoire avant publication, jamais de publication automatique (RF-78).
 - Front : bouton « Importer » à l'accueil → redirection vers l'éditeur du brouillon. MCP non câblé en v1.
 
