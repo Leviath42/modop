@@ -93,10 +93,10 @@ export function importRouter(db: Database.Database): Router {
         });
         return;
       }
-      if (aiMode && !aiStatus().configured) {
+      if (aiMode && !aiStatus(db).configured) {
         res.status(422).json({
           error: "validation",
-          message: "moteur IA non configuré — renseignez MODOP_AI_BASE_URL et MODOP_AI_MODEL (page Paramètres)",
+          message: "moteur IA non activé — activez-le dans Paramètres (admin)",
         });
         return;
       }
@@ -116,7 +116,7 @@ export function importRouter(db: Database.Database): Router {
         return;
       }
 
-      const parsed = aiMode ? await parsePdfWithAi(buf, name, pictoKinds(db)) : await parser(buf);
+      const parsed = aiMode ? await parsePdfWithAi(buf, name, pictoKinds(db), db) : await parser(buf);
       const warnings = [...parsed.warnings];
       let steps = parsed.steps;
       if (steps.length > 100) {
@@ -205,7 +205,7 @@ export function importRouter(db: Database.Database): Router {
         parsed.ai_used ? "import_ai" : "import_document",
         "workflow:" + wfId,
         ext + " " + steps.length + " étape(s), " + photosCreated + " photo(s)" +
-          (parsed.ai_used ? ", modèle " + aiStatus().model : "")
+          (parsed.ai_used ? ", modèle " + aiStatus(db).model : "")
       );
       res.status(201).json({
         workflow,

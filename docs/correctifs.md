@@ -33,6 +33,18 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-110 — Moteur IA : configuration éditable dans la page Paramètres + toggle d'activation (V14 #1 suite) (réalisé)
+
+**Constat** : la config moteur vivait en variables d'environnement (redémarrage requis, aucun changement possible sans accès serveur) et impossible de suspendre l'import IA sans retirer la configuration.
+
+**Correctif** : la configuration vit en base (`settings` clé `ai_engine`) et s'édite dans la page Paramètres (admin) : toggle « Activé » qui **verrouille l'option sans retirer la config** (demande explicite), endpoint, modèle, timeout (5-600 s), clé API (convention : champ absent = inchangée, vide = effacée, valeur = remplacée). La clé est stockée côté serveur et **jamais renvoyée** (seul `key_set` est exposé), jamais loguée (l'audit `ai_config` ne trace que sa présence). `PUT /api/ai/config` (admin, validation http/https, audit `ai_config`), `GET /api/ai` passe author+ avec `enabled`. L'env `MODOP_AI_*` reste le **repli** tant que rien n'est en base (la base prime). Front : carte « Moteur IA » éditable (Enregistrer + Tester la connexion, case « effacer la clé »). Tests : config en base sans env, primauté base/env, convention clé, 403/422, toggle → import verrouillé 422, clé de la base bien transmise au moteur (Bearer).
+
+## C-111 — Front : les réponses 204 sans corps affichaient une erreur alors que l'action avait réussi (réalisé)
+
+**Constat (REX C-107)** : la suppression d'un compte désactivé **réussissait** côté serveur (204) mais le front affichait « Suppression impossible » : `handle()` dans `web/src/api.ts` appelait `res.json()` sur un corps vide → `SyntaxError`. Bug générique à toutes les routes 204 passant par `handle()`.
+
+**Correctif** : `handle()` retourne `undefined` sur 204 ou corps vide sans tenter de parser. Test front dédié (`api-delete-204.test.ts` : mock de fetch sans méthode `json`, `adminDeleteUser` doit résoudre).
+
 ## C-38 — Canevas : un clic sur une flèche la déplaçait (réalisé)
 
 **Problème** : cliquer/taper sur une forme déjà posée (flèche, zone) la déplaçait d'environ 1 cm dans la direction du geste. Cause : le drag des formes démarrait au `pointerdown` **sans seuil de tolérance** — au tactile, le micro-glissement naturel du doigt pendant un tap (quelques px) était traité comme un déplacement, et la forme suivait.

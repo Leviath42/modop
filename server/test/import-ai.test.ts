@@ -113,7 +113,7 @@ after(() => {
 test("C-109 : mode IA sans moteur configuré => 422 actionnable", async () => {
   const out = await uploadAi("fiche.pdf", makePdf(["Étape 1 - Preparation"]), true);
   assert.equal(out.status, 422);
-  assert.match(String(out.json?.message), /non configuré/);
+  assert.match(String(out.json?.message), /non activé/);
 });
 
 test("C-109 : mode IA hors PDF => 422", async () => {

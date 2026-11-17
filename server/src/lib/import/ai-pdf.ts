@@ -1,4 +1,5 @@
 import { createCanvas } from "@napi-rs/canvas";
+import type Database from "better-sqlite3";
 import { AiError } from "../ai/error.js";
 import { aiChat, aiStatus } from "../ai/client.js";
 import { pdfTextLines } from "./pdf.js";
@@ -185,10 +186,10 @@ export function parseStructureProposal(
 
 // --- entrée ----------------------------------------------------------------
 
-export async function parsePdfWithAi(buf: Buffer, name: string, pictoKinds: string[]): Promise<ParseResult> {
-  const status = aiStatus();
+export async function parsePdfWithAi(buf: Buffer, name: string, pictoKinds: string[], db: Database.Database): Promise<ParseResult> {
+  const status = aiStatus(db);
   if (!status.configured) {
-    throw new AiError("moteur IA non configuré — renseignez MODOP_AI_BASE_URL et MODOP_AI_MODEL (page Paramètres)", 422);
+    throw new AiError("moteur IA non activé — activez-le dans Paramètres (admin) ou MODOP_AI_* côté serveur", 422);
   }
   const images = await renderPdfPages(buf);
   if (!images.length) throw new AiError("PDF illisible (aucune page rendue)", 422);
@@ -211,7 +212,7 @@ export async function parsePdfWithAi(buf: Buffer, name: string, pictoKinds: stri
     "Propose la structuration en JSON strict conformément au schéma.",
   ].join("\n");
 
-  const reply = await aiChat({ system: systemPrompt(pictoKinds), user, images, json: true, maxTokens: 4000 });
+  const reply = await aiChat({ system: systemPrompt(pictoKinds), user, images, json: true, maxTokens: 4000 }, db);
   const parsed = parseStructureProposal(reply, pictoKinds);
   return {
     steps: parsed.steps,

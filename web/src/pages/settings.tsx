@@ -7,6 +7,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../co
 import { Button } from "../components/ui/button";
 import { PICTO_PRESETS } from "../editor/tools/definitions";
 
+// C-110 (V14 #3) : formulaire local de la carte moteur IA. La clé : champ
+// vide = inchangée ; case « effacer » = retirée ; valeur = remplacée.
+type AiForm = {
+  enabled: boolean;
+  base_url: string;
+  model: string;
+  api_key: string;
+  timeout_s: number;
+  clear_key: boolean;
+};
+
 // C-72 (#4/#5) : page Paramètres (admin) — chaque option est appliquée
 // immédiatement côté serveur (PUT) : le listing « à revoir » et la
 // visibilité des brouillons suivent sans redéploiement.
@@ -18,15 +29,27 @@ export default function SettingsPage() {
   const [indications, setIndications] = useState<Indication[] | null>(null);
   const [indNotice, setIndNotice] = useState<string | null>(null);
   // C-108 (V14 #1) : état + test du moteur IA (import assisté C-109).
+  // C-110 (V14 #3) : configuration éditable ICI (admin) avec un toggle
+  // « activé » qui verrouille l'option sans retirer la config.
   const [ai, setAi] = useState<AiStatus | null>(null);
+  const [aiForm, setAiForm] = useState<AiForm | null>(null);
   const [aiTesting, setAiTesting] = useState(false);
+  const [aiSaving, setAiSaving] = useState(false);
   const [aiMsg, setAiMsg] = useState<string | null>(null);
 
   useEffect(() => {
     api.getIndications()
       .then((l) => setIndications(l))
       .catch(() => setIndications([]));
-    api.aiStatus().then(setAi).catch(() => setAi(null));
+    api.aiStatus()
+      .then((s) => {
+        setAi(s);
+        setAiForm({ enabled: s.enabled, base_url: s.base_url, model: s.model, api_key: "", timeout_s: Number.isFinite(s.timeout_ms) ? Math.round(s.timeout_ms / 1000) : 90, clear_key: false });
+      })
+      .catch(() => {
+        setAi(null);
+        setAiForm(null);
+      });
   }, []);
 
   async function testAi() {
@@ -39,6 +62,30 @@ export default function SettingsPage() {
       setAiMsg(e instanceof ApiError ? e.message : "Test impossible");
     } finally {
       setAiTesting(false);
+    }
+  }
+
+  // C-110 : enregistre le formulaire. Convention clé : champ vide = absente
+  // du payload (inchangée), case cochée = chaîne vide (effacée).
+  async function saveAi() {
+    if (!aiForm) return;
+    setAiSaving(true);
+    setAiMsg(null);
+    try {
+      const saved = await api.saveAiConfig({
+        enabled: aiForm.enabled,
+        base_url: aiForm.base_url.trim(),
+        model: aiForm.model.trim(),
+        timeout_ms: Math.round(aiForm.timeout_s * 1000),
+        ...(aiForm.clear_key ? { api_key: "" } : aiForm.api_key.trim() ? { api_key: aiForm.api_key.trim() } : {}),
+      });
+      setAi(saved);
+      setAiForm({ enabled: saved.enabled, base_url: saved.base_url, model: saved.model, api_key: "", timeout_s: Number.isFinite(saved.timeout_ms) ? Math.round(saved.timeout_ms / 1000) : 90, clear_key: false });
+      setAiMsg("Configuration enregistrée");
+    } catch (e) {
+      setAiMsg(e instanceof ApiError ? e.message : "Enregistrement impossible");
+    } finally {
+      setAiSaving(false);
     }
   }
 
@@ -222,8 +269,11 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* C-108 (V14 #1) : moteur IA de l'import assisté — paramétré par
-            variables d'environnement serveur, jamais de clé dans l'UI. */}
+        {/* C-108 (V14 #1) + C-110 (V14 #3) : moteur IA de l'import assisté —
+            configurable ICI (admin) avec un toggle « activé » qui verrouille
+            l'option sans retirer la config. À défaut de configuration
+            enregistrée, le serveur garde MODOP_AI_* comme repli. La clé
+            n'est jamais renvoyée : champ vide = inchangée, case = effacée. */}
         <Card>
           <CardHeader>
             <CardTitle>Moteur IA — import assisté</CardTitle>
@@ -231,27 +281,108 @@ export default function SettingsPage() {
               Structure les PDF à l'import (fiches multi-colonnes, scans compris). Tout endpoint compatible OpenAI (Mistral AI, OpenAI, Ollama, vLLM…). L'IA propose, l'auteur relit : jamais de publication automatique.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-2">
-            <div className="grid gap-1 rounded-lg border border-border bg-surface p-3 text-sm">
-              <span className="font-semibold text-foreground">
-                {ai ? (ai.configured ? "Configuré" : "Non configuré") : "État inconnu"}
-                {ai && ai.configured ? (ai.key_set ? " — clé posée" : " — sans clé (moteur local ?)") : ""}
-              </span>
-              {ai && (
-                <span className="text-muted-foreground">
-                  Modèle : <code>{ai.model || "—"}</code> · Endpoint : <code>{ai.base_url || "—"}</code> · Timeout : {Math.round(ai.timeout_ms / 1000)} s
+          <CardContent className="grid gap-3">
+            <span className="text-sm text-muted-foreground" role="status">
+              {ai
+                ? ai.configured
+                  ? "État : actif — " + (ai.key_set ? "clé posée" : "sans clé (moteur local ?)")
+                  : ai.enabled
+                    ? "État : activé mais incomplet (endpoint et modèle requis)"
+                    : "État : désactivé (l'import IA est verrouillé, la configuration reste en place)"
+                : "État inconnu"}
+            </span>
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-surface p-3">
+              <input
+                type="checkbox"
+                checked={aiForm ? aiForm.enabled : false}
+                disabled={!aiForm}
+                onChange={(e) => setAiForm((f) => (f ? { ...f, enabled: e.target.checked } : f))}
+                className="mt-1 size-4 shrink-0"
+                aria-label="Moteur IA activé"
+              />
+              <span className="grid gap-0.5">
+                <span className="text-sm font-semibold text-foreground">Activé</span>
+                <span className="text-sm text-muted-foreground">
+                  Décochez pour suspendre l'import assisté — les réglages ci-dessous restent en place.
                 </span>
-              )}
-              <span className="text-muted-foreground">
-                Paramétrage serveur (fichier d'environnement, redémarrage requis) : <code>MODOP_AI_BASE_URL</code>, <code>MODOP_AI_MODEL</code>, <code>MODOP_AI_API_KEY</code>, <code>MODOP_AI_TIMEOUT_MS</code>.
               </span>
+            </label>
+            <div className="grid gap-3 rounded-lg border border-border bg-surface p-3 sm:grid-cols-2">
+              <label className="grid gap-1">
+                <span className="text-sm font-semibold text-foreground">Endpoint (base URL)</span>
+                <input
+                  value={aiForm ? aiForm.base_url : ""}
+                  disabled={!aiForm}
+                  placeholder="https://api.mistral.ai/v1"
+                  onChange={(e) => setAiForm((f) => (f ? { ...f, base_url: e.target.value } : f))}
+                  className="h-9 rounded-md border border-border bg-surface px-2 text-sm"
+                  aria-label="Endpoint du moteur IA"
+                />
+              </label>
+              <label className="grid gap-1">
+                <span className="text-sm font-semibold text-foreground">Modèle</span>
+                <input
+                  value={aiForm ? aiForm.model : ""}
+                  disabled={!aiForm}
+                  placeholder="mistral-large-latest"
+                  onChange={(e) => setAiForm((f) => (f ? { ...f, model: e.target.value } : f))}
+                  className="h-9 rounded-md border border-border bg-surface px-2 text-sm"
+                  aria-label="Modèle du moteur IA"
+                />
+              </label>
+              <label className="grid gap-1">
+                <span className="text-sm font-semibold text-foreground">
+                  Clé API {ai?.key_set ? <span className="font-normal text-muted-foreground">(posée)</span> : <span className="font-normal text-muted-foreground">(non posée)</span>}
+                </span>
+                <input
+                  type="password"
+                  value={aiForm ? aiForm.api_key : ""}
+                  disabled={!aiForm}
+                  placeholder={ai?.key_set ? "inchangée" : "optionnelle pour un moteur local"}
+                  onChange={(e) => setAiForm((f) => (f ? { ...f, api_key: e.target.value, clear_key: e.target.value ? false : f.clear_key } : f))}
+                  className="h-9 rounded-md border border-border bg-surface px-2 text-sm"
+                  aria-label="Clé API du moteur IA"
+                />
+              </label>
+              <label className="grid gap-1">
+                <span className="text-sm font-semibold text-foreground">Timeout (secondes)</span>
+                <input
+                  type="number"
+                  min={5}
+                  max={600}
+                  value={aiForm ? aiForm.timeout_s : 90}
+                  disabled={!aiForm}
+                  onChange={(e) => setAiForm((f) => (f ? { ...f, timeout_s: Number(e.target.value) } : f))}
+                  className="h-9 w-28 rounded-md border border-border bg-surface px-2 text-sm"
+                  aria-label="Timeout du moteur IA en secondes"
+                />
+              </label>
             </div>
-            <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={aiForm ? aiForm.clear_key : false}
+                disabled={!aiForm || !ai?.key_set}
+                onChange={(e) => setAiForm((f) => (f ? { ...f, clear_key: e.target.checked, api_key: e.target.checked ? "" : f.api_key } : f))}
+                className="size-4"
+                aria-label="Effacer la clé enregistrée"
+              />
+              Effacer la clé enregistrée
+            </label>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" disabled={!aiForm || aiSaving} onClick={() => void saveAi()}>
+                {aiSaving ? "Enregistrement…" : "Enregistrer"}
+              </Button>
               <Button variant="outline" size="sm" disabled={!ai?.configured || aiTesting} onClick={() => void testAi()}>
                 {aiTesting ? "Test…" : "Tester la connexion"}
               </Button>
               {aiMsg && <span className="text-sm text-muted-foreground" role="status">{aiMsg}</span>}
             </div>
+            <p className="m-0 text-sm text-muted-foreground">
+              Le test s'appuie sur la configuration enregistrée — cliquez sur « Enregistrer » après vos modifications.
+              À défaut de configuration enregistrée, le serveur utilise <code>MODOP_AI_*</code> (repli).
+              La clé est stockée côté serveur, jamais renvoyée ici.
+            </p>
           </CardContent>
         </Card>
 

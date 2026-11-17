@@ -111,3 +111,91 @@ test("C-108 : test de connexion — 403 pour un auteur", async () => {
   const res = await fetch(base + "/api/ai/test", { method: "POST", headers: { cookie: auteur } });
   assert.equal(res.status, 403);
 });
+
+// --- C-110 : configuration éditable (page Paramètres) -----------------------
+
+test("C-110 : PUT /config (admin) — config en base, primauté sur l'env, clé jamais renvoyée", async () => {
+  const res = await fetch(base + "/api/ai/config", {
+    method: "PUT",
+    headers: { cookie: admin, "content-type": "application/json" },
+    body: JSON.stringify({ enabled: true, base_url: mockBase + "/v2", model: "cfg-model-1", api_key: "cle-c110", timeout_ms: 12000 }),
+  });
+  assert.equal(res.status, 200);
+  const st = await res.json();
+  assert.equal(st.configured, true);
+  assert.equal(st.enabled, true);
+  assert.equal(st.base_url, mockBase + "/v2");
+  assert.equal(st.model, "cfg-model-1");
+  assert.equal(st.key_set, true);
+  assert.equal(st.timeout_ms, 12000);
+  assert.ok(!JSON.stringify(st).includes("cle-c110"), "la clé ne doit jamais apparaître");
+  // Primauté de la base sur l'env (l'env est test-vision-1).
+  const st2 = await (await fetch(base + "/api/ai", { headers: { cookie: admin } })).json();
+  assert.equal(st2.model, "cfg-model-1");
+  assert.equal(st2.base_url, mockBase + "/v2");
+  // Le test de connexion suit la config en base.
+  mockState.reply = "OK";
+  const tst = await (await fetch(base + "/api/ai/test", { method: "POST", headers: { cookie: admin } })).json();
+  assert.equal(tst.ok, true);
+  mockState.reply = undefined;
+});
+
+test("C-110 : toggle désactivé — verrouille l'import IA SANS retirer la config", async () => {
+  const res = await fetch(base + "/api/ai/config", {
+    method: "PUT",
+    headers: { cookie: admin, "content-type": "application/json" },
+    body: JSON.stringify({ enabled: false, base_url: mockBase + "/v2", model: "cfg-model-1", timeout_ms: 12000 }),
+  });
+  assert.equal(res.status, 200);
+  const st = await res.json();
+  assert.equal(st.configured, false);
+  assert.equal(st.enabled, false);
+  assert.equal(st.base_url, mockBase + "/v2"); // conservée pour l'UI
+  assert.equal(st.model, "cfg-model-1");
+  assert.equal(st.key_set, true);
+  // Import verrouillé : 422 actionnable (avant même le rendu des pages).
+  const fd = new FormData();
+  fd.append("file", new Blob(["%PDF-1.4"], { type: "application/pdf" }), "x.pdf");
+  fd.append("ai", "1");
+  const resImp = await fetch(base + "/api/import/document", { method: "POST", headers: { cookie: auteur }, body: fd });
+  assert.equal(resImp.status, 422);
+  const out = await resImp.json();
+  assert.match(String(out.message), /non activé/);
+});
+
+test("C-110 : convention clé — absente = inchangée, vide = effacée", async () => {
+  const r1 = await fetch(base + "/api/ai/config", {
+    method: "PUT",
+    headers: { cookie: admin, "content-type": "application/json" },
+    body: JSON.stringify({ enabled: true, base_url: mockBase + "/v2", model: "cfg-model-1" }),
+  });
+  assert.equal(r1.status, 200);
+  assert.equal((await r1.json()).key_set, true);
+  const r2 = await fetch(base + "/api/ai/config", {
+    method: "PUT",
+    headers: { cookie: admin, "content-type": "application/json" },
+    body: JSON.stringify({ enabled: true, base_url: mockBase + "/v2", model: "cfg-model-1", api_key: "" }),
+  });
+  assert.equal((await r2.json()).key_set, false);
+});
+
+test("C-110 : PUT /config — 403 auteur, 422 base_url, 422 timeout", async () => {
+  const r403 = await fetch(base + "/api/ai/config", {
+    method: "PUT",
+    headers: { cookie: auteur, "content-type": "application/json" },
+    body: JSON.stringify({ enabled: true }),
+  });
+  assert.equal(r403.status, 403);
+  const r422a = await fetch(base + "/api/ai/config", {
+    method: "PUT",
+    headers: { cookie: admin, "content-type": "application/json" },
+    body: JSON.stringify({ enabled: true, base_url: "pas une URL", model: "m" }),
+  });
+  assert.equal(r422a.status, 422);
+  const r422t = await fetch(base + "/api/ai/config", {
+    method: "PUT",
+    headers: { cookie: admin, "content-type": "application/json" },
+    body: JSON.stringify({ enabled: true, base_url: mockBase, model: "m", timeout_ms: 100 }),
+  });
+  assert.equal(r422t.status, 422);
+});

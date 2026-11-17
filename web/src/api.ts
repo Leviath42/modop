@@ -139,7 +139,14 @@ async function handle<T>(res: Response): Promise<T> {
     }
     throw new ApiError(res.status, code, message);
   }
-  return (await res.json()) as T;
+  // C-111 : 204 (ou corps vide) → rien à parser. REX C-107 : la suppression
+  // réussissait côté serveur mais le front affichait « Suppression impossible ».
+  if (res.status === 204) return undefined as T;
+  try {
+    return (await res.json()) as T;
+  } catch {
+    return undefined as T; // corps vide : rien à parser (C-111)
+  }
 }
 
 // C-101 (V8 #6, RF-78) : réponse de POST /api/import/document.
@@ -154,6 +161,7 @@ export interface ImportResult {
 // C-108 (V14 #1) : état du moteur IA (author+) — JAMAIS la clé, juste key_set.
 export interface AiStatus {
   configured: boolean;
+  enabled: boolean; // C-110 : toggle — false verrouille l'option sans retirer la config
   base_url: string;
   model: string;
   key_set: boolean;
@@ -322,6 +330,17 @@ export const api = {
   },
   async aiStatus(): Promise<AiStatus> {
     return handle<AiStatus>(await fetch("/api/ai"));
+  },
+  // C-110 : configuration du moteur IA (admin). Convention clé : absente →
+  // inchangée, "" → effacée, valeur → remplacée. Jamais renvoyée par l'API.
+  async saveAiConfig(data: { enabled: boolean; base_url: string; model: string; api_key?: string; timeout_ms?: number }): Promise<AiStatus> {
+    return handle<AiStatus>(
+      await fetch("/api/ai/config", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(data),
+      })
+    );
   },
   async aiTest(): Promise<AiTestResult> {
     return handle<AiTestResult>(await fetch("/api/ai/test", { method: "POST" }));

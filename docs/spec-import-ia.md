@@ -28,22 +28,30 @@ L'étage 2 ne remplace pas l'étage 1 : il se demande explicitement (case
 « Assister par IA » dans la modale d'import) et ne couvre que les PDF en v14
 (docx/xlsx déterministes suffisants à ce jour — backlog #4).
 
-## 3. Moteur IA paramétrable (C-108)
+## 3. Moteur IA paramétrable (C-108 + C-110)
 
 Aucune dépendance (fetch natif — même logique supply-chain que l'import xlsx
 maison). Endpoint **compatible OpenAI** `POST {base}/chat/completions` :
 couvre Mistral AI, OpenAI, Ollama, vLLM, LM Studio, etc.
 
-| Variable | Rôle | Défaut |
-|---|---|---|
-| `MODOP_AI_BASE_URL` | racine API (ex. `https://api.mistral.ai/v1`) | vide = IA désactivée |
-| `MODOP_AI_MODEL` | modèle (vision requis pour les PDF) | vide = IA désactivée |
-| `MODOP_AI_API_KEY` | clé — **env uniquement**, jamais en base, jamais renvoyée par l'API (seul un booléen `key_set` est exposé) | vide (Ollama local) |
-| `MODOP_AI_TIMEOUT_MS` | timeout de l'appel | 90 000 |
+Depuis C-110, la configuration vit **en base** (table `settings`, clé
+`ai_engine`) et s'édite dans la page **Paramètres** (admin) :
 
-API (admin) : `GET /api/ai` (état, sans secret) ; `POST /api/ai/test`
+| Champ | Rôle |
+|---|---|
+| Activé | toggle — `false` VERROUILLE l'import IA sans retirer la configuration |
+| Endpoint (base URL) | racine API (ex. `https://api.mistral.ai/v1`) |
+| Modèle | vision requise pour les PDF |
+| Clé API | stockée côté serveur, **jamais renvoyée** (seul `key_set` est exposé) ; champ vide = inchangée, case « effacer » = retirée |
+| Timeout | 5 à 600 s (défaut 90 s) |
+
+L'environnement `MODOP_AI_*` (BASE_URL, MODEL, API_KEY, TIMEOUT_MS) reste le
+**repli** tant qu'aucune config n'est enregistrée — la base prime.
+
+API : `GET /api/ai` (author+, état sans secret) ; `PUT /api/ai/config`
+(admin, validation, audit `ai_config`) ; `POST /api/ai/test`
 (ping réel « réponds OK », latence, audit `ai_test`, rate-limit 6/10 min).
-UI : carte « Moteur IA » dans la page Paramètres.
+UI : carte « Moteur IA » de la page Paramètres — formulaire éditable (C-110).
 
 ## 4. Import PDF assisti (C-109)
 
