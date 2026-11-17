@@ -9,7 +9,6 @@ import {
 import { requireAuth } from "../auth/middleware.js";
 import { auditLog } from "../auth/audit.js";
 import { composeStepCanvas } from "../render/canvas-composite.js";
-import { categoryPaths } from "../lib/category-path.js";
 import { buildExportMeta, renderMarkdown } from "../lib/export-payload.js";
 import { renderPdf } from "../lib/pdf.js";
 
