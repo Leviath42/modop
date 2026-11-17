@@ -36,6 +36,24 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-103 — Import xlsx v2 : fusions, images ancrées, repères multi-colonnes, multi-feuilles (réalisé)
+
+**Problème** : l'import xlsx v1 (C-101) ne lisait que la première feuille, en-tête reconnu sinon colonne A. Retour terrain : « largement insuffisant — il faut que les excels passent bien avec identification des étapes et photos associées, groupes de cases ».
+
+**Correctif** : le lecteur maison jszip (exceljs toujours écarté, supply-chain) passe en v2 :
+- **Cellules fusionnées** : la valeur de la cellule en haut à gauche remplit toute la plage (`mergeCell`), déduplication pour ne pas compter deux fois dans la description.
+- **Repères multi-colonnes** : « Étape/Phase/Step N : » cherché sur toutes les colonnes d'une ligne (plus seulement A) ; le libellé suit le repère, les autres cellules complètent la description ; le texte avant le premier repère devient une étape « Préambule ».
+- **Images embarquées** : chaîne OOXML complète sheet → drawing → rels → `xl/media`, ancrage `<xdr:row>` rattache l'image à l'étape couvrante (formats filtrés par sniffImage ; EMF/WMF ignorés avec warning).
+- **Multi-feuilles** : toutes les feuilles importées à la suite, warning si > 1. Mode en-tête et fallback colonne A inchangés.
+
+**REX debug** : deux bugs introduits par les patchs distants — (1) les parenthèses de capture de `/<v>([\s\S]*?)<\/v>/` perdues en réparation d'échappement : `vM[1]` undefined silencieux → cellules vides → « classeur sans contenu exploitable » ; (2) le générateur de test regroupait toutes les cellules dans un seul `<row r="undefined">` (digits non capturés dans le regex de tri des lignes). Diagnostic par dump hex : l'affichage des backslashes est trompeur — jamais conclure sans vérification bytes.
+
+**Test** : `import.test.ts` #5 — fusion A1:B1, repères en colonne A sur lignes non contiguës, image ancrée ligne 6, 2 feuilles → Préambule + 2 étapes (image sur la bonne) + feuille 2 en mode en-tête. 5/5 + 169/169 serveur, gates complètes vertes.
+
+**Fichiers** : `server/src/lib/import/xlsx.ts`, `server/test/import.test.ts`
+
+---
+
 ## C-102 — Montée multer 1.4.5-lts.2 → 2.5.0 : dette sécurité soldée (réalisé)
 
 **Problème** : le message Dependabot « 30 vulnérabilités » persistait au push malgré le réalignement `main` de C-100 — la REX « cache du dernier scan » était fausse. Cause réelle : `multer` 1.4.5-lts.2, advisory GitHub (CVE-2025-7338, DoS high : exception non gérée sur multipart malformé, versions >= 1.4.4-lts.1 et < 2.0.2) invisible pour `npm audit` (advisory GitHub non référencé côté npm), d'où audits 0/0/0 + alerte Dependabot. La PR Dependabot #10 fermée visait multer.
