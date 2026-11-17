@@ -36,6 +36,18 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-102 — Montée multer 1.4.5-lts.2 → 2.5.0 : dette sécurité soldée (réalisé)
+
+**Problème** : le message Dependabot « 30 vulnérabilités » persistait au push malgré le réalignement `main` de C-100 — la REX « cache du dernier scan » était fausse. Cause réelle : `multer` 1.4.5-lts.2, advisory GitHub (CVE-2025-7338, DoS high : exception non gérée sur multipart malformé, versions >= 1.4.4-lts.1 et < 2.0.2) invisible pour `npm audit` (advisory GitHub non référencé côté npm), d'où audits 0/0/0 + alerte Dependabot. La PR Dependabot #10 fermée visait multer.
+
+**Correctif** : `multer` 2.5.0 (+ `@types/multer` 2.x) — 2.3.0 ferme les alerts ouverts, 2.4.0/2.5.0 corrigent GHSA-3pph-fpjx-jg34 et GHSA-q7qp-rjg7-q26m. Migration sans changement de code (memoryStorage, limits.fileSize, single) ; les tests valident le comportement. REX : le décodage WHATWG-escaped de multer >= 2.3 ne concerne que `filename*=` (RFC 5987) — un filename UTF-8 brut reste mojibake latin1 côté busboy, le roundtrip `fixMultipartName` de C-101 reste donc requis (vérifié par test, retrait essayé puis annulé).
+
+**Test** : gates complètes — build web + tests front + **168/168 tests serveur** + lint verts, audit npm 0/0/0.
+
+**Fichiers** : `server/package.json` + lock racine, `server/src/routes/import.ts` (commentaire du fix mojibake précisé).
+
+**État** : livré le 17 nov. 2026 — branche `beta` (déploiement CT 203).
+
 ## C-101 — Import de documents multiformat (V8 #6, RF-78) (réalisé)
 
 **Demande** : importer les modes opératoires existants (`.docx`, `.pdf`, `.xlsx`) au lieu de tout ressaisir ; le résultat doit rester un **brouillon** (RF-78 : relecture obligatoire, jamais de publication automatique).

@@ -20,19 +20,20 @@ import { ImportError, type ParseResult } from "../lib/import/types.js";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
-const PARSERS: Record<string, (b: Buffer) => Promise<ParseResult>> = {
-  ".docx": parseDocx,
-  ".pdf": parsePdf,
-  ".xlsx": parseXlsx,
-};
-
-// busboy/multer décode les paramètres multipart en latin1 : un nom de
-// fichier UTF-8 (« opératoire.docx ») arrive mojibake (« opÃ©ratoire »).
+// busboy (multer 1 comme 2) décode le filename UTF-8 brut en latin1 :
+// « opératoire.docx » arrive mojibake (« opÃ©ratoire »). Le décodage
+// WHATWG-escaped de multer >= 2.3 ne couvre que filename*= (RFC 5987).
 // Roundtrip latin1→utf8 quand il produit de l'UTF-8 valide, original sinon.
 function fixMultipartName(name: string): string {
   const repaired = Buffer.from(name, "latin1").toString("utf8");
   return repaired.includes(String.fromCharCode(65533)) ? name : repaired;
 }
+
+const PARSERS: Record<string, (b: Buffer) => Promise<ParseResult>> = {
+  ".docx": parseDocx,
+  ".pdf": parsePdf,
+  ".xlsx": parseXlsx,
+};
 
 export function importRouter(db: Database.Database): Router {
   const r = Router();
