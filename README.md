@@ -14,6 +14,7 @@ Application web de création, publication et consultation de **modes opératoire
 - **GED** : date de revue, responsable (parmi les comptes actifs), badge « à revoir », garde-fou automatique si le responsable part.
 - **Rôles** : lecteur / auteur / admin — la suppression définitive d'un MO est réservée aux admins.
 - **Export `.docx`** des versions publiées (Word/LibreOffice).
+- **Import de documents existants** : `.docx`, `.pdf`, `.xlsx` → brouillon à relire (étapes détectées, photos extraites et rattachées par position) ; en option **import assisté par IA** (PDF, scans acceptés, tri par les numéros d'étapes de la source, moteur compatible OpenAI).
 - **Mise à jour depuis l'interface** (admin) : bouton « Mettre à jour depuis GitHub », retour arrière, journal en direct — sans shell.
 
 ## Installation (conteneur LXC Proxmox)
