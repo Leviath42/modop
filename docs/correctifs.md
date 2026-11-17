@@ -1724,3 +1724,18 @@ Sur écran étroit, le wrap reste possible mais chaque élément est compact —
 **Fichiers** : `web/src/step-canvas.tsx`, `web/src/lib/step-canvas-adaptive.test.ts`
 
 **État** : ✅ livré sur beta — tsc + build + tous tests front + 102/102 serveur.
+
+
+## C-117 — Tests sécurité : limiter login jamais purgé, security.test.ts pile à la limite (réalisé)
+
+**Problème** : échec intermittent (~1/4) du test S2 « photos accessibles uniquement authentifié » en CI. Le rate limiter login (Map module-level, MAX_ATTEMPTS=10/15 min, clé ip:email, push à CHAQUE tentative) n'était purgé par personne : resetRateLimits() ne vidait que le limiter générique. security.test.ts consomme exactement 10 essais user@modop.local par exécution — pile la limite : tout cumul (ordre d'exécution, 2e passage du fichier, runner partageant le process) déclenche des 429 non déterministes en cascade.
+
+**Preuves (17/11)** : 12 logins consécutifs sur une app de test identique → le 11e renvoie 429 ; instrumentation du limiter (log des clés) → 10 essais exacts par exécution.
+
+**Correctif** : attempts.clear() dans resetRateLimits() + beforeEach(() => resetRateLimits()) dans security.test.ts. En production la fonction n'est appelée nulle part (aucun endpoint) — aucun impact sécurité.
+
+**Tests** : suite serveur complète 201/201 verte, fichier sécurité 18/18 solo.
+
+**Fichiers** : server/src/auth/security.ts, server/test/security.test.ts
+
+**État** : ✅ livré sur beta (1108aba) — CI verte.
