@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, ApiError, type AppSettings, type Indication } from "../api";
+import { api, ApiError, type AiStatus, type AppSettings, type Indication } from "../api";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
 import { Alert } from "../components/ui/dialog";
@@ -17,12 +17,30 @@ export default function SettingsPage() {
   // appliquée uniquement via « Enregistrer » (édition locale avant PUT).
   const [indications, setIndications] = useState<Indication[] | null>(null);
   const [indNotice, setIndNotice] = useState<string | null>(null);
+  // C-108 (V14 #1) : état + test du moteur IA (import assisté C-109).
+  const [ai, setAi] = useState<AiStatus | null>(null);
+  const [aiTesting, setAiTesting] = useState(false);
+  const [aiMsg, setAiMsg] = useState<string | null>(null);
 
   useEffect(() => {
     api.getIndications()
       .then((l) => setIndications(l))
       .catch(() => setIndications([]));
+    api.aiStatus().then(setAi).catch(() => setAi(null));
   }, []);
+
+  async function testAi() {
+    setAiTesting(true);
+    setAiMsg(null);
+    try {
+      const out = await api.aiTest();
+      setAiMsg(out.ok ? "Connexion OK — " + out.latency_ms + " ms" : "Réponse inattendue du moteur : " + out.reply);
+    } catch (e) {
+      setAiMsg(e instanceof ApiError ? e.message : "Test impossible");
+    } finally {
+      setAiTesting(false);
+    }
+  }
 
   const setIndicationAt = (k: number, next: Partial<Indication>) => {
     setIndications((prev) => (prev ?? []).map((x, j) => (j === k ? { ...x, ...next } : x)));
@@ -201,6 +219,39 @@ export default function SettingsPage() {
               <Button size="sm" onClick={() => void saveIndications()} disabled={!indications || indications.length === 0}>Enregistrer</Button>
             </div>
             {indNotice && <Alert variant="ok">{indNotice}</Alert>}
+          </CardContent>
+        </Card>
+
+        {/* C-108 (V14 #1) : moteur IA de l'import assisté — paramétré par
+            variables d'environnement serveur, jamais de clé dans l'UI. */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Moteur IA — import assisté</CardTitle>
+            <CardDescription>
+              Structure les PDF à l'import (fiches multi-colonnes, scans compris). Tout endpoint compatible OpenAI (Mistral AI, OpenAI, Ollama, vLLM…). L'IA propose, l'auteur relit : jamais de publication automatique.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-2">
+            <div className="grid gap-1 rounded-lg border border-border bg-surface p-3 text-sm">
+              <span className="font-semibold text-foreground">
+                {ai ? (ai.configured ? "Configuré" : "Non configuré") : "État inconnu"}
+                {ai && ai.configured ? (ai.key_set ? " — clé posée" : " — sans clé (moteur local ?)") : ""}
+              </span>
+              {ai && (
+                <span className="text-muted-foreground">
+                  Modèle : <code>{ai.model || "—"}</code> · Endpoint : <code>{ai.base_url || "—"}</code> · Timeout : {Math.round(ai.timeout_ms / 1000)} s
+                </span>
+              )}
+              <span className="text-muted-foreground">
+                Paramétrage serveur (fichier d'environnement, redémarrage requis) : <code>MODOP_AI_BASE_URL</code>, <code>MODOP_AI_MODEL</code>, <code>MODOP_AI_API_KEY</code>, <code>MODOP_AI_TIMEOUT_MS</code>.
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" disabled={!ai?.configured || aiTesting} onClick={() => void testAi()}>
+                {aiTesting ? "Test…" : "Tester la connexion"}
+              </Button>
+              {aiMsg && <span className="text-sm text-muted-foreground" role="status">{aiMsg}</span>}
+            </div>
           </CardContent>
         </Card>
 

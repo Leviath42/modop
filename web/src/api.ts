@@ -148,6 +148,21 @@ export interface ImportResult {
   steps_created: number;
   photos_created: number;
   warnings: string[];
+  ai_used?: boolean; // C-109 : structure proposée par le moteur IA
+}
+
+// C-108 (V14 #1) : état du moteur IA (author+) — JAMAIS la clé, juste key_set.
+export interface AiStatus {
+  configured: boolean;
+  base_url: string;
+  model: string;
+  key_set: boolean;
+  timeout_ms: number;
+}
+export interface AiTestResult {
+  ok: boolean;
+  latency_ms: number;
+  reply: string;
 }
 
 export const api = {
@@ -299,10 +314,17 @@ export const api = {
       })
     );
   },
-  async importDocument(file: File): Promise<ImportResult> {
+  async importDocument(file: File, ai = false): Promise<ImportResult> {
     const fd = new FormData();
     fd.append("file", file);
+    if (ai) fd.append("ai", "1"); // C-109 : import PDF assisti par le moteur IA
     return handle<ImportResult>(await fetch("/api/import/document", { method: "POST", body: fd }));
+  },
+  async aiStatus(): Promise<AiStatus> {
+    return handle<AiStatus>(await fetch("/api/ai"));
+  },
+  async aiTest(): Promise<AiTestResult> {
+    return handle<AiTestResult>(await fetch("/api/ai/test", { method: "POST" }));
   },
   async uploadPhoto(stepId: number, file: File, alt: string): Promise<Photo> {
     const fd = new FormData();

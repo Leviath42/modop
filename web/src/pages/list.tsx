@@ -19,6 +19,15 @@ export default function ListPage() {
   const importFileRef = useRef<HTMLInputElement | null>(null);
   const [importBusy, setImportBusy] = useState(false);
   const [importError, setImportError] = useState("");
+  // C-109 (V14 #2) : import PDF assisti par IA — case affichée seulement si
+  // un moteur est configuré (statut author+, sans secret).
+  const [importAi, setImportAi] = useState(false);
+  const [aiReady, setAiReady] = useState(false);
+  useEffect(() => {
+    if (user && user.role !== "reader") {
+      api.aiStatus().then((s) => setAiReady(s.configured)).catch(() => setAiReady(false));
+    }
+  }, [user]);
   async function onImportFile(e: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = e.target.files?.[0];
     e.target.value = ""; // permet de re-sélectionner le même fichier
@@ -26,7 +35,7 @@ export default function ListPage() {
     setImportBusy(true);
     setImportError("");
     try {
-      const res = await api.importDocument(file);
+      const res = await api.importDocument(file, importAi);
       navigate("/workflow/" + res.workflow.id + "/edit");
     } catch (err) {
       setImportError(err instanceof ApiError ? err.message : "Import impossible — réessayez.");
@@ -157,6 +166,21 @@ export default function ListPage() {
                 aria-hidden="true"
                 onChange={onImportFile}
               />
+              {aiReady && (
+                <label
+                  className="flex h-10 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-surface px-3 text-sm"
+                  title="Import PDF assisté par IA : les pages sont envoyées au moteur configuré (Paramètres) qui propose la structure — brouillon à relire, jamais publié d'office"
+                >
+                  <input
+                    type="checkbox"
+                    checked={importAi}
+                    onChange={(e) => setImportAi(e.target.checked)}
+                    className="size-4"
+                    aria-label="Assister l'import par IA"
+                  />
+                  IA
+                </label>
+              )}
               <Button
                 variant="outline"
                 disabled={importBusy}

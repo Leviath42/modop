@@ -9,6 +9,30 @@ Chaque entrée : problème constaté → correctif → fichiers touchés → ét
 
 ---
 
+## C-108 — Moteur IA paramétrable : socle + état + test de connexion (V14 #1) (réalisé)
+
+**Problème** : l'import natif échoue sur les fiches industrielles réelles (REX FP 0262 A : texte multi-colonnes interfolié, 1 étape en vrac) ; aucun moyen d'appeler un moteur IA depuis modop. REX complet : un pipeline externe JSON+IA structure correctement mais dérive l'ordre (MO 25 vs MO 28, 17/11/2026).
+
+**Correctif** : socle serveur **compatible OpenAI sans SDK** (fetch natif, supply-chain) : `server/src/lib/ai/client.ts` (`aiChat` + `aiStatus`, images vision en data URI, timeout `AbortController`, erreurs typées 422/502/504). Paramétrage env : `MODOP_AI_BASE_URL`, `MODOP_AI_MODEL`, `MODOP_AI_API_KEY` (jamais en base, jamais en log — seul un booléen `key_set` est exposé), `MODOP_AI_TIMEOUT_MS`. API : `GET /api/ai` (author+, statut sans secret), `POST /api/ai/test` (admin, ping réel + latence, audit `ai_test`, rate-limit 6/10 min). Front : carte « Moteur IA » dans Paramètres avec bouton « Tester la connexion ».
+
+**Test** : `server/test/ai.test.ts` (5 tests) — statut non configuré / configuré **sans jamais exposer la clé**, ping OK + latence contre un faux moteur OpenAI en loopback, moteur en erreur ⇒ 502, réponse hors-sujet ⇒ ok:false, test connexion 403 pour un auteur.
+
+**Fichiers** : `server/src/lib/ai/client.ts`, `server/src/lib/ai/error.ts`, `server/src/routes/ai.ts`, `server/src/app.ts`, `web/src/api.ts`, `web/src/pages/settings.tsx`, `docs/spec-import-ia.md`
+
+---
+
+## C-109 — Import PDF assisti par IA : vision, scans acceptés, tri par numéros de la source (V14 #2) (réalisé)
+
+**Problème** : l'import texte C-101 refuse les PDF scannés (422 OCR) et produit 1 étape en vrac sur les fiches multi-colonnes ; le pipeline externe Copilot (MO 25) montrait la voie mais dérivait l'ordre (butées ressort déplacées) — un MO mal ordonné est un risque opérateur.
+
+**Correctif** : mode IA sur `POST /api/import/document` (champ form `ai=1`, PDF uniquement, author+, rate-limit 5/10 min) : rendu des pages en JPEG (pdf.js legacy + @napi-rs/canvas déjà présents, ≤ 10 pages, échelle 1,5, fond blanc) + couche texte brute en aide → moteur IA (C-108) → **validation stricte** : JSON borné, textes verbatim exigés, pictos filtrés sur les indications métiers actives (C-97), et **tri final PAR NUMÉROS D'ÉTAPES DE LA SOURCE** — jamais l'ordre de génération du modèle (garde-fou REX MO 25). Brouillon uniquement (RF-78) ; `a_completer` → commentaires d'auteurs (C-96) « À COMPLÉTER (import IA) » sur l'étape concernée ; référence proposée si libre, sinon IMP- + warning ; audit `import_ai`. Front : case « IA » dans l'accueil si moteur configuré.
+
+**Test** : `server/test/import-ai.test.ts` (6 tests) — 422 sans moteur / hors PDF ; **tri 3-1-2 ⇒ 1-2-3**, pictos inconnus filtrés, todo en commentaires sur la bonne étape, référence prise ⇒ IMP- + warning ; PDF scanné accepté (lève le refus OCR) avec warning « couche texte » ; réponse moteur illisible ⇒ 502 propre ; import classique inchangé (422 OCR conservé). 185/185 tests serveur.
+
+**Fichiers** : `server/src/lib/import/ai-pdf.ts`, `server/src/lib/import/pdf.ts` (export `pdfTextLines`), `server/src/lib/import/types.ts` (champs optionnels), `server/src/routes/import.ts`, `web/src/api.ts`, `web/src/pages/list.tsx`, `server/test/import-ai.test.ts`
+
+---
+
 ## C-38 — Canevas : un clic sur une flèche la déplaçait (réalisé)
 
 **Problème** : cliquer/taper sur une forme déjà posée (flèche, zone) la déplaçait d'environ 1 cm dans la direction du geste. Cause : le drag des formes démarrait au `pointerdown` **sans seuil de tolérance** — au tactile, le micro-glissement naturel du doigt pendant un tap (quelques px) était traité comme un déplacement, et la forme suivait.
