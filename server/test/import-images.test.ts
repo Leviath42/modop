@@ -52,7 +52,16 @@ function makePdfImages(texts: TextEl[], images: ImgEl[]): Buffer {
     stream += "BT /F1 12 Tf " + t.x + " " + t.y + " Td (" + t.text + ") Tj ET" + NL;
   }
   for (const im of images) {
-    stream += "q " + im.w + " 0 0 " + im.h + " " + im.x + " " + im.y + " cm /Im" + im.im + " Do Q" + NL;
+    // C-114 : les PDF réels (pdf-lib, Word) posent les images via des cm
+    // décomposées (translate, identité, scale, identité), comme le fait
+    // l operator list pdf.js. Une seule cm composée rendrait un bug d ordre
+    // de concaténation invisible (REX C-114 : cm pré-multiplie la CTM).
+    stream += "q" + NL;
+    stream += "1 0 0 1 " + im.x + " " + im.y + " cm" + NL;
+    stream += "1 0 0 1 0 0 cm" + NL;
+    stream += im.w + " 0 0 " + im.h + " 0 0 cm" + NL;
+    stream += "1 0 0 1 0 0 cm" + NL;
+    stream += "/Im" + im.im + " Do Q" + NL;
   }
   const imgData = [1, 2, 3].map((n) => zlib.deflateSync(rawRgb(n)));
   const objs = [

@@ -174,7 +174,7 @@ export async function extractPdfImages(buf: Buffer): Promise<ExtractImagesResult
           ctm = stack.pop() ?? ID;
         } else if (fn === OPS.transform) {
           const [a, b, c, d, e, f] = args as number[];
-          if ([a, b, c, d, e, f].every((n) => typeof n === "number")) ctm = mul(ctm, { a, b, c, d, e, f });
+          if ([a, b, c, d, e, f].every((n) => typeof n === "number")) ctm = mul({ a, b, c, d, e, f }, ctm); // C-114 : cm pré-multiplie la CTM (CTM2 = m x CTM), pas l inverse
         } else if (fn === OPS.paintImageXObject) {
           // preuve test C-112 : l'image remplit le carré unité (0,0)-(1,1) du repère courant.
           const corners: [number, number][] = [
