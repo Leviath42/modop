@@ -28,6 +28,29 @@ export function EditorBottomBar({ ctx }: { ctx: ToolContext }) {
     return () => document.removeEventListener("keydown", onKey);
   }, [openId]);
 
+  // V15 : Annuler/Refaire globaux au clavier — Ctrl+Z, Ctrl+Y (ou
+  // Ctrl+Shift+Z), ignorés pendant la saisie de texte.
+  useEffect(() => {
+    const onHistKey = (e: KeyboardEvent) => {
+      if (e.altKey || !(e.ctrlKey || e.metaKey)) return;
+      const k = e.key.toLowerCase();
+      if (k !== "z" && k !== "y") return;
+      const t = e.target as Element | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || (t as HTMLElement).isContentEditable)) return;
+      if (k === "z" && !e.shiftKey) {
+        if (!ctx.canUndo) return;
+        e.preventDefault();
+        ctx.actions.undo();
+      } else {
+        if (!ctx.canRedo) return;
+        e.preventDefault();
+        ctx.actions.redo();
+      }
+    };
+    document.addEventListener("keydown", onHistKey);
+    return () => document.removeEventListener("keydown", onHistKey);
+  });
+
   // Frappe clavier : raccourcis des commandes, hors saisie de texte.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

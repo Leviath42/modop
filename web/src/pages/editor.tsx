@@ -4,6 +4,7 @@ import StepComments from "../step-comments";
 import type { Shape } from "../annotated-photo";
 import { Camera, ChevronDown, ChevronRight, FoldVertical, GripVertical, Image as ImageIcon, Trash2, TriangleAlert, UnfoldVertical } from "lucide-react";
 import { EditorBottomBar } from "../editor/bottom-bar";
+import { pushHistory, canUndo, canRedo, undo as undoHistory, redo as redoHistory, resetHistory } from "../editor/history";
 import type { PictoPreset, ToolContext } from "../editor/tools/registry";
 import { PICTO_PRESETS } from "../editor/tools/registry";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -62,8 +63,10 @@ export default function EditorPage() {
   // C-73 : rognage — demande depuis la barre + pile de retour arrière
   // (l'ancien fichier reste sur le disque : annulation tant que l'éditeur est ouvert).
   const [cropTick, setCropTick] = useState(0);
-  const cropUndoStackRef = useRef<{ photoId: number; prevFilename: string }[]>([]);
-  const [cropUndoCount, setCropUndoCount] = useState(0);
+  // V15 : undo/redo global — la pile vit dans editor/history.ts ; histTick
+  // force le re-rendu des boutons apres chaque push/undo/redo.
+  const [histTick, setHistTick] = useState(0);
+  void histTick;
   // C-98 (V13 #5) : avertissements de publication (photos sans description IA).
   const [publishWarnings, setPublishWarnings] = useState<{ number: number; warnings: string[] } | null>(null);
   // C-99 : photo ouverte dans le panneau d'édition (vignettes sous le canevas)
@@ -191,6 +194,7 @@ export default function EditorPage() {
     api.getWorkflow(id!)
       .then((w) => {
         setWf(w); setSteps(w.steps);
+        resetHistory();
         setTitle(w.title); setReference(w.reference);
         setCategory(w.category); setFamily(w.family ?? ""); setDescription(w.description);
         setReviewDue(w.review_due ?? ""); setOwnerEmail(w.owner_email ?? "");
@@ -280,6 +284,11 @@ export default function EditorPage() {
     if (!wf) return;
     const s = await api.addStep(wf.id, { title: "Nouvelle étape" });
     setSteps((arr) => [...arr, { ...s, photos: [], pictos: [] as Picto[] }]);
+    pushHist({
+      label: "Ajouter une étape",
+      undo: async () => { await api.deleteStep(s.id); },
+      redo: async () => { await api.addStep(wf!.id, { title: "Nouvelle étape" }); },
+    });
   }
 
   async function patchStep(step: Step, data: Partial<Step>) {
@@ -293,18 +302,57 @@ export default function EditorPage() {
         typeof x === "string" ? { kind: x, label: x, color: "#f5a623" } : x
       );
       setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...updated, pictos, photos: s.photos } : s)));
+      const before: Partial<Step> = {};
+      if ("title" in data) before.title = step.title;
+      if ("body" in data) before.body = step.body;
+      if ("pictos" in data) before.pictos = step.pictos;
+      pushHist({
+        label: "Modifier l'étape",
+        undo: async () => { await api.updateStep(step.id, before as object); },
+        redo: async () => { await api.updateStep(step.id, data as object); },
+      }, "patch:" + step.id + ":" + Object.keys(data).sort().join("+"));
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Enregistrement impossible");
     }
   }
 
   async function removeStep(step: Step) {
+    // V15 : undo best-effort — le DELETE cascade les photos (pas de corbeille) :
+    // l'undo recree l'etape (titre/corps/pictos/canevas/position) mais PAS les photos.
+    const snapshot = {
+      title: step.title, body: step.body, pictos: step.pictos,
+      canvas: step.canvas ?? [],
+      position: steps.findIndex((s) => s.id === step.id),
+    };
     await api.deleteStep(step.id);
     setConfirmDeleteStep(null);
     setSteps((arr) => arr.filter((s) => s.id !== step.id));
+    let recreatedId: number | null = null;
+    pushHist({
+      label: "Supprimer l'étape (les photos supprimées ne reviennent pas)",
+      undo: async () => {
+        const s2 = await api.addStep(wf!.id, { title: snapshot.title });
+        recreatedId = s2.id;
+        await api.updateStep(s2.id, { body: snapshot.body, pictos: snapshot.pictos } as object);
+        if (snapshot.canvas.length > 0) {
+          await fetch("/api/steps/" + s2.id + "/canvas", {
+            method: "PUT",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ shapes: snapshot.canvas }),
+          });
+        }
+        const w = await api.getWorkflow(id!);
+        const ids = w.steps.map((s) => s.id);
+        const last = ids.pop()!;
+        ids.splice(Math.min(snapshot.position, ids.length), 0, last);
+        await api.reorderSteps(wf!.id, ids);
+      },
+      redo: async () => { if (recreatedId != null) await api.deleteStep(recreatedId); },
+    });
   }
 
   async function moveStep(from: number, to: number) {
+    const beforeIds = steps.map((s) => s.id);
     const ids = steps.map((s) => s.id);
     const [moved] = ids.splice(from, 1);
     ids.splice(to, 0, moved);
@@ -316,6 +364,11 @@ export default function EditorPage() {
     });
     try {
       await api.reorderSteps(wf!.id, ids);
+      pushHist({
+        label: "Déplacer une étape",
+        undo: async () => { await api.reorderSteps(wf!.id, beforeIds); },
+        redo: async () => { await api.reorderSteps(wf!.id, ids); },
+      });
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Réordonnancement impossible");
       const w = await api.getWorkflow(wf!.id);
@@ -329,6 +382,11 @@ export default function EditorPage() {
       const compressed = file.size > 200 * 1024 ? await compressImage(file) : file;
       const photo = await api.uploadPhoto(step.id, compressed, alt);
       setSteps((arr) => arr.map((s) => (s.id === step.id ? { ...s, photos: [...s.photos, photo] } : s)));
+      pushHist({
+        label: "Ajouter une photo",
+        undo: async () => { await api.deletePhoto(photo.id); },
+        redo: async () => { await api.uploadPhoto(step.id, compressed, alt); },
+      });
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Envoi impossible");
     }
@@ -407,8 +465,8 @@ export default function EditorPage() {
   const toolCtx: ToolContext = {
     isNew, steps, activeStepId, insertTool, insertColor, insertWidth, indications,
     canvasSelection: canvasSel.photos.length + canvasSel.shapes.length,
-    photoSelected: canvasSel.photos.length, canUndoCrop: cropUndoCount > 0,
-    actions: { addStep, openPhotoSource, setInsertTool: selectInsertTool, setInsertColor, setInsertWidth, togglePreset, deleteActiveStep, deleteCanvasSelection, requestCrop: () => setCropTick((t) => t + 1), undoCrop: () => void undoCrop() },
+    photoSelected: canvasSel.photos.length, canUndoCrop: false, canUndo: canUndo(), canRedo: canRedo(),
+    actions: { addStep, openPhotoSource, setInsertTool: selectInsertTool, setInsertColor, setInsertWidth, togglePreset, deleteActiveStep, deleteCanvasSelection, requestCrop: () => setCropTick((t) => t + 1), undo: () => void doUndo(), redo: () => void doRedo() },
   };
 
   async function revertDraft() {
@@ -441,30 +499,38 @@ export default function EditorPage() {
   // supprimée (le fichier original reste couvert par les versions publiées).
   // C-73 : remplace le FICHIER de la photo — même ligne, donc même position
   // et même taille ; l'ancien fichier reste pour le retour arrière.
+  // V15 : helpers historique global — refresh resynchronise depuis l'API,
+  // bumpHist force le re-rendu des boutons Annuler/Refaire.
+  async function refresh() {
+    const w = await api.getWorkflow(id!);
+    setSteps(w.steps);
+  }
+  function bumpHist() { setHistTick((t) => t + 1); }
+  async function doUndo() { await undoHistory(); await refresh(); bumpHist(); }
+  async function doRedo() { await redoHistory(); await refresh(); bumpHist(); }
+  function pushHist(cmd: { label: string; undo: () => Promise<void>; redo: () => Promise<void> }, coalesceKey?: string) {
+    pushHistory(cmd, coalesceKey);
+    bumpHist();
+  }
+  function pushCanvasHist(cmd: { label: string; undo: () => Promise<void>; redo: () => Promise<void> }) {
+    pushHist(cmd);
+  }
+
+  // C-73 : remplace le FICHIER de la photo — même ligne, donc même position
+  // et même taille ; l'ancien fichier reste pour le retour arrière.
+  // V15 : le rognage entre dans l'historique global (plus de pile dédiée).
   async function cropPhoto(photo: Photo, file: File) {
     setError(null);
     try {
       await api.replacePhotoFile(photo.id, file);
-      cropUndoStackRef.current = [...cropUndoStackRef.current, { photoId: photo.id, prevFilename: photo.filename }];
-      setCropUndoCount(cropUndoStackRef.current.length);
-      const w = await api.getWorkflow(id!);
-      setSteps(w.steps);
+      pushHist({
+        label: "Rogner la photo",
+        undo: async () => { await api.repointPhotoFile(photo.id, photo.filename); await refresh(); },
+        redo: async () => { await api.replacePhotoFile(photo.id, file); await refresh(); },
+      });
+      await refresh();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Recadrage impossible");
-    }
-  }
-
-  async function undoCrop() {
-    const last = cropUndoStackRef.current.pop();
-    if (!last) return;
-    setError(null);
-    try {
-      await api.repointPhotoFile(last.photoId, last.prevFilename);
-      setCropUndoCount(cropUndoStackRef.current.length);
-      const w = await api.getWorkflow(id!);
-      setSteps(w.steps);
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Annulation du rognage impossible");
     }
   }
 
@@ -829,6 +895,7 @@ export default function EditorPage() {
                       })}
                       canvasShapes={step.canvas ?? []}
                       onInteract={() => { if (activeStepId !== step.id) setActiveStepId(step.id); }}
+                      onHistory={pushCanvasHist}
                       onCropFile={(photo, file) => cropPhoto(photo, file)}
                       cropRequest={activeStepId === step.id ? cropTick : 0}
                       onPhotosChanged={async () => { const w = await api.getWorkflow(id!); setSteps(w.steps); }}

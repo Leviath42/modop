@@ -3,6 +3,7 @@ import {
   Camera,
   Crop,
   Palette,
+  Redo2,
   Undo2,
   Check,
   Image as ImageIcon,
@@ -265,15 +266,29 @@ const crop: CommandDefinition = {
   run: (ctx) => ctx.actions.requestCrop(),
 };
 
-const undoCrop: CommandDefinition = {
-  id: "undo-crop",
+// V15 : Annuler/Refaire globaux (historique éditeur), hors saisie de texte.
+const undoGlobal: CommandDefinition = {
+  id: "undo",
   zone: "right",
-  label: "Annuler rognage",
-  aria: "Annuler le dernier rognage",
-  title: "Annuler le dernier rognage",
+  label: "Annuler",
+  aria: "Annuler la dernière action",
+  title: "Annuler la dernière action (Ctrl+Z)",
   icon: () => <Undo2 size={16} aria-hidden="true" />,
-  isVisible: (ctx) => ctx.canUndoCrop,
-  run: (ctx) => ctx.actions.undoCrop(),
+  keepCanvasSelection: true,
+  isVisible: (ctx) => ctx.canUndo,
+  run: (ctx) => ctx.actions.undo(),
+};
+
+const redoGlobal: CommandDefinition = {
+  id: "redo",
+  zone: "right",
+  label: "Refaire",
+  aria: "Refaire la dernière action annulée",
+  title: "Refaire (Ctrl+Y ou Ctrl+Shift+Z)",
+  icon: () => <Redo2 size={16} aria-hidden="true" />,
+  keepCanvasSelection: true,
+  isVisible: (ctx) => ctx.canRedo,
+  run: (ctx) => ctx.actions.redo(),
 };
 
 
@@ -290,5 +305,6 @@ export const EDITOR_COMMANDS: CommandDefinition[] = [
   deleteStep,
   deleteSelection,
   crop,
-  undoCrop,
+  undoGlobal,
+  redoGlobal,
 ];

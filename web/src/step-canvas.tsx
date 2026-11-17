@@ -48,11 +48,15 @@ export default function StepCanvas({
   deleteActionRef,
   onInteract,
   onCropFile,
+  onHistory,
   cropRequest = 0,
 }: {
   stepId: number;
   photos: CanvasPhoto[];
   canvasShapes: Shape[];
+  // V15 : chaque modification persistee (formes, layout photo) remonte a
+  // l'historique global de l'editeur ; suppression photo = pas d'undo.
+  onHistory?: (cmd: { label: string; undo: () => Promise<void>; redo: () => Promise<void> }) => void;
   onPhotosChanged?: () => void;
   tool?: Shape["type"] | null;
   color?: string;
@@ -183,7 +187,8 @@ export default function StepCanvas({
     }),
   ));
 
-  async function saveShapes(next: Shape[]) {
+  async function saveShapes(next: Shape[], skipHistory = false) {
+    const prev = shapes;
     setBusy(true); setError(null);
     try {
       await fetch(`/api/steps/${stepId}/canvas`, {
@@ -192,6 +197,11 @@ export default function StepCanvas({
         body: JSON.stringify({ shapes: next }),
       });
       setShapes(next);
+      if (!skipHistory) onHistory?.({
+        label: "Modifier les formes",
+        undo: async () => { await saveShapes(prev, true); },
+        redo: async () => { await saveShapes(next, true); },
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Sauvegarde impossible");
     } finally { setBusy(false); }
@@ -234,9 +244,15 @@ export default function StepCanvas({
   }
 
   async function savePhotoLayout(photoId: number, x: number, y: number, w: number) {
+    const prev = objs.find((o) => o.photo.id === photoId);
     try {
       await api.saveLayout(photoId, "full", "left", x, y, w);
       onPhotosChanged?.();
+      if (prev) onHistory?.({
+        label: "Déplacer une photo",
+        undo: async () => { await api.saveLayout(photoId, "full", "left", prev.x, prev.y, prev.w); onPhotosChanged?.(); },
+        redo: async () => { await api.saveLayout(photoId, "full", "left", x, y, w); onPhotosChanged?.(); },
+      });
     } catch { /* silencieux : la prochaine action resynchronisera */ }
   }
 
