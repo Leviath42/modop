@@ -3,7 +3,7 @@ import type Database from "better-sqlite3";
 import { requireAuth } from "../auth/middleware.js";
 import { auditLog } from "../auth/audit.js";
 import { rateLimiter } from "../auth/security.js";
-import { aiChat, aiStatus, AiError, DEFAULT_AI_TIMEOUT_MS } from "../lib/ai/client.js";
+import { aiTestConnection, aiStatus, AiError, DEFAULT_AI_TIMEOUT_MS } from "../lib/ai/client.js";
 
 // C-108 (V14 #1) — état du moteur IA et test de connexion.
 // GET /api/ai (author+) : statut SANS secret (seul key_set booléen est
@@ -93,8 +93,8 @@ export function aiRouter(db: Database.Database): Router {
   r.post("/test", requireAuth("admin"), testLimit, async (req, res) => {
     const t0 = Date.now();
     try {
-      const reply = (await aiChat({ system: "Réponds exactement OK, rien d'autre.", user: "ping" }, db)).trim();
-      const ok = /^ok\b/i.test(reply);
+      const out = await aiTestConnection(db);
+      const ok = out.ok;
       auditLog(
         db,
         (req as { user?: { email: string } }).user?.email ?? "?",
@@ -102,7 +102,7 @@ export function aiRouter(db: Database.Database): Router {
         "ai",
         aiStatus(db).model + " " + (Date.now() - t0) + " ms" + (ok ? " ok" : " ko")
       );
-      res.json({ ok, latency_ms: Date.now() - t0, reply: reply.slice(0, 100) });
+      res.json(out);
     } catch (e) {
       const status = e instanceof AiError ? e.status : 502;
       res.status(status).json({ error: "ai", message: e instanceof Error ? e.message : "erreur moteur IA" });

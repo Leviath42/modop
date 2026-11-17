@@ -57,7 +57,8 @@ export default function SettingsPage() {
     setAiMsg(null);
     try {
       const out = await api.aiTest();
-      setAiMsg(out.ok ? "Connexion OK — " + out.latency_ms + " ms" : "Réponse inattendue du moteur : " + out.reply);
+      const notes = (out.checks ?? []).filter((c) => !c.ok).map((c) => c.note);
+      setAiMsg(out.ok ? "Connexion OK — " + out.latency_ms + " ms" : "Réponse inattendue du moteur : " + out.reply + (notes.length ? " — " + notes.join(" ; ") : ""));
     } catch (e) {
       setAiMsg(e instanceof ApiError ? e.message : "Test impossible");
     } finally {

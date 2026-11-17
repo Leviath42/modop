@@ -168,6 +168,7 @@ export interface AiStatus {
   timeout_ms: number;
 }
 export interface AiTestResult {
+  checks: { step: string; ok: boolean; note: string }[];
   ok: boolean;
   latency_ms: number;
   reply: string;

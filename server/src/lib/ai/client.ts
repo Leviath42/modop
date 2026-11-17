@@ -80,6 +80,74 @@ export function aiStatus(db: Database.Database): AiStatus {
   };
 }
 
+// C-116 — diagnostic « Tester la connexion » en 2 étapes : 1) GET /models
+// teste la joignabilité ET la clé sans consommer de tokens (401/403 = clé
+// refusée, message immédiat) ; un moteur sans /models ou non-JSON n'est pas
+// disqualifié. Si le catalogue est lisible et que le modèle configuré en
+// est absent, erreur actionnable AVANT tout appel de tokens (vécu :
+// pixtral-large-latest retiré du catalogue Mistral, affiché en 502 muet).
+// 2) ping réel « réponds OK » (comportement inchangé).
+export interface AiTestCheck {
+  step: string;
+  ok: boolean;
+  note: string;
+}
+export interface AiTestOutcome {
+  ok: boolean;
+  latency_ms: number;
+  reply: string;
+  checks: AiTestCheck[];
+}
+
+// Catalogue du moteur : liste d'identifiants si lisible, "unauthorized" si
+// 401/403, null si route absente ou réponse non-JSON (on ne disqualifie pas
+// les moteurs compatibles OpenAI sans /models).
+async function fetchCatalog(e: AiEngineConfig): Promise<string[] | "unauthorized" | null> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 10000);
+  try {
+    const r = await fetch(e.base_url + "/models", {
+      headers: e.api_key ? { authorization: "Bearer " + e.api_key } : {},
+      signal: ctrl.signal,
+    });
+    if (r.status === 401 || r.status === 403) {
+      await r.text(); // C-116 : drainer le corps — une socket keep-alive non drainée corrompt le pool undici (la requête suivante pend jusqu au timeout)
+      return "unauthorized";
+    }
+    if (!r.ok) {
+      await r.text(); // drainer avant de rendre la socket au pool
+      return null;
+    }
+    const j = (await r.json()) as { data?: { id?: unknown }[] };
+    if (!Array.isArray(j.data)) return null;
+    return j.data.map((m) => (typeof m?.id === "string" ? m.id : "")).filter(Boolean);
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function aiTestConnection(db: Database.Database): Promise<AiTestOutcome> {
+  const e = readAiConfig(db);
+  const checks: AiTestCheck[] = [];
+  const t0 = Date.now();
+  const catalog = await fetchCatalog(e);
+  if (catalog === "unauthorized") {
+    throw new AiError("clé API refusée par le moteur (HTTP 401) — vérifiez la clé", 502);
+  }
+  if (Array.isArray(catalog)) {
+    if (!e.model || !catalog.includes(e.model)) {
+      throw new AiError("modèle « " + e.model + " » absent du catalogue du moteur (" + catalog.length + " modèles) — vérifiez le nom du modèle", 422);
+    }
+    checks.push({ step: "catalog", ok: true, note: "modèle présent au catalogue" });
+  } else {
+    checks.push({ step: "catalog", ok: true, note: "catalogue non lisible (/models absent), ignoré" });
+  }
+  const reply = (await aiChat({ system: "Réponds exactement OK, rien d'autre.", user: "ping" }, db)).trim();
+  const ok = /^ok\b/i.test(reply);
+  return { ok, latency_ms: Date.now() - t0, reply: reply.slice(0, 100), checks };
+}
 // Vision OpenAI-compatible : images passées en data URI base64.
 export interface AiChatOptions {
   system: string;
@@ -134,8 +202,27 @@ export async function aiChat(o: AiChatOptions, db: Database.Database): Promise<s
     clearTimeout(timer);
   }
   if (!res.ok) {
-    // Pas de corps brut en erreur : il peut échoïer la requête (images).
-    throw new AiError("moteur IA : HTTP " + res.status, 502);
+    // C-116 : extraire le MESSAGE du moteur (JSON), jamais le corps brut
+    // (il peut échoïer la requête, images incluses) ; puis guider le
+    // diagnostic : 401/403 = clé refusée, 404 = URL de base, sinon le
+    // message moteur (vécu : « Invalid model » affiché en 502 muet).
+    let detail = "";
+    try {
+      const j = (await res.json()) as { message?: unknown; error?: { message?: unknown } };
+      const raw = typeof j.message === "string" ? j.message : typeof j.error?.message === "string" ? j.error.message : "";
+      detail = raw.replace(/\s+/g, " ").trim().slice(0, 200);
+    } catch {
+      // corps non JSON : pas de détail disponible
+    }
+    const hint =
+      res.status === 401 || res.status === 403
+        ? " — clé API refusée par le moteur ?"
+        : res.status === 404
+          ? " — route inconnue : URL de base invalide ?"
+          : detail
+            ? " — " + detail
+            : "";
+    throw new AiError("moteur IA : HTTP " + res.status + hint, 502);
   }
   const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
   const out = data.choices?.[0]?.message?.content;
