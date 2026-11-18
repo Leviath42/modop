@@ -2,6 +2,7 @@ import { Router } from "express";
 import type Database from "better-sqlite3";
 import { requireAuth } from "../auth/middleware.js";
 import { auditLog } from "../auth/audit.js";
+import { getSettings } from "./settings.js";
 
 interface SnapshotStep {
   id: number;
@@ -40,6 +41,18 @@ export function publishRouter(db: Database.Database): Router {
     if (overdue?.review_due && overdue.review_due < new Date().toISOString().slice(0, 10)) {
       res.status(422).json({ error: "validation", message: "date de revue dépassée — mettez-la à jour avant de publier" });
       return;
+    }
+    // V17 (B2) : verrou de validation paramétrable — si l'instance exige
+    // un MO « validé » avant publication, on refuse tant que le statut
+    // éditorial ne l'est pas (422 actionnable).
+    if (getSettings(db).require_validated) {
+      const st = db.prepare("SELECT editorial_status FROM workflows WHERE id = ?").get(wf.id) as
+        | { editorial_status: string }
+        | undefined;
+      if (st?.editorial_status !== "validated") {
+        res.status(422).json({ error: "validation_required", message: "publication refusée : MO non validé — faites-le passer en statut « Validé » (ou désactivez l’exigence dans les Paramètres)" });
+        return;
+      }
     }
     const snapshot = {
       workflow: db.prepare("SELECT * FROM workflows WHERE id = ?").get(wf.id),

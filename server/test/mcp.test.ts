@@ -231,6 +231,23 @@ test("C-105 : get_workflow_markdown + export_corpus (V13 #6/#7)", async () => {
   assert.equal(manifest2.count, 0, "since futur = corpus vide (manifest seul)");
 });
 
+test("V17 (B3) : set_editorial_status — boucle de validation via MCP", async () => {
+  const wf = toolJson(await callTool("create_workflow", { title: "MO statut MCP", reference: "MO-C-119" }));
+  const id = wf.id as number;
+  const changed = toolJson(await callTool("set_editorial_status", { id, status: "in_review" }));
+  assert.equal(changed.status, "in_review");
+  const row = db.prepare("SELECT editorial_status FROM workflows WHERE id = ?").get(id) as
+    | { editorial_status: string }
+    | undefined;
+  assert.equal(row?.editorial_status, "in_review", "statut persisté");
+  const invalid = await callTool("set_editorial_status", { id, status: "archived" });
+  assert.ok(invalid.isError, "statut invalide = erreur explicite");
+  const row2 = db.prepare("SELECT editorial_status FROM workflows WHERE id = ?").get(id) as
+    | { editorial_status: string }
+    | undefined;
+  assert.equal(row2?.editorial_status, "in_review", "statut inchangé après refus (le rejet zod n’écrit rien)");
+});
+
 after(async () => {
   await client.close();
   await new Promise<void>((r) => server.close(() => r()));

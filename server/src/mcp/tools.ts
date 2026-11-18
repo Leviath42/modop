@@ -194,6 +194,21 @@ export function registerModopTools(server: McpServer, client: ModopClient): void
     async (args) => await expectOk(client, [201], "duplication du mode opératoire", "POST", `/api/workflows/${args.id}/duplicate`),
   );
 
+  // V17 (B3) : statut éditorial — même discipline que le reste (loopback,
+  // validations/audit identiques à l'API).
+  server.registerTool(
+    "set_editorial_status",
+    {
+      description:
+        "Changer le statut éditorial d'un MO (draft, in_review, validated, obsolete) — pilote la boucle de validation (V17).",
+      inputSchema: {
+        id: z.number().int(),
+        status: z.enum(["draft", "in_review", "validated", "obsolete"]).describe("statut éditorial cible"),
+      },
+    },
+    async (args) => await expectOk(client, [200], "changement de statut éditorial", "PUT", `/api/workflows/${args.id}/status`, { status: args.status }),
+  );
+
   // ---- Publication / versions ----
   server.registerTool(
     "publish_workflow",

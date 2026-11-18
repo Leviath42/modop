@@ -24,6 +24,7 @@ import { deployRouter } from "./routes/deploy.js";
 import { adminRouter, activeUsersRouter } from "./routes/admin.js";
 import { duplicateRouter } from "./routes/duplicate.js";
 import { statusRouter } from "./routes/status.js";
+import { reviewCommentRouter } from "./routes/review-comments.js";
 import { categoryRouter } from "./routes/categories.js";
 import { statsRouter } from "./routes/stats.js";
 import { stepCommentRouter } from "./routes/comments.js";
@@ -79,6 +80,7 @@ export function createApp(db: Database.Database, webDist?: string): express.Expr
   app.use("/api/stats", statsRouter(db));
   app.use("/api/workflows", duplicateRouter(db));
   app.use("/api/workflows", statusRouter(db));
+  app.use("/api/workflows", reviewCommentRouter(db)); // V17 (B1) : relecture
   app.use("/api/workflows", versionsDiffRouter(db));
   // Serveur MCP (C-90) — monté AVANT le catch-all SPA qui avale les GET.
   app.use("/mcp", mcpRouter(db));

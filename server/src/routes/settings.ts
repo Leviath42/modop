@@ -15,6 +15,9 @@ export interface AppSettings {
   // C-86 : délai de revue par défaut en jours — préremplit la date « À
   // revoir le » d'un MO qui n'en a pas (30 jours par défaut).
   default_review_days: number;
+  // V17 (B2) : verrou de validation — exiger un statut éditorial
+  // « validated » avant publication. Désactivé par défaut (usage solo).
+  require_validated: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -22,6 +25,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   no_review_date_is_overdue: true,
   default_stroke_width: 5,
   default_review_days: 30,
+  require_validated: false,
 };
 
 // C-97 (V12 #8) : indications métiers paramétrables — liste des encarts
@@ -87,6 +91,7 @@ export function getSettings(db: Database.Database): AppSettings {
       Number.isFinite(rawWidth) && rawWidth >= 1 && rawWidth <= 10 ? rawWidth : DEFAULT_SETTINGS.default_stroke_width,
     default_review_days:
       Number.isFinite(rawDays) && rawDays >= 1 && rawDays <= 3650 ? Math.round(rawDays) : DEFAULT_SETTINGS.default_review_days,
+    require_validated: map.get("require_validated") === "1",
   };
 }
 
@@ -108,7 +113,7 @@ export function settingsRouter(db: Database.Database): Router {
       db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
         .run("default_review_days", String(Math.round(body.default_review_days)));
     }
-    for (const key of ["readers_see_drafts", "no_review_date_is_overdue"] as const) {
+    for (const key of ["readers_see_drafts", "no_review_date_is_overdue", "require_validated"] as const) {
       if (typeof body[key] === "boolean") {
         db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
           .run(key, body[key] ? "1" : "0");

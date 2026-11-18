@@ -116,6 +116,18 @@ CREATE TABLE IF NOT EXISTS step_comments (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_step_comments_step ON step_comments(step_id);
+-- V17 (B1) : commentaires de relecture au niveau du MO — fil de la boucle
+-- brouillon → relecture → validé. Comme step_comments : jamais publiés
+-- (absents du snapshot/versions), jamais exposés aux lecteurs ni aux
+-- exports. Supprimés avec le workflow (CASCADE).
+CREATE TABLE IF NOT EXISTS review_comments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  workflow_id INTEGER NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
+  by_email TEXT NOT NULL,
+  message TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_review_comments_workflow ON review_comments(workflow_id);
 CREATE INDEX IF NOT EXISTS idx_steps_workflow ON steps(workflow_id, position);
 CREATE INDEX IF NOT EXISTS idx_photos_step ON photos(step_id);
 CREATE INDEX IF NOT EXISTS idx_versions_workflow ON versions(workflow_id, number);
