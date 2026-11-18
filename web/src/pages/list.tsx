@@ -94,7 +94,7 @@ export default function ListPage() {
   const [loading, setLoading] = useState(true);
   // C-72 (#4/#5) : paramètres applicatifs (sans date = à revoir ;
   // brouillons visibles par les lecteurs).
-  const [settings, setSettings] = useState<AppSettings>({ readers_see_drafts: false, no_review_date_is_overdue: true, default_stroke_width: 5, default_review_days: 30 });
+  const [settings, setSettings] = useState<AppSettings>({ readers_see_drafts: false, no_review_date_is_overdue: true, default_stroke_width: 5, default_review_days: 30, require_validated: false });
   useEffect(() => {
     api.getSettings().then(setSettings).catch(() => { /* défauts conservés */ });
   }, []);

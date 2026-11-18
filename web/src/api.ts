@@ -41,6 +41,16 @@ export interface StepComment {
   message: string;
   at: string;
 }
+// V17 : statut éditorial (boucle brouillon → relecture → validé) et fil de
+// relecture au niveau du MO.
+export type EditorialStatus = "draft" | "in_review" | "validated" | "obsolete";
+export interface ReviewComment {
+  id: number;
+  by: string;
+  message: string;
+  at: string;
+}
+
 
 export interface Photo {
   id: number;
@@ -117,6 +127,8 @@ export interface AppSettings {
   default_stroke_width: number;
   // C-86 : délai de revue par défaut en jours (préremplissage « À revoir le »).
   default_review_days: number;
+  // V17 (B2) : exiger un statut éditorial « validé » avant publication.
+  require_validated: boolean;
 }
 
 export class ApiError extends Error {
@@ -406,6 +418,27 @@ export const api = {
   },
   async deleteStepComment(stepId: number, commentId: number): Promise<void> {
     await handle<unknown>(await fetch(`/api/steps/${stepId}/comments/${commentId}`, { method: "DELETE" }));
+  },
+  // V17 (B1/B4) : fil de relecture au niveau du MO et statut éditorial.
+  async listReviewComments(id: number): Promise<ReviewComment[]> {
+    return handle(await fetch(`/api/workflows/${id}/review-comments`));
+  },
+  async addReviewComment(id: number, message: string): Promise<ReviewComment> {
+    return handle(await fetch(`/api/workflows/${id}/review-comments`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message }),
+    }));
+  },
+  async deleteReviewComment(id: number, commentId: number): Promise<void> {
+    await handle<unknown>(await fetch(`/api/workflows/${id}/review-comments/${commentId}`, { method: "DELETE" }));
+  },
+  async setEditorialStatus(id: number, status: EditorialStatus): Promise<{ status: EditorialStatus; updated_at: string | null }> {
+    return handle(await fetch(`/api/workflows/${id}/status`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ status }),
+    }));
   },
   exportUrl(id: number, version?: number): string {
     return `/api/workflows/${id}/export${version ? `?version=${version}` : ""}`;

@@ -1,6 +1,7 @@
 import StepCanvas, { COLORS } from "../step-canvas";
 import { PhotoMeta } from "../photo-meta";
 import StepComments from "../step-comments";
+import ReviewPanel from "../review-panel";
 import type { Shape } from "../annotated-photo";
 import { Camera, ChevronDown, ChevronRight, FoldVertical, GripVertical, Image as ImageIcon, Trash2, TriangleAlert, UnfoldVertical } from "lucide-react";
 import { EditorBottomBar } from "../editor/bottom-bar";
@@ -11,7 +12,7 @@ import { PICTO_PRESETS } from "../editor/tools/registry";
 import { DOCUMENT_TEMPLATES } from "../templates";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { api, ApiError, type AppSettings, type Category, type Photo, type Step, type Workflow, type WorkflowDetail } from "../api";
+import { api, ApiError, type AppSettings, type Category, type EditorialStatus, type Photo, type Step, type Workflow, type WorkflowDetail } from "../api";
 import { useAuth } from "../auth-context";
 import NavBar from "../nav";
 import { Badge } from "../components/ui/badge";
@@ -97,6 +98,8 @@ export default function EditorPage() {
   // datalists natifs ne montraient pas les Prénom/Nom de façon fiable).
   const [ownerOpen, setOwnerOpen] = useState(false);
   const [changelog, setChangelog] = useState("");
+  // V17 (B4) : panneau de relecture du document.
+  const [showReview, setShowReview] = useState(false);
   // C-97 (V12 #8) : indications métiers actives — chargées au montage, seed en
   // dur le temps du chargement (ou si l'appel échoue, mode hors-ligne).
   const [indications, setIndications] = useState<PictoPreset[]>(PICTO_PRESETS);
@@ -570,6 +573,21 @@ export default function EditorPage() {
     }
   }
 
+  // V17 (B4) : statut éditorial — boucle brouillon → relecture → validé.
+  async function changeStatus(status: EditorialStatus) {
+    if (!wf || isNew) return;
+    setError(null);
+    try {
+      await api.setEditorialStatus(wf.id, status);
+      setWf((w) => (w ? { ...w, editorial_status: status } : w));
+      const labels: Record<EditorialStatus, string> = { draft: "Brouillon", in_review: "En relecture", validated: "Validé", obsolete: "Obsolète" };
+      setNotice(`Statut éditorial : ${labels[status]}`);
+      setTimeout(() => setNotice(null), 2000);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Changement de statut impossible");
+    }
+  }
+
   async function publish() {
     if (!wf) return;
     setError(null);
@@ -593,6 +611,13 @@ export default function EditorPage() {
       setTimeout(() => setNotice(null), 2500);
       navigate(`/workflow/${wf.id}/read`);
     } catch (e) {
+      if (e instanceof ApiError && e.code === "validation_required") {
+        // V17 (B2) : l’instance exige un statut « Validé » — on ouvre le
+        // panneau de relecture pour traiter le point bloquant.
+        setShowReview(true);
+        setError(e.message);
+        return;
+      }
       setError(e instanceof ApiError ? e.message : "Publication impossible");
     }
   }
@@ -641,6 +666,30 @@ export default function EditorPage() {
             {!isNew && wf?.state === "draft" && (
               <Button onClick={() => setConfirmRevert(true)} variant="outline" size="sm" title={(wf.current_version ?? 0) > 0 ? "Abandonner le brouillon et revenir à la dernière version publiée" : "Réinitialiser le brouillon : supprime les étapes et photos non publiées (aucune version publiée)"} aria-label="Abandonner le brouillon">
                 {(wf.current_version ?? 0) > 0 ? "Abandonner le brouillon" : "Réinitialiser le brouillon"}
+              </Button>
+            )}
+            {!isNew && (
+              <Select
+                value={wf?.editorial_status ?? "draft"}
+                onChange={(e) => void changeStatus(e.target.value as EditorialStatus)}
+                aria-label="Statut éditorial du document"
+                title="Statut éditorial — boucle de relecture et de validation"
+                className="m-0 h-auto py-1 text-xs font-semibold"
+              >
+                <option value="draft">Brouillon</option>
+                <option value="in_review">En relecture</option>
+                <option value="validated">Validé</option>
+                <option value="obsolete">Obsolète</option>
+              </Select>
+            )}
+            {!isNew && (wf?.editorial_status ?? "draft") !== "in_review" && (
+              <Button onClick={() => void changeStatus("in_review")} variant="outline" size="sm" title="Passer le document « En relecture »" aria-label="Demander une relecture">
+                Demander une relecture
+              </Button>
+            )}
+            {!isNew && (
+              <Button onClick={() => setShowReview((v) => !v)} variant="outline" size="sm" aria-expanded={showReview} title="Ouvrir le fil de relecture du document">
+                Relecture
               </Button>
             )}
             {!isNew && steps.length > 0 && (
@@ -807,6 +856,9 @@ export default function EditorPage() {
             </div>
             )}
         </section>
+        {wf && showReview && (
+          <ReviewPanel workflowId={wf.id} />
+        )}
 
 
         {!isNew && (

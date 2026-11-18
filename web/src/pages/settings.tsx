@@ -151,7 +151,7 @@ export default function SettingsPage() {
     );
   }
 
-  const toggle = (key: "readers_see_drafts" | "no_review_date_is_overdue", label: string, description: string) => (
+  const toggle = (key: "readers_see_drafts" | "no_review_date_is_overdue" | "require_validated", label: string, description: string) => (
     <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-surface p-3">
       <input
         type="checkbox"
@@ -227,6 +227,11 @@ export default function SettingsPage() {
               "readers_see_drafts",
               "Brouillons visibles par les lecteurs",
               "Les comptes lecteurs voient les brouillons en cours sur l'accueil et peuvent les ouvrir."
+            )}
+            {toggle(
+              "require_validated",
+              "Exiger un document validé avant publication",
+              "La publication est refusée tant que le statut éditorial du document n'est pas « Validé ». Laissez désactivé pour publier librement (rédacteur unique)."
             )}
           </CardContent>
         </Card>
