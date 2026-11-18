@@ -1,7 +1,7 @@
 // Service worker Modop — consultation hors ligne des éléments déjà chargés.
 // Stratégie : network-first avec repli cache (les MO déjà consultés restent
 // lisibles sans réseau ; l'API non consultée renvoie une erreur propre).
-const CACHE = "modop-v10";
+const CACHE = "modop-v11";
 const PRECACHE = ["/", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
@@ -18,8 +18,31 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
   const url = new URL(request.url);
-  // Aucune réponse API n'est mise en cache : les données sont par
-  // utilisateur (un poste partagé ne doit pas servir le cache d'un autre).
+  // V16 (V7 #4) : les GET /api/workflows/ (MO publiés) sont pré-cachés —
+  // network-first, les 200 sont mis en cache, repli hors-ligne sur le cache
+  // AVANT le 503. Les autres réponses API restent hors cache (données par
+  // utilisateur : un poste partagé ne doit pas servir le cache d'un autre).
+  if (url.pathname.startsWith("/api/workflows/") && request.method === "GET") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE).then((c) => c.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() =>
+          caches.match(request).then(
+            (cached) =>
+              cached ??
+              new Response(JSON.stringify({ error: "offline" }), { status: 503, headers: { "content-type": "application/json" } })
+          )
+        )
+    );
+    return;
+  }
+
   if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/photos/")) {
     event.respondWith(
       fetch(request).catch(() =>
