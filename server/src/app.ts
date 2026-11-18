@@ -16,6 +16,7 @@ import { publishRouter } from "./routes/publish.js";
 import { exportRouter } from "./routes/export.js";
 import { corpusRouter } from "./lib/corpus.js";
 import { restoreRouter } from "./routes/restore.js";
+import { versionsDiffRouter } from "./routes/versions-diff.js";
 import { settingsRouter } from "./routes/settings.js";
 import { importRouter } from "./routes/import.js";
 import { aiRouter } from "./routes/ai.js";
@@ -78,6 +79,7 @@ export function createApp(db: Database.Database, webDist?: string): express.Expr
   app.use("/api/stats", statsRouter(db));
   app.use("/api/workflows", duplicateRouter(db));
   app.use("/api/workflows", statusRouter(db));
+  app.use("/api/workflows", versionsDiffRouter(db));
   // Serveur MCP (C-90) — monté AVANT le catch-all SPA qui avale les GET.
   app.use("/mcp", mcpRouter(db));
   app.use("/api/stats", statsRouter(db));
