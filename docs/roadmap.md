@@ -28,6 +28,18 @@ L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archi
 
 ## 🚧 Restant à implémenter
 
+### Vague 17 — Cycle éditorial : validation & relecture (lancée le 18 nov. 2026)
+
+*Ferme le dernier gros bloc fonctionnel : Vague 7 #1 (workflow de validation) + le reste UI de Vague 8 #2 (changement de statut éditorial, API livrée en V16). Contrat figé : [spec-validation.md](spec-validation.md). Choix actés : pas de rôle relecteur dédié, pas de notification sortante, verrou de publication **désactivé par défaut** (usage solo préservé), commentaires de relecture au niveau du MO, jamais publiés ni exportés.*
+
+| # | Fonctionnalité | Notes |
+|---|---------------|---|
+| 1 | **Commentaires de relecture par MO** (fil \`review_comments\`, author+, suppression auteur/admin, jamais publiés/exportés/MCP-lecture) | pattern step_comments C-96, bornes 1-1000 |
+| 2 | **Verrou de publication paramétrable** : setting \`review_policy.require_validated\` (défaut **off**) → publish refuse 422 \`validation_required\` si le MO n'est pas \`validated\` | protège l'usage solo ; GET author+ / PUT admin |
+| 3 | **Outil MCP \`set_editorial_status\`** (27e outil, loopback PUT /status) | pipeline IA cohérent C-90 |
+| 4 | **UI éditeur** : sélecteur Statut éditorial dans la barre sticky, bouton « Demander une relecture », panneau Relecture (fil + ajout + suppression), encart dédié si 422 \`validation_required\` en publication | liste V16 : rien à faire (badge + filtre déjà livrés) |
+| 5 | **Workflow complet** brouillon → en relecture → validé → publié (cycle rejouable à chaque version) | vit dans le statut éditorial V16, pas de machine à états nouvelle |
+
 > **Priorité actuelle (décision propriétaire, 2026-10-18) : le fonctionnel et le mode édition** — les vagues 7 et 8 passent devant ; la vague 10 (sécurité) est en standby. Dans la vague 8, les items d'édition (images, statut éditorial) sont en tête.
 
 ### Vague 14 — Import v2 : moteur IA (lancée 17 nov. 2026)
