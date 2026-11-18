@@ -13,6 +13,7 @@ import AdminPage from "./pages/admin";
 import ErrorPage from "./pages/error";
 import QrPage from "./pages/qr";
 import GuidedReaderPage from "./pages/guided-reader";
+import MenuPage from "./pages/menu";
 import FeedbacksPage from "./pages/feedbacks";
 import StatsPage from "./pages/stats";
 import SettingsPage from "./pages/settings";
@@ -34,6 +35,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/" element={<RequireAuth><ListPage /></RequireAuth>} />
+          <Route path="/menu" element={<RequireAuth><MenuPage /></RequireAuth>} />
           <Route path="/workflow/:id/read" element={<RequireAuth><ReaderPage /></RequireAuth>} />
           <Route path="/workflow/:id/qr" element={<RequireAuth><QrPage /></RequireAuth>} />
           <Route path="/workflow/:id/guided" element={<RequireAuth><GuidedReaderPage /></RequireAuth>} />
