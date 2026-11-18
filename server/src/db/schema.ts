@@ -142,6 +142,8 @@ const COLUMN_MIGRATIONS: { table: string; column: string; ddl: string }[] = [
   { table: "photos", column: "display_w", ddl: "REAL" },
   { table: "steps", column: "canvas", ddl: "TEXT NOT NULL DEFAULT '[]'" },
   { table: "workflows", column: "review_due", ddl: "TEXT" },
+  { table: "workflows", column: "editorial_status", ddl: "TEXT NOT NULL DEFAULT 'draft'" },
+  { table: "workflows", column: "editorial_status_at", ddl: "TEXT" },
   { table: "workflows", column: "owner_email", ddl: "TEXT NOT NULL DEFAULT ''" },
   { table: "versions", column: "changelog", ddl: "TEXT NOT NULL DEFAULT ''" },
   // C-94 : rattachement arborescent + document parent (liaison documentaire).
