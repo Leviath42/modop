@@ -28,17 +28,17 @@ L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archi
 
 ## 🚧 Restant à implémenter
 
-### Vague 17 — Cycle éditorial : validation & relecture (lancée le 18 nov. 2026)
+### Vague 17 — Cycle éditorial : validation & relecture (lancée et LIVRÉE le 18 nov. 2026 — C-119 serveur + C-120 front, beta 1829c9a, déployé CT 203)
 
 *Ferme le dernier gros bloc fonctionnel : Vague 7 #1 (workflow de validation) + le reste UI de Vague 8 #2 (changement de statut éditorial, API livrée en V16). Contrat figé : [spec-validation.md](spec-validation.md). Choix actés : pas de rôle relecteur dédié, pas de notification sortante, verrou de publication **désactivé par défaut** (usage solo préservé), commentaires de relecture au niveau du MO, jamais publiés ni exportés.*
 
 | # | Fonctionnalité | Notes |
 |---|---------------|---|
-| 1 | **Commentaires de relecture par MO** (fil \`review_comments\`, author+, suppression auteur/admin, jamais publiés/exportés/MCP-lecture) | pattern step_comments C-96, bornes 1-1000 |
-| 2 | **Verrou de publication paramétrable** : setting \`review_policy.require_validated\` (défaut **off**) → publish refuse 422 \`validation_required\` si le MO n'est pas \`validated\` | protège l'usage solo ; GET author+ / PUT admin |
-| 3 | **Outil MCP \`set_editorial_status\`** (27e outil, loopback PUT /status) | pipeline IA cohérent C-90 |
-| 4 | **UI éditeur** : sélecteur Statut éditorial dans la barre sticky, bouton « Demander une relecture », panneau Relecture (fil + ajout + suppression), encart dédié si 422 \`validation_required\` en publication | liste V16 : rien à faire (badge + filtre déjà livrés) |
-| 5 | **Workflow complet** brouillon → en relecture → validé → publié (cycle rejouable à chaque version) | vit dans le statut éditorial V16, pas de machine à états nouvelle |
+| 1 | **Commentaires de relecture par MO** (fil \`review_comments\`, author+, suppression auteur/admin, jamais publiés/exportés/MCP-lecture) | ✅ livré 18/11 (C-119) : table review_comments + GET/POST/DELETE /api/workflows/:id/review-comments (author+, cascade, jamais publiés/exportés) |
+| 2 | **Verrou de publication paramétrable** : setting \`review_policy.require_validated\` (défaut **off**) → publish refuse 422 \`validation_required\` si le MO n'est pas \`validated\` | ✅ livré 18/11 (C-119/C-120) : champ AppSettings.require_validated (GET/PUT /api/settings), toggle en page Paramètres ; protège l'usage solo (défaut off) |
+| 3 | **Outil MCP \`set_editorial_status\`** (27e outil, loopback PUT /status) | ✅ livré 18/11 (C-119) : 27 outils ; le zod enum valide le statut à la frontière (rejet explicite, rien d'écrit) |
+| 4 | **UI éditeur** : sélecteur Statut éditorial dans la barre sticky, bouton « Demander une relecture », panneau Relecture (fil + ajout + suppression), encart dédié si 422 \`validation_required\` en publication | ✅ livré 18/11 (C-120) : sélecteur + boutons dans la barre sticky, panneau Relecture, encart ciblé sur 422 validation_required ; liste V16 inchangée (badge + filtre déjà livrés) |
+| 5 | **Workflow complet** brouillon → en relecture → validé → publié (cycle rejouable à chaque version) | ✅ livré 18/11 : cycle complet rejouable à chaque version (la publication ne change pas le statut éditorial) ; vérifié en runtime + prod |
 
 > **Priorité actuelle (décision propriétaire, 2026-10-18) : le fonctionnel et le mode édition** — les vagues 7 et 8 passent devant ; la vague 10 (sécurité) est en standby. Dans la vague 8, les items d'édition (images, statut éditorial) sont en tête.
 
@@ -60,7 +60,7 @@ Chantier « Import polyvalent » — deux étages : déterministe (C-101/C-103, 
 
 | # | Fonctionnalité | Notes |
 |---|---------------|-------|
-| 1 | **Workflow de validation** | brouillon → relecture → publié, commentaires par relecteur (les stats et l'UI admin existent déjà côté API) |
+| 1 | **Workflow de validation** | brouillon → relecture → publié, commentaires par relecteur (les stats et l'UI admin existent déjà côté API) — ✅ **livré 18 nov. 2026 en Vague 17** (statuts V16 + fil de relecture + verrou paramétrable, cf. spec-validation.md) |
 | 2 | **Comparaison de versions** | diff Vn/Vn+1 (titres, étapes ajoutées/supprimées) — l'historique existe déjà — ✅ **livré 18/11 (V16)** : compareSnapshots (rapprochement titre puis position) + GET /api/workflows/:id/versions/:a/diff/:b |
 | 3 | **SSO réel** | brancher l'IdP de l'entreprise (l'OIDC est prêt : variables d'env, bouton de connexion déjà branché) |
 | 4 | **PWA : cache amélioré** | pré-cache des MO publiés pour lecture hors-ligne complète — ✅ **livré 18/11 (V16)** : bouton « Hors ligne » (precacheAll) + sw.js v11 network-first |
@@ -70,7 +70,7 @@ Chantier « Import polyvalent » — deux étages : déterministe (C-101/C-103, 
 | # | Fonctionnalité | Pistes |
 |---|---------------|-------|
 | 1 | **Nouvelle image : drag & drop / presse-papiers** | Ctrl+V dans l'étape + glisser-déposer sur le canevas ; compression conservée — prioritaire (mode édition) — ✅ **livré 17/11 (V15)** |
-| 2 | **Gestion de statut éditorial** | brouillon / en relecture / validé / obsolète (distinct de publié), filtrage, badges — ✅ **livré 18/11 (V16)** : colonnes + migration, GET/PUT avec audit, badge liste, filtre ?editorial_status= ; UI de changement de statut = backlog (API prête) |
+| 2 | **Gestion de statut éditorial** | brouillon / en relecture / validé / obsolète (distinct de publié), filtrage, badges — ✅ **livré 18/11 (V16)** : colonnes + migration, GET/PUT avec audit, badge liste, filtre ?editorial_status= ; UI de changement de statut ✂ livrée 18/11 (V17, C-120 : sélecteur dans la barre sticky + panneau Relecture) |
 | 3 | **Arborescence documentaire paramétrable** | ✅ livré C-94 (16 nov. 2026, item détaillé en Vague 13 #1) — le reste de la table garde les pistes d'origine |
 | 4 | **Page de menu** | navigation par arborescence ou tuiles (la liste groupée actuelle peut servir de base) — ✅ **livré 18/11 (V16)** : page Plan (tuiles par arborescence) |
 | 5 | **Documents parents** | ✅ livré C-94 (16 nov. 2026, Vague 12 #12) — parent affiché au lecteur + « Documents liés » |

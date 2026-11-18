@@ -27,7 +27,7 @@ Un rédacteur prépare un MO, demande une relecture, un relecteur commente, vali
 - Audit : `review_comment_add` / `review_comment_delete`.
 
 ### B2 — Verrou de publication (serveur)
-- Setting `review_policy` (table `settings`, JSON) : `{ "require_validated": false }` par défaut.
+- **Livré comme** : champ `require_validated` de `AppSettings` (table `settings`, booléen "0"/"1") — false par défaut ; pas de route dédiée, `GET/PUT /api/settings` (GET reader+, PUT admin+) le porte avec le reste des réglages.
 - `GET /api/settings/review-policy` (`author+` : le front de publication doit connaître l'état) ; `PUT /api/settings/review-policy` (`admin+`) → 422 si payload invalide.
 - Publication : si `require_validated` **et** `editorial_status != validated` → `422 { error: "validation_required" }` avec message actionnable. Sinon comportement inchangé (warnings photo existants).
 - Passer la publication n'altère pas le statut éditorial (un MO peut repasser en relecture pour la V suivante).
@@ -50,4 +50,4 @@ Un rédacteur prépare un MO, demande une relecture, un relecteur commente, vali
 ## Tests d'acceptation
 - Runtime serveur : GET/POST/DELETE commentaires (bornes, 404, rôles, cascade purge), verrou publication off/on (422 + passage après `validated`), MCP `set_editorial_status` (ok + statut invalide), statut jamais dans snapshot/exports.
 - Front existant : aucun régression (typecheck + tests + lint).
-- Nombre : suite serveur 191+ puis pages modifiées à T0 avant/après (anti-édition schema V16).
+- Livré : **211 tests serveur** (review-workflow.test.ts dédié + outil MCP dans mcp.test.ts), front typecheck + tests + lint verts, CI verte, déployé CT 203 (18/11) ; T0 : 6 MO intacts, integrity_check ok, table review_comments migrée avec ses 5 colonnes.

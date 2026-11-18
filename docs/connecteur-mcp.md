@@ -42,19 +42,19 @@ Générer les secrets : `openssl rand -base64 32`. **Jamais dans le repo** — u
 
 À l'initialize, le serveur renvoie des **instructions** (carte du domaine : concepts, conventions, recette de création d'un MO complet, périmètre non couvert) — un agent qui découvre Modop les reçoit automatiquement.
 
-## Outils exposés (24)
+## Outils exposés (27)
 
 **Session** : `whoami`
 
 **Modes opératoires** : `list_workflows` (recherche texte, catégorie, famille, état, revues en retard, référence exacte nocase, tri) · `get_workflow` · `create_workflow` · `update_workflow` · `delete_workflow` · `duplicate_workflow`
 
-**Publication / versions** : `publish_workflow` · `list_versions` · `get_version` · `restore_version`
+**Publication / versions** : `publish_workflow` · `list_versions` · `get_version` · `restore_version` · `set_editorial_status` (V17 : statut éditorial draft / in_review / validated / obsolete — boucle de validation)
 
 **Étapes** : `create_step` · `update_step` · `delete_step` · `reorder_steps`
 
 **Photos** : `upload_photo` (base64 → multipart ; JPEG/PNG/WebP, magic numbers vérifiés par l'API) · `delete_photo` · `annotate_photo` (formes du canevas, 500 max)
 
-**Export** : `export_docx` (binaire base64, signature ZIP `PK` vérifiée avant renvoi)
+**Export** : `export_docx` (binaire base64, signature ZIP `PK` vérifiée avant renvoi) · `get_workflow_markdown` (markdown brut, économie de tokens — C-105) · `export_corpus` (zip md+json + manifest sha256, ré-embedding incrémental — C-105)
 
 **Retours terrain** : `send_feedback` · `list_feedbacks` · `resolve_feedback`
 
@@ -106,6 +106,6 @@ Le tunnel Cloudflare existant (`modop-beta.calironi.com`) route `/mcp` comme le 
 | `server/src/mcp/config.ts` | Accès env + base URL loopback |
 | `server/src/mcp/bootstrap.ts` | Upsert du compte `svc-mcp` au démarrage |
 | `server/src/mcp/modop-client.ts` | Client loopback (login, re-login 401, multipart, binaire) |
-| `server/src/mcp/tools.ts` | 24 outils (zod, erreurs explicites) |
+| `server/src/mcp/tools.ts` | 27 outils (zod, erreurs explicites) |
 | `server/src/mcp/route.ts` | Router Express `/mcp` (Bearer constant-time, stateless) |
 | `server/test/mcp.test.ts` | E2E : client SDK réel, cycle complet |

@@ -81,7 +81,9 @@ Le lien **« ⚑ Terrain »** du lecteur ouvre la page dédiée : **À traiter**
 
 ### L'interface d'édition
 
-Le **bandeau** (toujours visible en haut) affiche : titre + référence, badge « Enregistrement… », badge **« N retours terrain à traiter »** (si des remontées ouvertes existent — touchez-le pour aller les traiter), bouton **Détails** (métadonnées : titre, famille, type, description, **À revoir le**, **Responsable**), **Publier**, ▸/▾ (tout ouvrir/replier), et le **sélecteur d'étape active**.
+Le **bandeau** (toujours visible en haut) affiche : titre + référence, badge « Enregistrement… », badge **« N retours terrain à traiter »** (si des remontées ouvertes existent — touchez-le pour aller les traiter), bouton **Détails** (métadonnées : titre, famille, type, description, **À revoir le**, **Responsable**), **sélecteur de statut éditorial** (Brouillon / En relecture / Validé / Obsolète), le bouton **Demander une relecture**, le bouton **Relecture** (fil de commentaires interne), **Publier**, ▸/▾ (tout ouvrir/replier), et le **sélecteur d'étape active**.
+
+**Statut éditorial et relecture (cycle qualité)** : Brouillon → En relecture → Validé. Le bouton **Relecture** ouvre le fil de commentaires de relecture (notes internes entre rédacteurs — jamais publiées, jamais exportées ; suppression par leur auteur ou un admin). Si l'administrateur a activé **« Exiger un document validé avant publication »** (page Paramètres), la publication est refusée tant que le statut n'est pas **Validé** — le message l'indique et le statut se change dans le bandeau.
 
 La **barre d'outils** est **fixée en bas de l'écran** (zone pouce, mobile comme PC) :
 
