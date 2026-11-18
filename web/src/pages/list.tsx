@@ -12,6 +12,7 @@ import { Input, Label, Select } from "../components/ui/input";
 import { cn } from "../lib/utils";
 import { buildTree, descendantIds, flattenTree } from "../lib/categories-tree";
 import { DOCUMENT_TEMPLATES } from "../templates";
+import { precacheAll } from "../lib/offline-ui";
 
 export default function ListPage() {
   const { user } = useAuth();
@@ -25,6 +26,8 @@ export default function ListPage() {
   const [importAi, setImportAi] = useState(false);
   // V15 : choix d'un template qualité à la création d'un mode opératoire.
   const [showTemplates, setShowTemplates] = useState(false);
+  const [offlineBusy, setOfflineBusy] = useState(false);
+  const [offlineMsg, setOfflineMsg] = useState("");
   const [aiReady, setAiReady] = useState(false);
   useEffect(() => {
     if (user && user.role !== "reader") {
@@ -85,6 +88,7 @@ export default function ListPage() {
     });
   };
   const [sort, setSort] = useState("");
+  const [editorial, setEditorial] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -102,12 +106,12 @@ export default function ListPage() {
   }
   useEffect(() => {
     let cancelled = false;
-    api.listWorkflows({ search, state, family, sort: sort || undefined, review: overdueOnly ? "overdue" : undefined })
+    api.listWorkflows({ search, state, family, editorial_status: editorial || undefined, sort: sort || undefined, review: overdueOnly ? "overdue" : undefined })
       .then((wfs) => { if (!cancelled) { setWorkflows(wfs); setError(null); } })
       .catch((e) => { if (!cancelled) setError(e instanceof ApiError ? e.message : "Erreur de chargement"); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [search, state, family, sort, overdueOnly]);
+  }, [search, state, family, editorial, sort, overdueOnly]);
 
   useEffect(() => {
     api.listWorkflows()
@@ -122,7 +126,7 @@ export default function ListPage() {
     api.listCategories().then((list) => { if (Array.isArray(list)) setCats(list); }).catch(() => { /* filtre optionnel */ });
   }, []);
 
-  const activeFilters = [state, family, categoryFilter, overdueOnly ? "1" : "", sort].filter(Boolean).length;
+  const activeFilters = [state, family, editorial, categoryFilter, overdueOnly ? "1" : "", sort].filter(Boolean).length;
   // Alerte « à revoir » pour les auteurs/admins : documents dont la date de
   // revue est dépassée — C-83 : chaque document est listé avec SA raison
   // (date dépassée ou absence de date) et un lien qui l'ouvre.
@@ -158,6 +162,27 @@ export default function ListPage() {
             title="Filtres et tri"
             className={cn(showFilters && "bg-accent")}
           >Filtres{activeFilters > 0 ? ` (${activeFilters})` : ""}</Button>
+          <Button
+            variant="outline"
+            disabled={offlineBusy}
+            onClick={async () => {
+              setOfflineBusy(true);
+              setOfflineMsg("");
+              try {
+                const r = await precacheAll();
+                setOfflineMsg(r.message);
+              } catch {
+                setOfflineMsg("Pré-cache impossible (réseau indisponible ?)");
+              } finally {
+                setOfflineBusy(false);
+              }
+            }}
+            title="Télécharger tous les MO publiés pour une consultation hors ligne complète"
+          >
+            {offlineBusy ? "Préparation…" : "Hors ligne"}
+          </Button>
+          {offlineMsg && <span className="text-xs text-muted-foreground" role="status">{offlineMsg}</span>}
+          
           {user && user.role !== "reader" && (
             <>
               <input
@@ -233,6 +258,17 @@ export default function ListPage() {
                   </Select>
                 </div>
               )}
+              <div className="grid min-w-0 gap-1.5">
+                <Label htmlFor="mo-filter-editorial" className="text-muted-foreground">Statut éditorial</Label>
+                <Select id="mo-filter-editorial" value={editorial} onChange={(e) => setEditorial(e.target.value)} aria-label="Filtrer par statut éditorial" className="w-auto max-w-[40vw]">
+                  <option value="">Tous</option>
+                  <option value="draft">Brouillon</option>
+                  <option value="in_review">En relecture</option>
+                  <option value="validated">Validé</option>
+                  <option value="obsolete">Obsolète</option>
+                </Select>
+              </div>
+
               <div className="grid gap-1.5">
                 <Label htmlFor="mo-sort" className="text-muted-foreground">Trier par</Label>
                 <Select id="mo-sort" value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Trier" className="w-auto">
@@ -252,7 +288,7 @@ export default function ListPage() {
                   variant="ghost"
                   size="sm"
                   className="ml-auto"
-                  onClick={() => { setState(""); setFamily(""); setCategoryFilter(""); setOverdueOnly(false); setSort(""); }}
+                onClick={() => { setState(""); setFamily(""); setCategoryFilter(""); setEditorial(""); setOverdueOnly(false); setSort(""); }}
                 >Effacer</Button>
               )}
             </div>
@@ -313,6 +349,11 @@ export default function ListPage() {
                       {wf.title}
                     </Link>
                     <code className="shrink-0 rounded bg-surface-2 px-1 py-0.5 text-xs">{wf.reference}</code>
+                    {wf.editorial_status && wf.editorial_status !== "draft" && (
+                      <Badge variant={wf.editorial_status === "validated" ? "ok" : wf.editorial_status === "in_review" ? "warn" : "secondary"} title={"Statut éditorial : " + (wf.editorial_status === "in_review" ? "en relecture" : wf.editorial_status === "validated" ? "validé" : "obsolète")}>
+                        {wf.editorial_status === "in_review" ? "Relecture" : wf.editorial_status === "validated" ? "Validé" : "Obsolète"}
+                      </Badge>
+                    )}
                     {user && user.role !== "reader" && (
                       <Link to={`/workflow/${wf.id}/edit`} aria-label={`Modifier ${wf.title}`} title="Modifier" className="shrink-0 no-underline"><Pencil size={14} aria-hidden="true" /></Link>
                     )}

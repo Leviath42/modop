@@ -32,6 +32,8 @@ export function listRouter(db: Database.Database): Router {
     if (parent !== null && Number.isInteger(parent)) { clauses.push("parent_id = ?"); params.push(parent); }
     if (categoryId !== null && Number.isInteger(categoryId)) { clauses.push("category_id = ?"); params.push(categoryId); }
     if (state) { clauses.push("state = ?"); params.push(state); }
+    const edStatus = typeof req.query.editorial_status === "string" && ["draft", "in_review", "validated", "obsolete"].includes(req.query.editorial_status) ? req.query.editorial_status : null;
+    if (edStatus) { clauses.push("editorial_status = ?"); params.push(edStatus); }
     if (reference) { clauses.push("reference = ? COLLATE NOCASE"); params.push(reference); }
     if (review === "overdue") {
       // C-72 (#4) : « sans date de revue = à revoir » est paramétrable.
@@ -48,7 +50,7 @@ export function listRouter(db: Database.Database): Router {
     const orderBy = sortCol ?? "updated_at DESC";
     const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
     const rows = db
-      .prepare(`SELECT id, title, reference, category, family, state, current_version, review_due, owner_email, category_id, parent_id, updated_at FROM workflows ${where} ORDER BY ${orderBy}`)
+      .prepare(`SELECT id, title, reference, category, family, state, current_version, review_due, owner_email, category_id, parent_id, updated_at, editorial_status, editorial_status_at FROM workflows ${where} ORDER BY ${orderBy}`)
       .all(...params) as { category_id: number | null }[];
     // C-98 (V13 #1) : chemin arborescent de la catégorie, résolu à la volée
     // (une seule requête catégories, résolution en mémoire).

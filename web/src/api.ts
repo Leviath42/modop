@@ -21,6 +21,9 @@ export interface Workflow {
   category_id?: number | null;
   parent_id?: number | null;
   updated_at: string;
+  // V16 : statut éditorial (V8 #2), distinct de l'état publié.
+  editorial_status?: "draft" | "in_review" | "validated" | "obsolete";
+  editorial_status_at?: string | null;
 }
 
 // C-94 : nœud de l'arborescence documentaire (1 à X niveaux).
@@ -190,7 +193,7 @@ export const api = {
   async me(): Promise<User> {
     return handle<User>(await fetch("/api/auth/me"));
   },
-  async listWorkflows(params: { search?: string; category?: string; state?: string; family?: string; review?: string; sort?: string; reference?: string; parent?: string; category_id?: string } = {}): Promise<Workflow[]> {
+  async listWorkflows(params: { search?: string; category?: string; state?: string; family?: string; review?: string; sort?: string; reference?: string; parent?: string; category_id?: string; editorial_status?: string } = {}): Promise<Workflow[]> {
     const q = new URLSearchParams();
     for (const [k, v] of Object.entries(params)) if (v) q.set(k, v);
     return handle<Workflow[]>(await fetch(`/api/workflows?${q}`));
@@ -466,4 +469,12 @@ export const api = {
   async deleteCategory(id: number): Promise<void> {
     await handle<unknown>(await fetch(`/api/categories/${id}`, { method: "DELETE" }));
   },
+  // V16 (V8 #2) : statut editorial - lecture et changement (author+).
+  async workflowStatus(id: number | string): Promise<{ status: string; updated_at: string | null }> {
+    return handle<{ status: string; updated_at: string | null }>(await fetch(`/api/workflows/${id}/status`));
+  },
+  async setWorkflowStatus(id: number | string, status: string): Promise<{ status: string; updated_at: string | null }> {
+    return handle<{ status: string; updated_at: string | null }>(await fetch(`/api/workflows/${id}/status`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ status }) }));
+  },
+
 };
