@@ -1739,3 +1739,19 @@ Sur écran étroit, le wrap reste possible mais chaque élément est compact —
 **Fichiers** : server/src/auth/security.ts, server/test/security.test.ts
 
 **État** : ✅ livré sur beta (1108aba) — CI verte.
+
+## C-118 — Migration editorial_status écrasée, span hors ligne dans le bouton, offlineMsg jamais affiché (réalisé)
+
+**Contexte (18/11/2026)** : trois défauts issus de l'assemblage de la Vague 16, tous attrapés par les gates locales avant push (zéro impact prod).
+
+**Problème 1** : l'édition qui ajoutait les colonnes editorial_status/editorial_status_at à COLUMN_MIGRATIONS (schema.ts) avait REMPLACÉ la ligne de migration review_due au lieu de s'insérer après. Une base FRAÎCHE est aveugle au bug (CREATE TABLE intact) ; une base MIGRÉE v1→v3 se retrouvait sans review_due → SqliteError 500 sur POST /api/workflows. Attrapé par annot-500.test.ts (parcours complet sur base migrée), échec déterministe. Fix : réinsertion de la ligne review_due.
+
+**Problème 2** : le span d'affichage du message de pré-cache hors ligne (list.tsx) inséré après la ligne du libellé « Hors ligne » = À L'INTÉRIEUR du <Button> ; déplacé après </Button>.
+
+**Problème 3** : l'état offlineMsg était alimenté mais jamais rendu (lint no-unused-vars) → span role="status" ajouté à côté du bouton.
+
+**Preuves** : re-gates status 0/0/0 après fix (le test annot-500 échouait avant, passe après) ; re-gates web complètes 0/0/0 ; CI verte sur 8c2e983.
+
+**Fichiers** : server/src/db/schema.ts, web/src/pages/list.tsx
+
+**État** : ✅ livré sur beta (8c2e983) — CI verte, déployé CT 203.

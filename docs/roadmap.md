@@ -6,6 +6,7 @@
 **Livré (17 nov. 2026) : C-113 — photos du PDF d'origine rattachées aux étapes en mode IA (V14 #7) : positions des étapes par repères « Étape N » de la couche texte + extraction C-112, repère numéroté prioritaire (robuste au désordre du modèle), sans repère lisible warning « à la main » ; resetRateLimits() pour les suites de tests. La Vague 14 est entièrement soldée.**
 **Livré (17 nov. 2026) : C-114 — fix C-112 : ordre de concaténation de la matrice PDF inversé (`cm` pré-multiplie la CTM), les photos des PDF réels (cm décomposées pdf.js) partaient toutes au Préambule ; test renforcé au pattern réel pdf.js. C-115 — audit dépendances CI non bloquant en attendant un patch picomatch (CVE-2026-112366, toutes versions ≤ 4.0.7 vulnérables, aucun fix en amont, outillage non exposé en prod ; PAT sans scope workflow → push via GitHub App).**
 **Livré (17 nov. 2026) : C-116 — le test de connexion IA dit la cause : GET /models (clé refusée = message immédiat, modèle absent du catalogue = 422 avant tout token, moteurs sans /models non disqualifiés) + message JSON du moteur dans les erreurs (fini les 502 muets type « HTTP 400 ») ; REX undici (drain des corps d erreur) et mock node (reset à undefined, jamais 0).**
+**Livré (18 nov. 2026) : Vague 16 combinée (V7 #2/#4 + V8 #2/#4) — dev multi-agents.** Comparaison de 2 versions publiées ; statut éditorial (brouillon / en relecture / validé / obsolète, distinct de publié) : colonnes + migration, routes GET/PUT avec audit, badge dans la liste, filtre ?editorial_status= ; page Plan (tuiles par arborescence) ; PWA « Hors ligne » (pré-cache des MO publiés, sw.js v11 network-first). Correctif : la migration editorial_status avait écrasé review_due (attrapé par le test de parcours base migrée annot-500).
 
 L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archives/roadmap-v1-a-v6bis.md](archives/roadmap-v1-a-v6bis.md). La série de correctifs UI/UX (C-01 → C-88) est journalisée dans [correctifs.md](correctifs.md).
 
@@ -48,18 +49,18 @@ Chantier « Import polyvalent » — deux étages : déterministe (C-101/C-103, 
 | # | Fonctionnalité | Notes |
 |---|---------------|-------|
 | 1 | **Workflow de validation** | brouillon → relecture → publié, commentaires par relecteur (les stats et l'UI admin existent déjà côté API) |
-| 2 | **Comparaison de versions** | diff Vn/Vn+1 (titres, étapes ajoutées/supprimées) — l'historique existe déjà |
+| 2 | **Comparaison de versions** | diff Vn/Vn+1 (titres, étapes ajoutées/supprimées) — l'historique existe déjà — ✅ **livré 18/11 (V16)** : compareSnapshots (rapprochement titre puis position) + GET /api/workflows/:id/versions/:a/diff/:b |
 | 3 | **SSO réel** | brancher l'IdP de l'entreprise (l'OIDC est prêt : variables d'env, bouton de connexion déjà branché) |
-| 4 | **PWA : cache amélioré** | pré-cache des MO publiés pour lecture hors-ligne complète |
+| 4 | **PWA : cache amélioré** | pré-cache des MO publiés pour lecture hors-ligne complète — ✅ **livré 18/11 (V16)** : bouton « Hors ligne » (precacheAll) + sw.js v11 network-first |
 
 ### Vague 8 — Gestion documentaire avancée (proposition, à spécifier)
 
 | # | Fonctionnalité | Pistes |
 |---|---------------|-------|
 | 1 | **Nouvelle image : drag & drop / presse-papiers** | Ctrl+V dans l'étape + glisser-déposer sur le canevas ; compression conservée — prioritaire (mode édition) — ✅ **livré 17/11 (V15)** |
-| 2 | **Gestion de statut éditorial** | brouillon / en relecture / validé / obsolète (distinct de publié), filtrage, badges |
+| 2 | **Gestion de statut éditorial** | brouillon / en relecture / validé / obsolète (distinct de publié), filtrage, badges — ✅ **livré 18/11 (V16)** : colonnes + migration, GET/PUT avec audit, badge liste, filtre ?editorial_status= ; UI de changement de statut = backlog (API prête) |
 | 3 | **Arborescence documentaire paramétrable** | ✅ livré C-94 (16 nov. 2026, item détaillé en Vague 13 #1) — le reste de la table garde les pistes d'origine |
-| 4 | **Page de menu** | navigation par arborescence ou tuiles (la liste groupée actuelle peut servir de base) |
+| 4 | **Page de menu** | navigation par arborescence ou tuiles (la liste groupée actuelle peut servir de base) — ✅ **livré 18/11 (V16)** : page Plan (tuiles par arborescence) |
 | 5 | **Documents parents** | ✅ livré C-94 (16 nov. 2026, Vague 12 #12) — parent affiché au lecteur + « Documents liés » |
 | 6 | **Import de MO existants (RF-78)** | ✅ livré C-101→C-103 (17 nov. 2026) : `POST /api/import/document` (`.docx` titres+images / `.pdf` textuel / `.xlsx` v2 : cellules fusionnées, images embarquées ancrées à l'étape, repères Étape/Phase sur toutes les colonnes, multi-feuilles) → brouillon direct dans l'éditeur, relecture obligatoire avant publication (jamais d'auto-publication) ; OCR non couvert (pdf scan refusé 422), `.xls` binaire refusé (convertir en .xlsx), dates Excel non converties, 100 étapes / 30 images / 20 Mo max |
 
