@@ -28,7 +28,7 @@ L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archi
 
 ## 🚧 Restant à implémenter
 
-### Vague 17 — Cycle éditorial : validation & relecture (lancée et LIVRÉE le 18 nov. 2026 — C-119 serveur + C-120 front, beta 1829c9a, déployé CT 203)
+### Vague 17 — Cycle éditorial : validation & relecture (lancée et LIVRÉE le 18 nov. 2026 — C-119 serveur + C-120 front, beta 1829c9a, déployé CT 203 ; consolidée 20/11 : C-121)
 
 *Ferme le dernier gros bloc fonctionnel : Vague 7 #1 (workflow de validation) + le reste UI de Vague 8 #2 (changement de statut éditorial, API livrée en V16). Contrat figé : [spec-validation.md](spec-validation.md). Choix actés : pas de rôle relecteur dédié, pas de notification sortante, verrou de publication **désactivé par défaut** (usage solo préservé), commentaires de relecture au niveau du MO, jamais publiés ni exportés.*
 
@@ -39,6 +39,7 @@ L'historique complet des vagues livrées (v0 → v6bis) est archivé dans [archi
 | 3 | **Outil MCP \`set_editorial_status\`** (27e outil, loopback PUT /status) | ✅ livré 18/11 (C-119) : 27 outils ; le zod enum valide le statut à la frontière (rejet explicite, rien d'écrit) |
 | 4 | **UI éditeur** : sélecteur Statut éditorial dans la barre sticky, bouton « Demander une relecture », panneau Relecture (fil + ajout + suppression), encart dédié si 422 \`validation_required\` en publication | ✅ livré 18/11 (C-120) : sélecteur + boutons dans la barre sticky, panneau Relecture, encart ciblé sur 422 validation_required ; liste V16 inchangée (badge + filtre déjà livrés) |
 | 5 | **Workflow complet** brouillon → en relecture → validé → publié (cycle rejouable à chaque version) | ✅ livré 18/11 : cycle complet rejouable à chaque version (la publication ne change pas le statut éditorial) ; vérifié en runtime + prod |
+| 6 | **C-121 (V17.1) : verrou visible sur le chemin de publication** — bandeau dans le dialog de publication quand le verrou est actif et le statut ≠ validé (Confirmer désactivé, action directe « Demander une relecture »), audit update_settings des clés réellement changées (traçabilité des bascules du verrou) | ✅ livré 20/11 en réaction au test terrain du 19/11 : verrou jamais activé, donc blocage jamais déclenché et fonction invisible. Le serveur reste source de vérité (422). 212/212 tests, beta 530a481, déployé CT 203 |
 
 > **Priorité actuelle (décision propriétaire, 2026-10-18) : le fonctionnel et le mode édition** — les vagues 7 et 8 passent devant ; la vague 10 (sécurité) est en standby. Dans la vague 8, les items d'édition (images, statut éditorial) sont en tête.
 
