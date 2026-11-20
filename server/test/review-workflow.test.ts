@@ -148,3 +148,25 @@ test("B1 : CASCADE — la suppression du workflow emporte le fil", async () => {
 after(async () => {
   await new Promise<void>((r) => server.close(() => r()));
 });
+
+test("C-121 : PUT /api/settings — audit des clés réellement changées", async () => {
+  const rows = () => db.prepare("SELECT detail, actor_email FROM audit_log WHERE action = 'update_settings' ORDER BY id").all() as { detail: string; actor_email: string }[];
+  const base = rows().length;
+  const on = await call("PUT", "/api/settings", { require_validated: true }, admin);
+  assert.equal(on.status, 200);
+  assert.equal(on.json.require_validated, true);
+  const apresOn = rows();
+  assert.equal(apresOn.length, base + 1);
+  assert.match(apresOn[apresOn.length - 1].detail, /require_validated false→true/);
+  assert.equal(apresOn[apresOn.length - 1].actor_email, "admin@modop.local");
+  const off = await call("PUT", "/api/settings", { require_validated: false }, admin);
+  assert.equal(off.status, 200);
+  const apresOff = rows();
+  assert.equal(apresOff.length, base + 2);
+  assert.match(apresOff[apresOff.length - 1].detail, /require_validated true→false/);
+  // Aucun changement effectif → aucun nouvel événement (pas de bruit d'audit).
+  const noop = await call("PUT", "/api/settings", {}, admin);
+  assert.equal(noop.status, 200);
+  assert.equal(rows().length, base + 2);
+});
+

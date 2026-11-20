@@ -622,6 +622,12 @@ export default function EditorPage() {
     }
   }
 
+  // C-121 (V17.1) : le verrou de validation doit être VISIBLE sur le chemin
+  // de publication, pas seulement dans Paramètres. Le serveur reste la
+  // source de vérité (422 validation_required) — ici on anticipe l'état
+  // pour guider l'auteur AVANT le clic, pas après.
+  const blockedByValidation = (appSettings?.require_validated ?? false) && (wf?.editorial_status ?? "draft") !== "validated";
+
   return (
     <>
       <NavBar />
@@ -1161,13 +1167,30 @@ export default function EditorPage() {
           footer={
             <>
               <Button onClick={() => setConfirmPublish(false)} variant="outline">Annuler</Button>
-              <Button onClick={() => { setConfirmPublish(false); void publish(); }} variant="brand" disabled={!!reviewDue && reviewDue < new Date().toISOString().slice(0, 10)}>Confirmer la publication</Button>
+              <Button onClick={() => { setConfirmPublish(false); void publish(); }} variant="brand" disabled={(!!reviewDue && reviewDue < new Date().toISOString().slice(0, 10)) || blockedByValidation}>Confirmer la publication</Button>
             </>
           }
         >
           {reviewDue && reviewDue < new Date().toISOString().slice(0, 10) && (
             <p role="alert" className="m-0 mb-3 rounded-md bg-warn-bg px-3 py-2 text-sm text-warn">
               La date de revue ({reviewDue}) est dépassée — mettez-la à jour dans les détails avant de publier.
+            </p>
+          )}
+          {blockedByValidation && (
+            <p role="alert" className="m-0 mb-3 rounded-md bg-warn-bg px-3 py-2 text-sm text-warn">
+              Publication verrouillée : ce mode opératoire doit être validé (statut « Validé ») avant publication — verrou « Exiger une validation » activé dans Paramètres.
+              Statut actuel : {wf.editorial_status === "in_review" ? "en relecture" : wf.editorial_status === "obsolete" ? "obsolète" : "brouillon"}.{" "}
+              <button
+                type="button"
+                className="underline"
+                onClick={() => {
+                  setConfirmPublish(false);
+                  if ((wf.editorial_status ?? "draft") !== "in_review") void changeStatus("in_review");
+                  setShowReview(true);
+                }}
+              >
+                {(wf.editorial_status ?? "draft") === "in_review" ? "Ouvrir le fil de relecture puis passer en « Validé »" : "Demander une relecture"}
+              </button>
             </p>
           )}
           <p className="m-0 text-sm text-muted-foreground">

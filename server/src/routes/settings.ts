@@ -104,6 +104,8 @@ export function settingsRouter(db: Database.Database): Router {
 
   r.put("/", requireAuth("admin"), (req, res) => {
     const body = req.body ?? {};
+    // C-121 (V17.1) : snapshot avant écriture, pour n'auditer que les clés réellement changées.
+    const before = getSettings(db);
     if (typeof body.default_stroke_width === "number" && body.default_stroke_width >= 1 && body.default_stroke_width <= 10) {
       db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
         .run("default_stroke_width", String(Math.round(body.default_stroke_width)));
@@ -119,7 +121,15 @@ export function settingsRouter(db: Database.Database): Router {
           .run(key, body[key] ? "1" : "0");
       }
     }
-    res.json(getSettings(db));
+    // C-121 (V17.1) : audit des changements de paramètres — seules les clés
+    // réellement modifiées sont consignées (ancienne → nouvelle valeur),
+    // jamais le body brut. Cible de traçabilité "qui a actionné quoi".
+    const after = getSettings(db);
+    const changed = (Object.keys(after) as (keyof typeof after)[]).filter((k) => String(after[k]) !== String(before[k]));
+    if (changed.length > 0) {
+      auditLog(db, (req as { user?: { email: string } }).user?.email ?? "?", "update_settings", "settings", changed.map((k) => k + " " + before[k] + "→" + after[k]).join(", "));
+    }
+    res.json(after);
   });
 
   // C-97 (V12 #8) : indications métiers — liste active (lecteur+ : le flyout de
