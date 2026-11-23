@@ -1,6 +1,6 @@
 # Plan de reprise d'activité (PRA) — Modop
 
-> **v1.1 (24 oct. 2026)** — étoffé depuis le squelette v1.0. Règle : *un PRA non répété n'est pas un PRA* — l'exercice chronométré (§6) fait partie du livrable (critère d'acceptation vague 10, issue #9).
+> **v1.2 (23 nov. 2026)** — finalisé : exercice chronométré du 17/11/2026 consigné (§6), IDs CT post-renumérotation (modop 105→203 le 16/11). Règle : *un PRA non répété n'est pas un PRA* — l'exercice chronométré (§6) fait partie du livrable (critère d'acceptation vague 10, issue #9).
 
 ## 1. Objectifs
 
@@ -30,7 +30,7 @@ Dépendances externes : hôte Proxmox, copie de sauvegarde hors CT, gestionnaire
 | 1 | Snapshot `VACUUM INTO` + `integrity_check` **avant chaque update** (`update.sh` ; fallback copie brute assumée si `better-sqlite3` indisponible — C-61) | ✅ automatique |
 | 2 | `server/scripts/backup-db.mjs` : snapshot vérifié en un fichier, restauration testée en runtime (C-57) | ✅ livré |
 | 3 | **Planification régulière** de la sauvegarde + **copie hors CT** | ✅ copie hors CT couverte : vzdump quotidien du CT (job 05:00) → export chiffré R2 (rétention 2 j), méthode de restauration **prouvée le 28/10/2026** sur le CT 103 (RTO 10 min, §7). ⚠️ RPO fin : la chaîne vzdump donne du 24 h — le 15 min suppose un cron dédié (C-57), toujours à mettre en place |
-| 4 | Sauvegarde du dossier photos, même cadence que la base | ✅ embarquées dans le vzdump du CT (→ R2) — à vérifier au premier exercice chronométré |
+| 4 | Sauvegarde du dossier photos, même cadence que la base | ✅ embarquées dans le vzdump du CT (→ R2) — **vérifiées à l'exercice du 17/11/2026** (8 photos restaurées et relues, §6) |
 | 5 | Sauvegarde du `.env` (secrets) hors CT | ✅ embarqué dans le vzdump du CT (→ R2, chiffré côté client) |
 | 6 | Piste supervision : moniteur push Kuma « battement sauvegarde OK » (une absence de battement alerte) | ✅ implémentée côté homelab le 28/10/2026 : moniteur Push « Sauvegardes-R2 » (chaîne vzdump→R2, drill complet) — à répliquer le jour du cron 15 min modop |
 
@@ -72,24 +72,24 @@ Dépendances externes : hôte Proxmox, copie de sauvegarde hors CT, gestionnaire
 - [ ] Uptime Kuma : moniteur Up
 - [ ] Page /deploy (admin) : version affichée cohérente avec la branche
 
-## 6. Exercice chronométré (à faire — critère d'acceptation vague 10)
+## 6. Exercice chronométré (joué le 17/11/2026 — RTO tenu)
 
-Reconstruire **un CT vierge** en ne suivant que ce document, chronomètre en main :
+**Résultat : RTO mesuré 39 s + boot/app ~1 min** (cible ≤ 1 h) — restore du vzdump CT 203 du 17/11 05:31 (764 Mo zst) sur CT scratch 250 (`pct restore`, storage pnyssd-zfs, pool vibe-lab).
 
-- cible : RTO tenu (≤ 1 h), base et photos restaurées, vérifications §5 toutes vertes ;
-- noter pendant l'exercice : durée réelle, chemins exacts manquants, commandes fausses, étapes ambiguës ;
-- corriger ce PRA dans la foulée — le PRA est vivant, il se réécrit à chaque exercice ;
-- périodicité ensuite : 1×/an, ou après tout changement majeur (chiffrement at-rest, changement d'hôte, passage de la production sur `main`).
+- Preuves dans le scratch : `pm2 status` modop **online**, `GET /api/health` **200**, base lue (5 workflows / 13 étapes / 8 photos — MO-21/22/23, dont tests C-91 du 16/11), `.env-mcp` présent (600). Scratch détruit après l'exercice (`pct destroy --purge`). Journal détaillé : vibe_docs `homelab/journaux/2026-11-17-pra-o4-modop.md`.
+- **REX IP statique** : le scratch hérite de l'IP statique de prod (.56) → la changer **avant tout start** (un clone de prod sur le LAN double l'app et détourne le tunnel, cf. §7) — premier réflexe de tout restore.
+- Aucun chemin manquant ni commande fausse constatés à la restitution de la v1.1 — le seul angle mort (IP fixe) est intégré ci-dessus ; le PRA reste vivant, il se réécrit à chaque exercice.
+- Périodicité : 1×/an ou après tout changement majeur (chiffrement at-rest, changement d'hôte, passage de la production sur `main`) ; prochain déclencheur naturel = mise en place du cron RPO 15 min (A-BKP5).
 
 ## 7. Restauration offsite (méthode validée le 28/10/2026)
 
-Le CT 105 est couvert chaque nuit par le job vzdump 05:00 → export chiffré R2 (`rclone crypt`, rétention 2 j). La méthode est **prouvée en conditions réelles sur le CT 103** (meal_plan) le 28/10/2026 :
+Le CT 203 (ex-105, renuméroté le 16/11/2026) est couvert chaque nuit par le job vzdump 05:00 → export chiffré R2 (`rclone crypt`, rétention 2 j). La méthode est **prouvée en conditions réelles sur le CT 103** (meal_plan) le 28/10/2026 :
 
-1. Télécharger l'archive (rclone déchiffre à la volée) : `rclone copy "r2crypt:vzdump/vzdump-lxc-105-<date>.tar.zst" /root/r2-restore-test/ --progress`
+1. Télécharger l'archive (rclone déchiffre à la volée) : `rclone copy "r2crypt:vzdump/vzdump-lxc-203-<date>.tar.zst" /root/r2-restore-test/ --progress`
 2. Restaurer sur un CT scratch **sans le démarrer** : `pct restore 120 /root/r2-restore-test/<archive>.tar.zst --storage local-zfs`
-3. **Retirer le réseau avant tout démarrage** : `pct set 120 --delete net0` — un clone de prod booté sur le LAN double l'app et son daemon cloudflared détourne le tunnel
+3. **Retirer le réseau avant tout démarrage** : `pct set 120 --delete net0` — un clone de prod booté sur le LAN double l'app et son daemon cloudflared détourne le tunnel (variante éprouvée le 17/11 : bascule du scratch en DHCP avant start)
 4. Démarrer, vérifier base + `.env` + photos (`pct exec 120 -- find / -name "*.db" 2>/dev/null`), puis détruire le scratch
 
 **RTO mesuré : 10 min** (téléchargement inclus). Recette complète : runbook R2 §« Restauration testée » (repo vibe_docs, `homelab/2026-10-25-runbook-sauvegardes-r2.md`).
 
-⚠️ L'exercice chronométré §6 (critère vague 10) reste à jouer une fois sur le CT 105 lui-même : restauration sur CT vierge + `PRAGMA integrity_check` + vérification des photos (§5).
+✅ Exercice du 17/11/2026 consigné §6 (archive locale du CT 203, restore 39 s). Maillon fin restant : le cron dédié 15 min (`VACUUM INTO` → copie hors CT) pour tenir le RPO 15 min — seul le vzdump 24 h est couvert à ce jour (A-BKP5).
