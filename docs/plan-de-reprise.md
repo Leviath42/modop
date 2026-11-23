@@ -32,7 +32,7 @@ Dépendances externes : hôte Proxmox, copie de sauvegarde hors CT, gestionnaire
 | 3 | **Planification régulière** de la sauvegarde + **copie hors CT** | ✅ copie hors CT couverte : vzdump quotidien du CT (job 05:00) → export chiffré R2 (rétention 2 j), méthode de restauration **prouvée le 28/10/2026** sur le CT 103 (RTO 10 min, §7). ⚠️ RPO fin : la chaîne vzdump donne du 24 h — le 15 min suppose un cron dédié (C-57), toujours à mettre en place |
 | 4 | Sauvegarde du dossier photos, même cadence que la base | ✅ embarquées dans le vzdump du CT (→ R2) — **vérifiées à l'exercice du 17/11/2026** (8 photos restaurées et relues, §6) |
 | 5 | Sauvegarde du `.env` (secrets) hors CT | ✅ embarqué dans le vzdump du CT (→ R2, chiffré côté client) |
-| 6 | Piste supervision : moniteur push Kuma « battement sauvegarde OK » (une absence de battement alerte) | ✅ implémentée côté homelab le 28/10/2026 : moniteur Push « Sauvegardes-R2 » (chaîne vzdump→R2, drill complet) — à répliquer le jour du cron 15 min modop |
+| 6 | Piste supervision : moniteur push Kuma « battement sauvegarde OK » (une absence de battement alerte) | ✅ implémentée côté homelab le 28/10/2026 : moniteur Push « Sauvegardes-R2 » (chaîne vzdump→R2, drill complet) ✅ implémentée côté homelab le 28/10/2026 : moniteur Push « Sauvegardes-R2 » (chaîne vzdump→R2, drill complet) ; côté modop : battement `homelab/modop-rpo` + sonde stale A30 depuis le 22/11 |
 
 ## 4. Scénarios de sinistre et procédures
 
@@ -79,7 +79,7 @@ Dépendances externes : hôte Proxmox, copie de sauvegarde hors CT, gestionnaire
 - Preuves dans le scratch : `pm2 status` modop **online**, `GET /api/health` **200**, base lue (5 workflows / 13 étapes / 8 photos — MO-21/22/23, dont tests C-91 du 16/11), `.env-mcp` présent (600). Scratch détruit après l'exercice (`pct destroy --purge`). Journal détaillé : vibe_docs `homelab/journaux/2026-11-17-pra-o4-modop.md`.
 - **REX IP statique** : le scratch hérite de l'IP statique de prod (.56) → la changer **avant tout start** (un clone de prod sur le LAN double l'app et détourne le tunnel, cf. §7) — premier réflexe de tout restore.
 - Aucun chemin manquant ni commande fausse constatés à la restitution de la v1.1 — le seul angle mort (IP fixe) est intégré ci-dessus ; le PRA reste vivant, il se réécrit à chaque exercice.
-- Périodicité : 1×/an ou après tout changement majeur (chiffrement at-rest, changement d'hôte, passage de la production sur `main`) ; prochain déclencheur naturel = mise en place du cron RPO 15 min (A-BKP5).
+- Périodicité : 1×/an ou après tout changement majeur (chiffrement at-rest, changement d'hôte, passage de la production sur `main`) ; le cron RPO 15 min étant en place depuis le 17/11, le prochain exercice est l'annuel (ou le prochain changement majeur).
 
 ## 7. Restauration offsite (méthode validée le 28/10/2026)
 
